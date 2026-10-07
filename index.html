@@ -3371,7 +3371,7 @@ function cancelProfileEdit(){
 }
 
 
-function saveProfile(){
+async function saveProfile(){
 
     const name =
         document
@@ -3435,6 +3435,16 @@ function saveProfile(){
     document
         .querySelector("#profileForm")
         .style.display = "none";
+
+    // Persist the editable profile fields for the signed-in Firebase user.
+    if(typeof window.saveIndianProfileToFirestore === "function"){
+        try{
+            await window.saveIndianProfileToFirestore(profileName, profileBio);
+        }catch(error){
+            console.error("Profile save failed", error);
+            alert("Profile Firestore mein save nahi hua: " + String(error?.message || error).slice(0,300));
+        }
+    }
 }
 
 
@@ -5716,7 +5726,7 @@ import { getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   getFirestore, collection, addDoc, deleteDoc, doc, query, where,
-  onSnapshot, serverTimestamp, getDocs, setDoc
+  onSnapshot, serverTimestamp, getDocs, getDoc, setDoc
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const apps=getApps();
@@ -5732,6 +5742,52 @@ else{
  const clear=()=>{while(unsub.length){try{unsub.pop()();}catch(e){}}};
  const name=()=>clean(window.profileName||currentUser?.displayName||currentUser?.email||"Indian User",60)||"Indian User";
  const alertSave=(label,e)=>{console.error(label,e); alert(label+" Firestore mein save nahi hua: "+clean(e?.message||e,300));};
+
+ // Profile persistence: save and restore only the user's own safe public fields.
+ window.saveIndianProfileToFirestore=async function(displayName,bio){
+   if(!currentUser)return;
+   const safeName=clean(displayName,60)||"Indian User";
+   if(safeName.length<2)throw new Error("Profile name must contain at least 2 characters.");
+   const safeBio=clean(bio,500);
+   await setDoc(doc(db,"publicProfiles",currentUser.uid),{
+     uid:currentUser.uid,
+     displayName:safeName,
+     bio:safeBio,
+     updatedAt:serverTimestamp()
+   },{merge:true});
+   try{
+     await setDoc(doc(db,"users",currentUser.uid),{
+       uid:currentUser.uid,
+       displayName:safeName,
+       updatedAt:serverTimestamp()
+     },{merge:true});
+   }catch(error){
+     console.warn("Private user profile update failed",error);
+   }
+ };
+
+ window.loadIndianProfileFromFirestore=async function(){
+   if(!currentUser)return;
+   try{
+     const snap=await getDoc(doc(db,"publicProfiles",currentUser.uid));
+     if(!snap.exists())return;
+     const data=snap.data()||{};
+     const savedName=clean(data.displayName,60);
+     const savedBio=clean(data.bio,500);
+     if(savedName)window.profileName=savedName;
+     if(typeof data.bio === "string")window.profileBio=savedBio;
+     const nameView=document.getElementById("profileNameView");
+     const bioView=document.getElementById("profileBioView");
+     if(nameView)nameView.textContent=window.profileName||"Indian User";
+     if(bioView)bioView.textContent=window.profileBio||"";
+     const nameInput=document.getElementById("profileNameInput");
+     const bioInput=document.getElementById("profileBioInput");
+     if(nameInput)nameInput.value=window.profileName||"Indian User";
+     if(bioInput)bioInput.value=window.profileBio||"";
+   }catch(error){
+     console.error("Profile load failed",error);
+   }
+ };
 
  async function savePost(text,files,el){
    if(!currentUser||!el)return;
@@ -5837,9 +5893,9 @@ else{
    const af=window.togglePersonFollow;window.togglePersonFollow=async function(id){af?.(id);const p=window.peopleData?.find(x=>x.id===id);if(p)await saveFollow(p);};
    const lb=window.createLikeButton;window.createLikeButton=function(type,id){const b=lb(type,id),old=b.onclick;b.onclick=async function(){old?.();await saveLike(type,id,b.classList.contains("liked"));};return b;};
  }
- onAuthStateChanged(auth,u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Firestore persistence active. Posts, comments, replies, likes, follows, notifications, help requests and Firebase messages are being synchronized.";}else clear();});
+ onAuthStateChanged(auth,async u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){await window.loadIndianProfileFromFirestore?.();wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Firestore persistence active. Posts, comments, replies, likes, follows, notifications, help requests and Firebase messages are being synchronized.";}else clear();});
 }
 </script>
 
 </body>
-</html>
+</html>                

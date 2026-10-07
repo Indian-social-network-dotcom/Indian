@@ -1,0 +1,5845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indian</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#f4f6f8;
+    color:#222
+}
+
+header{
+    background:#1f2937;
+    color:white;
+    padding:20px;
+    text-align:center
+}
+
+header h1{margin:0}
+
+nav{
+    background:white;
+    padding:12px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+    border-bottom:1px solid #ddd
+}
+
+nav button{
+    padding:12px 20px;
+    border:1px solid #bbb;
+    background:white;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:16px
+}
+
+nav button:hover,
+nav button:focus{
+    background:#e8eef5
+}
+
+.nav-badge{
+    background:#dc2626;
+    color:white;
+    border-radius:12px;
+    padding:2px 8px;
+    font-size:14px;
+    margin-left:5px;
+    font-weight:bold;
+}
+
+main{
+    max-width:900px;
+    margin:25px auto;
+    padding:20px
+}
+
+section{
+    background:white;
+    padding:25px;
+    margin-bottom:20px;
+    border-radius:10px;
+    box-shadow:0 2px 8px #00000018
+}
+
+h2{margin-top:0}
+
+.action{
+    display:inline-block;
+    padding:10px 16px;
+    margin:5px 3px;
+    background:#2563eb;
+    color:white;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:15px
+}
+
+.action:hover,
+.action:focus{
+    background:#1d4ed8
+}
+
+footer{
+    text-align:center;
+    padding:25px;
+    background:#1f2937;
+    color:white
+}
+
+#liveStatus{
+    font-size:18px;
+    line-height:1.6
+}
+
+#liveTimer,
+#liveViewers{
+    font-weight:bold;
+    margin-top:10px
+}
+
+#postBox,
+#helpBox{
+    width:100%;
+    min-height:120px;
+    padding:12px;
+    margin-top:10px;
+    border:1px solid #bbb;
+    border-radius:6px;
+    font-size:16px;
+    font-family:Arial,sans-serif;
+    resize:vertical
+}
+
+#postForm,
+#helpForm{
+    margin-top:15px
+}
+
+.mediaInput{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border:1px solid #bbb;
+    border-radius:6px;
+    font-size:16px;
+    background:white
+}
+
+.mediaHelp{
+    font-size:14px;
+    color:#555
+}
+
+.post,
+.helpRequest{
+    background:#f4f6f8;
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:15px;
+    margin-top:15px
+}
+
+.postTitle,
+.helpTitle{
+    font-weight:bold;
+    margin-bottom:8px
+}
+
+.postTime,
+.helpTime,
+.commentTime,
+.notificationTime{
+    font-size:13px;
+    color:#666;
+    margin-top:8px
+}
+
+.postMedia,
+.commentMedia,
+.replyMedia,
+.helpMedia{
+    margin-top:12px
+}
+
+.postMedia img,
+.commentMedia img,
+.replyMedia img,
+.helpMedia img{
+    display:block;
+    max-width:100%;
+    max-height:500px;
+    width:auto;
+    height:auto;
+    border-radius:8px;
+    margin-top:10px
+}
+
+.postMedia video,
+.commentMedia video,
+.replyMedia video,
+.helpMedia video{
+    display:block;
+    width:100%;
+    max-height:500px;
+    border-radius:8px;
+    margin-top:10px
+}
+
+.postActions,
+.commentActions,
+.replyActions{
+    margin-top:10px
+}
+
+.commentSection{
+    margin-top:15px;
+    padding-top:12px;
+    border-top:1px solid #ddd
+}
+
+.commentBox,
+.replyBox{
+    width:100%;
+    min-height:80px;
+    padding:10px;
+    margin-top:8px;
+    border:1px solid #bbb;
+    border-radius:6px;
+    font-size:16px;
+    font-family:Arial,sans-serif;
+    resize:vertical
+}
+
+.comment,
+.reply{
+    background:white;
+    border:1px solid #ddd;
+    border-radius:6px;
+    padding:10px;
+    margin-top:10px
+}
+
+.reply{
+    margin-left:25px
+}
+
+.commentTitle,
+.replyTitle{
+    font-weight:bold;
+    margin-bottom:5px
+}
+
+.fileLabel{
+    display:block;
+    margin-top:10px;
+    font-weight:bold
+}
+
+.smallFileInput{
+    width:100%;
+    padding:8px;
+    margin-top:5px;
+    border:1px solid #bbb;
+    border-radius:6px
+}
+
+.likeButton{
+    background:#2563eb
+}
+
+.liked{
+    background:#dc2626
+}
+
+.shareButton{
+    background:#059669
+}
+
+.likeCount{
+    margin-left:5px;
+    font-weight:bold
+}
+
+.profileCard{
+    background:#f4f6f8;
+    border:1px solid #ddd;
+    border-radius:10px;
+    padding:20px;
+    text-align:center;
+    margin-bottom:15px;
+}
+
+.profilePhoto{
+    width:140px;
+    height:140px;
+    border-radius:50%;
+    object-fit:cover;
+    border:3px solid #2563eb;
+    display:block;
+    margin:0 auto 15px auto
+}
+
+.personAvatar{
+    width:65px;
+    height:65px;
+    border-radius:50%;
+    object-fit:cover;
+    border:2px solid #2563eb;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#dbeafe;
+    font-size:30px;
+    flex-shrink:0;
+}
+
+.profileName{
+    font-size:24px;
+    font-weight:bold;
+    margin:10px 0
+}
+
+.profileBio{
+    font-size:16px;
+    color:#555;
+    margin:10px 0
+}
+
+.profileInput{
+    width:100%;
+    padding:12px;
+    margin-top:8px;
+    margin-bottom:12px;
+    border:1px solid #bbb;
+    border-radius:6px;
+    font-size:16px
+}
+
+.profileTextarea{
+    width:100%;
+    min-height:100px;
+    padding:12px;
+    margin-top:8px;
+    margin-bottom:12px;
+    border:1px solid #bbb;
+    border-radius:6px;
+    font-size:16px;
+    font-family:Arial,sans-serif;
+    resize:vertical
+}
+
+.profilePostInfo{
+    margin-top:15px;
+    padding-top:12px;
+    border-top:1px solid #ddd;
+    text-align:left
+}
+
+.profilePostItem{
+    background:white;
+    border:1px solid #ddd;
+    border-radius:6px;
+    padding:10px;
+    margin-top:8px
+}
+
+/* SEARCH */
+#searchBox{
+    width:100%;
+    padding:14px;
+    border:1px solid #bbb;
+    border-radius:6px;
+    font-size:17px;
+    margin-top:10px
+}
+
+.searchResult{
+    background:#f4f6f8;
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:15px;
+    margin-top:12px
+}
+
+.searchType{
+    font-size:13px;
+    color:#666;
+    margin-bottom:6px
+}
+
+.searchTitle{
+    font-weight:bold;
+    font-size:18px
+}
+
+.searchButton{
+    margin-top:10px;
+}
+
+.noResults{
+    margin-top:15px;
+    padding:12px;
+    background:#f4f6f8;
+    border-radius:6px
+}
+
+/* NOTIFICATIONS & SUGGESTED PEOPLE */
+.notificationItem{
+    background:#f4f6f8;
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:12px 15px;
+    margin-top:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+}
+
+.notificationItem:focus{
+    outline:3px solid #2563eb;
+    outline-offset:2px;
+}
+
+.notificationItem.unread{
+    background:#e0f2fe;
+    border-left:5px solid #2563eb;
+    font-weight:bold;
+}
+
+.notificationText{
+    font-size:15px;
+}
+
+/* PEOPLE UPGRADE STYLES */
+.peopleGrid{
+    margin-top:15px;
+    display:flex;
+    flex-direction:column;
+    gap:15px;
+}
+
+.personCard{
+    background:#f4f6f8;
+    border:1px solid #ddd;
+    border-radius:10px;
+    padding:15px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.personHeader{
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+
+.personDetails{
+    flex:1;
+}
+
+.personNameBtn{
+    background:none;
+    border:none;
+    padding:0;
+    font-size:20px;
+    font-weight:bold;
+    color:#1f2937;
+    cursor:pointer;
+    text-align:left;
+    text-decoration:underline;
+}
+
+.personNameBtn:hover,
+.personNameBtn:focus{
+    color:#2563eb;
+}
+
+.personStatsControls{
+    display:flex;
+    gap:10px;
+    margin-top:5px;
+    flex-wrap:wrap;
+}
+
+.statBtn{
+    background:#e5e7eb;
+    border:1px solid #bbb;
+    border-radius:6px;
+    padding:6px 12px;
+    font-size:14px;
+    cursor:pointer;
+    color:#1f2937;
+}
+
+.statBtn:hover,
+.statBtn:focus{
+    background:#d1d5db;
+}
+
+.suggestedList{
+    margin-top:25px;
+    padding-top:15px;
+    border-top:1px solid #ddd;
+    text-align:left;
+}
+
+.suggestedCard{
+    background:white;
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:12px 15px;
+    margin-top:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.modalOverlay{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.5);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:1000;
+}
+
+.modalContent{
+    background:white;
+    border-radius:10px;
+    padding:25px;
+    max-width:500px;
+    width:90%;
+    max-height:80vh;
+    overflow-y:auto;
+    box-shadow:0 4px 12px rgba(0,0,0,0.2);
+}
+
+.modalHeader{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-bottom:1px solid #ddd;
+    padding-bottom:10px;
+    margin-bottom:15px;
+}
+
+.modalHeader h3{
+    margin:0;
+}
+
+
+/* MESSAGES / CHAT */
+#messagesLayout{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:15px;
+    margin-top:15px;
+}
+
+#conversationList{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+.conversationCard{
+    background:#f4f6f8;
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:12px 15px;
+}
+
+.conversationCard:focus-within{
+    outline:3px solid #2563eb;
+    outline-offset:2px;
+}
+
+.conversationHeader{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.conversationInfo{
+    flex:1;
+}
+
+.conversationName{
+    font-weight:bold;
+    font-size:18px;
+}
+
+.conversationPreview{
+    margin-top:5px;
+    color:#555;
+}
+
+.chatPanel{
+    background:#f4f6f8;
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:15px;
+}
+
+.chatMessages{
+    max-height:420px;
+    overflow-y:auto;
+    padding:5px;
+}
+
+.chatEmpty{
+    margin:0;
+    padding:12px;
+}
+
+.chatMessage{
+    max-width:85%;
+    padding:10px 12px;
+    margin-top:10px;
+    border-radius:8px;
+    border:1px solid #ddd;
+    background:white;
+}
+
+.chatMessage.mine{
+    margin-left:auto;
+    background:#e0f2fe;
+}
+
+.chatMessage.theirs{
+    margin-right:auto;
+}
+
+.chatMessageAuthor{
+    font-weight:bold;
+}
+
+.chatMessageTime{
+    font-size:12px;
+    color:#666;
+    margin-top:5px;
+}
+
+#messageComposer{
+    margin-top:15px;
+    padding-top:15px;
+    border-top:1px solid #ddd;
+}
+
+#messageText{
+    width:100%;
+    min-height:90px;
+    padding:12px;
+    border:1px solid #bbb;
+    border-radius:6px;
+    font-size:16px;
+    font-family:Arial,sans-serif;
+    resize:vertical;
+}
+
+
+.messageAttachments{
+    margin-top:8px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.messageAttachmentImage{
+    display:block;
+    max-width:100%;
+    max-height:280px;
+    border-radius:8px;
+    border:1px solid #ccc;
+}
+
+.messageAttachmentVideo{
+    display:block;
+    width:100%;
+    max-height:320px;
+    border-radius:8px;
+    border:1px solid #ccc;
+}
+
+.messageAttachmentName{
+    font-size:14px;
+    font-weight:bold;
+}
+
+.messageAttachControls{
+    margin-top:10px;
+    padding:12px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    background:#fff;
+}
+
+.messageAttachRow{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+    margin-top:8px;
+}
+
+.messageAttachRow label{
+    font-weight:bold;
+}
+
+.messageSelectedFile{
+    margin-top:8px;
+    padding:8px;
+    border-radius:6px;
+    background:#f4f6f8;
+}
+
+@media (min-width:700px){
+    #messagesLayout{
+        grid-template-columns:minmax(260px,0.8fr) minmax(360px,1.2fr);
+    }
+}
+
+
+.messageReplyPreview{
+    margin:10px 0;
+    padding:8px;
+    border:1px solid #ccc;
+    border-radius:6px;
+}
+.messageReplyQuote{
+    margin:6px 0;
+    padding:6px;
+    border-left:3px solid #888;
+    font-size:0.95em;
+}
+.chatMessageActions{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    margin-top:6px;
+}
+
+.messageConversationMeta{
+    margin-top:6px;
+    font-size:13px;
+    color:#555;
+}
+.messageConversationTools{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    margin-top:8px;
+}
+.messageUnreadBadge{
+    display:inline-block;
+    min-width:22px;
+    padding:2px 7px;
+    margin-left:6px;
+    border-radius:12px;
+    background:#dc2626;
+    color:white;
+    font-size:12px;
+    font-weight:bold;
+    text-align:center;
+}
+.messagePinnedBadge,
+.messageMutedBadge{
+    display:inline-block;
+    margin-left:6px;
+    padding:2px 6px;
+    border-radius:10px;
+    background:#eef2ff;
+    font-size:12px;
+}
+.messageSearchBar{
+    margin:10px 0;
+    padding:10px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    background:#fafafa;
+}
+.messageSearchBar input{
+    width:100%;
+    padding:10px;
+    border:1px solid #bbb;
+    border-radius:6px;
+    font-size:16px;
+}
+.messageSearchInfo{
+    margin-top:6px;
+    font-size:13px;
+    color:#555;
+}
+.messageTypingStatus{
+    min-height:24px;
+    margin:6px 0;
+    font-size:13px;
+    color:#555;
+}
+.messageEditNotice{
+    margin:8px 0;
+    padding:8px;
+    border:1px solid #cbd5e1;
+    border-radius:6px;
+    background:#f8fafc;
+}
+.messageStatus{
+    margin-left:6px;
+    font-size:12px;
+    color:#555;
+}
+.messageEditedLabel{
+    margin-left:6px;
+    font-size:12px;
+    color:#666;
+}
+.messageDemoBox{
+    margin:10px 0;
+    padding:10px;
+    border:1px dashed #aaa;
+    border-radius:8px;
+    background:#fcfcfc;
+}
+
+.messageReactionBar{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.messageReactionButton{min-width:44px;}
+.messageReactions{margin-top:6px;font-size:0.92em;}
+.messageReactionCount{display:inline-block;margin-right:6px;}
+.messageCharCount{font-size:0.9em;display:block;margin-top:4px;}
+.messageDraftStatus{font-size:0.9em;display:block;margin-top:4px;}
+.messageConversationSearch{margin-bottom:10px;}
+.messageDanger{margin-top:6px;}
+.messageAttachmentRemove{margin-top:6px;}
+
+/* FIREBASE / SECURE UPLOAD UI */
+.firebaseCard{
+    background:#f4f6f8;
+    border:1px solid #ddd;
+    border-radius:10px;
+    padding:18px;
+    margin-top:15px;
+}
+.firebaseInput{
+    display:block;
+    width:100%;
+    padding:12px;
+    margin-top:8px;
+    margin-bottom:12px;
+    border:1px solid #bbb;
+    border-radius:6px;
+    font-size:16px;
+}
+.firebaseButtonRow{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:10px;
+}
+.firebaseStatus{
+    margin-top:10px;
+    padding:10px;
+    border-radius:6px;
+    background:white;
+    border:1px solid #ddd;
+    line-height:1.5;
+}
+.firebaseUploadStatus{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:12px;
+    min-height:34px;
+    padding:8px;
+    border-radius:6px;
+    background:white;
+    border:1px solid #ddd;
+}
+.firebaseSecurityNote{
+    margin-top:15px;
+    padding:12px;
+    border-left:4px solid #2563eb;
+    background:#eef2ff;
+}
+.uploadSpinner{
+    width:18px;
+    height:18px;
+    border:3px solid #bbb;
+    border-top-color:#2563eb;
+    border-radius:50%;
+    animation:firebaseSpin 0.8s linear infinite;
+    flex:0 0 auto;
+}
+@keyframes firebaseSpin{
+    to{transform:rotate(360deg)}
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>Indian</h1>
+<p>Connect • Help • Share • Live</p>
+</header>
+
+<nav aria-label="Main Navigation">
+<button onclick="showMessage('Home')">Home</button>
+<button onclick="openLiveZone()">Live Zone</button>
+<button onclick="openHelp()">Help</button>
+<button onclick="openProfile()">Profile</button>
+<button onclick="openNotifications()" id="navNotifBtn" aria-label="Notifications section">
+Notifications <span id="navUnreadBadge" class="nav-badge" style="display:none;">0</span>
+</button>
+<button onclick="openMessages()" id="navMessagesBtn" aria-label="Messages section">
+Messages <span id="navMessageBadge" class="nav-badge" style="display:none;">0</span>
+</button>
+<button type="button" onclick="openFirebaseAccount()" id="navFirebaseBtn" aria-label="Firebase account and secure uploads section">Account / Firebase</button>
+<button onclick="openPeople()">People</button>
+<button onclick="showSearch()">Search</button>
+<button onclick="openPlace()">Place</button>
+<button onclick="scrollToPosts()">Posts</button>
+</nav>
+
+<main>
+
+<section>
+<h2>Welcome to Indian</h2>
+
+<p>
+Welcome to Indian. Here people can connect, share, help each other and participate in live activities.
+</p>
+
+<button class="action" onclick="createPost()">Create Post</button>
+<button class="action" onclick="openHelp()">Ask for Help</button>
+<button class="action" id="goLiveButton" onclick="toggleLive()">Go Live</button>
+<button class="action" onclick="openProfile()">My Profile</button>
+</section>
+
+
+<!-- FIREBASE ACCOUNT + SECURE MEDIA UPLOAD -->
+<section id="firebaseSection" style="display:none;" tabindex="-1" aria-labelledby="firebaseSectionTitle">
+<h2 id="firebaseSectionTitle">Firebase Account &amp; Secure Uploads</h2>
+<p>Sign in to Indian with Firebase Authentication and upload validated media securely to Firebase Storage.</p>
+
+<div id="firebaseSetupStatus" class="firebaseStatus" aria-live="polite">
+Firebase is not configured yet. Add your Firebase Web App config in the code comments marked FIREBASE CONFIG.
+</div>
+
+<div class="firebaseCard">
+<h3>Account</h3>
+
+<label for="firebaseDisplayName">Display name for signup:</label>
+<input id="firebaseDisplayName" class="firebaseInput" type="text" maxlength="60" autocomplete="name" aria-label="Display name for signup">
+
+<label for="firebaseEmail">Email address:</label>
+<input id="firebaseEmail" class="firebaseInput" type="email" maxlength="254" autocomplete="email" aria-label="Firebase email address">
+
+<label for="firebasePassword">Password:</label>
+<input id="firebasePassword" class="firebaseInput" type="password" minlength="8" maxlength="128" autocomplete="current-password" aria-label="Firebase password">
+
+<div class="firebaseButtonRow">
+<button type="button" class="action" id="firebaseSignupButton" aria-label="Create Firebase account">Create Account</button>
+<button type="button" class="action" id="firebaseLoginButton" aria-label="Sign in to Firebase account">Sign In</button>
+<button type="button" class="action" id="firebaseLogoutButton" aria-label="Sign out of Firebase account" disabled>Sign Out</button>
+</div>
+
+<div id="firebaseAuthStatus" class="firebaseStatus" aria-live="polite">Not signed in.</div>
+</div>
+
+<div class="firebaseCard">
+<h3>Secure Media Upload</h3>
+<p class="mediaHelp">Allowed images: .jpg, .png, .webp up to 10 MB. Allowed videos: .mp4, .webm up to 50 MB. Images are compressed to WebP before upload.</p>
+
+<label for="firebaseMediaInput">Choose a photo or video:</label>
+<input
+  id="firebaseMediaInput"
+  class="mediaInput"
+  type="file"
+  accept=".jpg,.png,.webp,.mp4,.webm,image/jpeg,image/png,image/webp,video/mp4,video/webm"
+  aria-label="Choose a secure photo or video for Firebase Storage upload"
+>
+
+<div id="firebaseSelectedMedia" class="messageSelectedFile" aria-live="polite">No file selected.</div>
+
+<div id="firebaseCompressionStatus" class="firebaseStatus" aria-live="polite"></div>
+
+<button type="button" class="action" id="firebaseUploadButton" aria-label="Upload validated media to Firebase Storage" disabled>Upload to Firebase Storage</button>
+
+<div id="firebaseUploadArea" class="firebaseUploadStatus" aria-live="polite" aria-atomic="true">
+<span id="firebaseUploadSpinner" class="uploadSpinner" aria-hidden="true" style="display:none;"></span>
+<span id="firebaseUploadStatusText">Upload is waiting.</span>
+</div>
+
+<div id="firebaseUploadResult" class="firebaseStatus" aria-live="polite"></div>
+</div>
+
+<div class="firebaseSecurityNote" role="note">
+<strong>Security:</strong> Browser-side checks improve user experience but do not replace Firebase Security Rules. The matching rules are provided with this file for authenticated, owner-only Storage access and size/content-type enforcement. Never place a Firebase service-account private key in index.html.
+</div>
+</section>
+
+
+<!-- SEARCH SECTION -->
+<section id="searchSection" style="display:none;">
+
+<h2>Search Indian</h2>
+
+<label for="searchBox">
+Search people, places, posts or help requests:
+</label>
+
+<input
+    id="searchBox"
+    type="search"
+    placeholder="Type what you want to search..."
+    aria-label="Search Indian"
+    oninput="performSearch()"
+>
+
+<div id="searchResults">
+<p>Type something to search.</p>
+</div>
+
+</section>
+
+
+<!-- NOTIFICATIONS SECTION -->
+<section id="notificationsSection" style="display:none;" tabindex="-1">
+<h2>Notifications</h2>
+
+<button class="action" onclick="markAllNotificationsAsRead()">Mark All as Read</button>
+
+<div id="notificationsContainer" aria-live="polite" style="margin-top:15px;">
+<p id="noNotifMsg">No notifications yet.</p>
+</div>
+</section>
+
+
+<!-- MESSAGES / CHAT -->
+<section id="messagesSection" style="display:none;" tabindex="-1">
+
+<h2>Messages</h2>
+
+<p>Send messages to people on Indian. Firebase-connected users can use real-time Firestore messages; demo contacts continue to work locally until they have a Firebase profile.</p>
+<div id="firebaseMessageStatus" aria-live="polite" style="margin:10px 0;padding:10px;border:1px solid #ddd;border-radius:6px;background:#f8fafc;">Checking Firebase Messages...</div>
+
+<div id="messagesLayout">
+
+<div>
+<h3>Conversations</h3>
+<div class="messageConversationSearch">
+<label for="conversationSearchBox">Search conversations:</label>
+<input id="conversationSearchBox" type="search" placeholder="Search people or latest message..." aria-label="Search conversations" oninput="filterConversationList()">
+</div>
+<div id="conversationList" aria-label="Conversation list"></div>
+</div>
+
+<div class="chatPanel">
+<h3 id="chatTitle">Select a conversation</h3>
+<div id="chatPresence" class="messageConversationMeta" aria-live="polite">Select a person to open a chat.</div>
+<div id="chatTypingStatus" class="messageTypingStatus" aria-live="polite"></div>
+<div class="messageSearchBar" id="messageSearchBar" style="display:none;">
+    <label for="messageSearchBox">Search messages in this chat:</label>
+    <input id="messageSearchBox" type="search" placeholder="Type to search this chat..." aria-label="Search messages in this chat" oninput="filterCurrentChatMessages()">
+    <div id="messageSearchInfo" class="messageSearchInfo" aria-live="polite"></div>
+</div>
+<div id="chatMessages" class="chatMessages" aria-live="polite">
+<p class="chatEmpty">Select a person to open a chat.</p>
+</div>
+
+<div id="messageComposer" style="display:none;">
+<div id="messageEditNotice" class="messageEditNotice" aria-live="polite" style="display:none;">
+    <span id="messageEditText"></span>
+    <button type="button" class="action" onclick="cancelMessageEdit()" aria-label="Cancel editing message">Cancel Edit</button>
+</div>
+<label for="messageText">Write your message:</label>
+<textarea id="messageText" placeholder="Type a message..." aria-label="Write your message" oninput="handleMessageTyping()" onkeydown="handleMessageComposerKeydown(event)" maxlength="2000"></textarea>
+<div id="messageCharCount" class="messageCharCount" aria-live="polite">0 / 2000 characters</div>
+<div id="messageDraftStatus" class="messageDraftStatus" aria-live="polite"></div>
+
+<div id="messageReplyPreview" class="messageReplyPreview" aria-live="polite" style="display:none;">
+    <span id="messageReplyText"></span>
+    <button type="button" class="action" onclick="cancelMessageReply()" aria-label="Cancel reply">Cancel Reply</button>
+</div>
+
+<div class="messageAttachControls" aria-label="Message attachments">
+    <strong>Attach to this message:</strong>
+    <div class="messageAttachRow">
+        <label for="messagePhotoInput">Photo:</label>
+        <input id="messagePhotoInput" type="file" accept="image/*" aria-label="Attach a photo to your message" onchange="handleMessagePhotoChange()">
+    </div>
+    <div class="messageAttachRow">
+        <label for="messageVideoInput">Video:</label>
+        <input id="messageVideoInput" type="file" accept="video/*" aria-label="Attach a video to your message" onchange="handleMessageVideoChange()">
+    </div>
+    <div id="messageSelectedPhoto" class="messageSelectedFile" aria-live="polite">No photo selected.</div>
+    <button type="button" id="removeMessagePhotoButton" class="action messageAttachmentRemove" onclick="removeSelectedMessagePhoto()" style="display:none;">Remove Photo</button>
+    <div id="messageSelectedVideo" class="messageSelectedFile" aria-live="polite">No video selected.</div>
+    <button type="button" id="removeMessageVideoButton" class="action messageAttachmentRemove" onclick="removeSelectedMessageVideo()" style="display:none;">Remove Video</button>
+</div>
+
+<button id="sendMessageButton" class="action" onclick="sendMessage()">Send Message</button>
+<button class="action" onclick="clearMessageDraft()">Clear</button>
+<div class="messageConversationTools">
+    <button type="button" class="action" onclick="toggleMessageSearch()" aria-label="Search messages in this chat">Search Chat</button>
+    <button type="button" class="action" id="markUnreadButton" onclick="markCurrentConversationUnread()">Mark Unread</button>
+    <button type="button" class="action" id="muteConversationButton" onclick="toggleCurrentConversationMute()">Mute Chat</button>
+    <button type="button" class="action" id="pinConversationButton" onclick="toggleCurrentConversationPin()">Pin Chat</button>
+    <button type="button" class="action messageDanger" id="clearConversationButton" onclick="clearCurrentConversation()">Clear Chat</button>
+</div>
+<div class="messageDemoBox">
+    <strong>Local demo:</strong> Use “Receive Demo Reply” to test incoming messages, unread count and notifications.
+    <br>
+    <button type="button" class="action" onclick="receiveDemoReply()" aria-label="Receive a demo reply in this chat">Receive Demo Reply</button>
+</div>
+</div>
+</div>
+
+</div>
+
+</section>
+
+
+<!-- PROFILE SECTION -->
+<section id="profileSection" tabindex="-1">
+
+<h2>Profile</h2>
+
+<div id="profileView" class="profileCard">
+
+<img
+    id="profileImage"
+    class="profilePhoto"
+    src=""
+    alt="Profile photo"
+    style="display:none;"
+>
+
+<div
+    id="profileDefaultPhoto"
+    class="profilePhoto"
+    style="background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:55px;"
+    aria-label="Default profile photo"
+>
+👤
+</div>
+
+<div id="profileNameView" class="profileName">
+Indian User
+</div>
+
+<div id="profileBioView" class="profileBio">
+Welcome to my Indian profile.
+</div>
+
+<div class="profilePostInfo">
+
+<strong>My Posts</strong>
+
+<div id="profilePostList">
+No posts yet.
+</div>
+
+</div>
+
+<button class="action" onclick="editProfile()">
+Edit Profile
+</button>
+
+</div>
+
+
+<div id="profileForm" style="display:none;margin-top:20px;">
+
+<label for="profileNameInput">
+Your name:
+</label>
+
+<input
+    id="profileNameInput"
+    class="profileInput"
+    type="text"
+    placeholder="Enter your name"
+    aria-label="Your profile name"
+>
+
+<label for="profileBioInput">
+Your bio:
+</label>
+
+<textarea
+    id="profileBioInput"
+    class="profileTextarea"
+    placeholder="Write something about yourself..."
+    aria-label="Your profile bio"
+></textarea>
+
+<label for="profilePhotoInput">
+Profile photo:
+</label>
+
+<input
+    id="profilePhotoInput"
+    class="mediaInput"
+    type="file"
+    accept="image/*"
+    aria-label="Select profile photo"
+>
+
+<button class="action" onclick="saveProfile()">
+Save Profile
+</button>
+
+<button class="action" onclick="cancelProfileEdit()">
+Cancel
+</button>
+
+</div>
+
+</section>
+
+
+<!-- LIVE ZONE -->
+<section id="liveZoneSection" tabindex="-1">
+
+<h2>Live Zone</h2>
+
+<p id="liveStatus">
+Live Zone active — waiting for update...
+</p>
+
+<p id="liveTimer">
+No live session is running.
+</p>
+
+<p id="liveViewers">
+Live viewers: 0
+</p>
+
+</section>
+
+
+<!-- HELP -->
+<section id="helpSection" tabindex="-1">
+
+<h2>Help</h2>
+
+<p>
+Ask for help or offer help to other people.
+</p>
+
+<div id="helpForm" style="display:none;">
+
+<label for="helpBox">
+What help do you need?
+</label>
+
+<textarea
+    id="helpBox"
+    placeholder="Write your help request..."
+    aria-label="Write your help request"
+></textarea>
+
+<label for="helpMediaInput" class="fileLabel">
+Add photo or video:
+</label>
+
+<input
+    type="file"
+    id="helpMediaInput"
+    class="mediaInput"
+    accept="image/*,video/*"
+    multiple
+    aria-label="Select photos or videos for your help request"
+>
+
+<p class="mediaHelp">
+You can select one or more photos and videos with your help request.
+</p>
+
+<button class="action" onclick="submitHelp()">
+Submit Help Request
+</button>
+
+<button class="action" onclick="cancelHelp()">
+Cancel
+</button>
+
+</div>
+
+<div id="helpContainer">
+
+<p id="noHelp">
+No help requests yet.
+</p>
+
+</div>
+
+</section>
+
+
+<!-- PEOPLE -->
+<section id="peopleSection" tabindex="-1">
+
+<h2>People</h2>
+
+<p>
+Discover and connect with people.
+</p>
+
+<!-- MAIN PEOPLE LIST -->
+<div id="peopleContainer" class="peopleGrid" aria-label="People list"></div>
+
+<!-- SUGGESTED PEOPLE SECTION -->
+<div class="suggestedList">
+<h3>Suggested People</h3>
+<div id="suggestedPeopleContainer"></div>
+</div>
+
+</section>
+
+
+<!-- PLACE -->
+<section id="placeSection" tabindex="-1">
+
+<h2>Place</h2>
+
+<p>
+Explore places and their local communities.
+</p>
+
+<div id="placeContainer" aria-label="Place list"></div>
+
+</section>
+
+
+<!-- POSTS -->
+<section id="postsSection" tabindex="-1">
+
+<h2>Posts</h2>
+
+<div id="postForm" style="display:none;">
+
+<label for="postBox">
+Write your post:
+</label>
+
+<textarea
+    id="postBox"
+    placeholder="Write something to share..."
+    aria-label="Write your post"
+></textarea>
+
+<label for="mediaInput" class="fileLabel">
+Add photo or video:
+</label>
+
+<input
+    type="file"
+    id="mediaInput"
+    class="mediaInput"
+    accept="image/*,video/*"
+    multiple
+    aria-label="Select photos or videos for your post"
+>
+
+<p class="mediaHelp">
+You can select one or more photos and videos.
+</p>
+
+<button class="action" onclick="publishPost()">
+Post
+</button>
+
+<button class="action" onclick="cancelPost()">
+Cancel
+</button>
+
+</div>
+
+<div id="postsContainer"></div>
+
+</section>
+
+</main>
+
+<!-- ACCESSIBLE MODAL FOR PROFILE VIEW & CONNECTIONS LIST -->
+<div id="peopleModal" class="modalOverlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modalContent" tabindex="-1" id="modalContentEl">
+        <div class="modalHeader">
+            <h3 id="modalTitle">View Details</h3>
+            <button class="action" onclick="closePeopleModal()" aria-label="Close dialog">Close</button>
+        </div>
+        <div id="modalBody"></div>
+    </div>
+</div>
+
+<footer>
+Indian — Connect • Help • Share • Live
+</footer>
+
+
+<script>
+
+/* =========================
+   GLOBAL STATE
+========================= */
+
+let profileName = "Indian User";
+let profileBio = "Welcome to my Indian profile.";
+let profilePhotoURL = "";
+
+let isLive = false;
+let liveStartTime = null;
+let liveViewers = 0;
+
+let isFollowing = false;
+let followersCount = 0;
+let followingCount = 0;
+
+/* NOTIFICATIONS & SUGGESTED DATA */
+let notifications = [];
+window.notifications = notifications;
+
+/* MESSAGES / CHAT STATE */
+let selectedConversationPersonId = null;
+let selectedMessagePhoto = null;
+let selectedMessageVideo = null;
+let selectedReplyMessageIndex = null;
+let editingMessageIndex = null;
+let messageSearchQuery = "";
+let conversationSearchQuery = "";
+let messageTypingTimer = null;
+let messageDraftSaveTimer = null;
+
+let messageMeta = {
+    0: { unread: 0, pinned: false, muted: false, online: true, lastSeen: "Online now" },
+    1: { unread: 0, pinned: false, muted: false, online: false, lastSeen: "Today at 6:40 PM" },
+    2: { unread: 0, pinned: false, muted: false, online: true, lastSeen: "Online now" },
+    3: { unread: 0, pinned: false, muted: false, online: false, lastSeen: "Yesterday at 8:15 PM" }
+};
+
+let messageData = [
+    {
+        personId: 0,
+        messages: [
+            {sender:"them", text:"Hello! Welcome to Indian.", time:"9:00 AM", timestampValue:900000},
+            {sender:"me", text:"Thank you! Nice to connect.", time:"9:05 AM", timestampValue:901000, status:"read", edited:false}
+        ]
+    },
+    {
+        personId: 1,
+        messages: [
+            {sender:"them", text:"Hi! How is your project going?", time:"9:10 AM", timestampValue:902000}
+        ]
+    },
+    {
+        personId: 2,
+        messages: [
+            {sender:"them", text:"Hello from Indian!", time:"9:15 AM", timestampValue:903000}
+        ]
+    },
+    {
+        personId: 3,
+        messages: []
+    }
+];
+
+/* EXPANDED PEOPLE DATA STRUCTURE */
+let peopleData = window.peopleData = [
+    {
+        id: 0,
+        name: "Indian Friend",
+        bio: "This is an Indian user.",
+        isFollowing: false,
+        followersCount: 0,
+        followingCount: 0,
+        followersList: [],
+        followingList: []
+    },
+    {
+        id: 1,
+        name: "Rahul Verma",
+        bio: "Tech enthusiast from Delhi",
+        isFollowing: false,
+        followersCount: 12,
+        followingCount: 5,
+        followersList: ["Priya Sharma", "Amit Kumar"],
+        followingList: ["Indian Friend"]
+    },
+    {
+        id: 2,
+        name: "Priya Sharma",
+        bio: "Digital Creator on Indian",
+        isFollowing: false,
+        followersCount: 28,
+        followingCount: 14,
+        followersList: ["Rahul Verma"],
+        followingList: ["Amit Kumar"]
+    },
+    {
+        id: 3,
+        name: "Amit Kumar",
+        bio: "Community Helper",
+        isFollowing: false,
+        followersCount: 8,
+        followingCount: 3,
+        followersList: ["Priya Sharma"],
+        followingList: ["Rahul Verma"]
+    }
+];
+
+const placeData = [
+    {name:"Jaipur", description:"Jaipur, the Pink City and a major city of Rajasthan."},
+    {name:"Delhi", description:"Delhi, a major city and capital region of India."},
+    {name:"Mumbai", description:"Mumbai, a major city on the west coast of India."},
+    {name:"Kolkata", description:"Kolkata, a major city in West Bengal."},
+    {name:"Lucknow", description:"Lucknow, the capital city of Uttar Pradesh."}
+];
+
+let suggestedPeople = [
+    peopleData[1],
+    peopleData[2],
+    peopleData[3]
+];
+
+let lastActiveElementBeforeModal = null;
+
+
+/* =========================
+   NOTIFICATION SYSTEM
+========================= */
+
+function addNotification(message, targetType, targetId) {
+    const notif = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        message: message,
+        time: new Date().toLocaleTimeString(),
+        read: false,
+        targetType: targetType || "general",
+        targetId: targetId || null
+    };
+    notifications.unshift(notif);
+    renderNotifications();
+}
+
+function handleNotificationClick(notifId) {
+    const notif = notifications.find(n => n.id === notifId);
+    if (!notif) return;
+
+    if (!notif.read) {
+        notif.read = true;
+        renderNotifications();
+        if(window.markFirestoreNotificationAsRead && notif.firestoreId){
+            window.markFirestoreNotificationAsRead(notif.firestoreId).catch(function(error){
+                console.error("Notification read sync failed", error);
+            });
+        }
+    }
+
+    if (notif.targetType === "post" || notif.targetType === "comment" || notif.targetType === "reply") {
+        if (notif.targetId) {
+            const targetEl = document.getElementById(notif.targetId);
+            if (targetEl) {
+                targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                if (typeof targetEl.focus === "function") {
+                    targetEl.focus();
+                }
+                return;
+            }
+        }
+        scrollToPosts();
+    } else if (notif.targetType === "help") {
+        const section = document.getElementById("helpSection");
+        if (section) {
+            section.scrollIntoView({ behavior: "smooth", block: "start" });
+            section.focus();
+        }
+    } else if (notif.targetType === "live") {
+        const section = document.getElementById("liveZoneSection");
+        if (section) {
+            section.scrollIntoView({ behavior: "smooth", block: "start" });
+            section.focus();
+        }
+    } else if (notif.targetType === "people") {
+        const person = peopleData.find(p => p.id === notif.targetId);
+        if (person) {
+            showPersonProfileModal(person.id);
+        } else {
+            openPeople();
+        }
+    } else if (notif.targetType === "messages") {
+        if (notif.targetId !== null && notif.targetId !== undefined) {
+            openMessages();
+            openConversation(notif.targetId);
+        } else {
+            openMessages();
+        }
+    } else {
+        scrollToPosts();
+    }
+}
+
+function renderNotifications() {
+    const container = document.getElementById("notificationsContainer");
+    const badge = document.getElementById("navUnreadBadge");
+    
+    const unreadCount = notifications.filter(n => !n.read).length;
+    badge.textContent = unreadCount;
+
+    if (unreadCount > 0) {
+        badge.style.display = "inline";
+    } else {
+        badge.style.display = "none";
+    }
+
+    if (notifications.length === 0) {
+        container.innerHTML = '<p>No notifications yet.</p>';
+        return;
+    }
+
+    container.innerHTML = "";
+    notifications.forEach(notif => {
+        const item = document.createElement("div");
+        item.className = "notificationItem" + (notif.read ? "" : " unread");
+        item.setAttribute("role", "button");
+        item.setAttribute("tabindex", "0");
+        item.setAttribute("aria-label", notif.message + ", " + notif.time + (notif.read ? "" : ", unread"));
+        
+        item.innerHTML = `
+            <div>
+                <div class="notificationText">${notif.message}</div>
+                <div class="notificationTime">${notif.time}</div>
+            </div>
+        `;
+
+        item.onclick = function() {
+            handleNotificationClick(notif.id);
+        };
+
+        item.onkeydown = function(e) {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleNotificationClick(notif.id);
+            }
+        };
+
+        container.appendChild(item);
+    });
+}
+
+async function markAllNotificationsAsRead() {
+    notifications.forEach(n => n.read = true);
+    renderNotifications();
+    if(window.markAllFirestoreNotificationsAsRead) {
+        try { await window.markAllFirestoreNotificationsAsRead(); } catch(e) { console.error("Notification read sync failed",e); }
+    }
+}
+
+function openNotifications() {
+    const section = document.getElementById("notificationsSection");
+
+    if (section) {
+        section.style.display = "block";
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+        section.focus();
+    }
+}
+
+
+/* =========================
+   PEOPLE SYSTEM UPGRADE
+========================= */
+
+function renderPeopleList() {
+    const container = document.getElementById("peopleContainer");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    peopleData.forEach(person => {
+        const card = document.createElement("div");
+        card.className = "personCard";
+
+        const header = document.createElement("div");
+        header.className = "personHeader";
+
+        const avatar = document.createElement("div");
+        avatar.className = "personAvatar";
+        avatar.setAttribute("aria-label", person.name + " profile photo placeholder");
+        avatar.textContent = "👤";
+
+        const details = document.createElement("div");
+        details.className = "personDetails";
+
+        const nameBtn = document.createElement("button");
+        nameBtn.className = "personNameBtn";
+        nameBtn.textContent = person.name;
+        nameBtn.setAttribute("aria-label", "View profile of " + person.name);
+        nameBtn.onclick = function() {
+            showPersonProfileModal(person.id);
+        };
+
+        const bio = document.createElement("div");
+        bio.className = "profileBio";
+        bio.style.fontSize = "14px";
+        bio.textContent = person.bio;
+
+        const stats = document.createElement("div");
+        stats.className = "personStatsControls";
+
+        const followersBtn = document.createElement("button");
+        followersBtn.className = "statBtn";
+        followersBtn.setAttribute("aria-label", person.name + " has " + person.followersCount + " followers. Activate to view list.");
+        followersBtn.innerHTML = `Followers: <strong>${person.followersCount}</strong>`;
+        followersBtn.onclick = function() {
+            showConnectionsModal(person.name + "'s Followers", person.followersList, person.isFollowing && person.id === 0 ? "You follow this person" : "");
+        };
+
+        const followingBtn = document.createElement("button");
+        followingBtn.className = "statBtn";
+        followingBtn.setAttribute("aria-label", person.name + " is following " + person.followingCount + " people. Activate to view list.");
+        followingBtn.innerHTML = `Following: <strong>${person.followingCount}</strong>`;
+        followingBtn.onclick = function() {
+            showConnectionsModal(person.name + " is Following", person.followingList, "");
+        };
+
+        stats.appendChild(followersBtn);
+        stats.appendChild(followingBtn);
+
+        details.appendChild(nameBtn);
+        details.appendChild(bio);
+        details.appendChild(stats);
+
+        header.appendChild(avatar);
+        header.appendChild(details);
+
+        const followBtn = document.createElement("button");
+        followBtn.className = "action " + (person.isFollowing ? "liked" : "");
+        if (person.id === 0) {
+            followBtn.id = "followButton";
+        }
+        followBtn.textContent = person.isFollowing ? "Unfollow" : "Follow";
+        followBtn.setAttribute("aria-label", (person.isFollowing ? "Unfollow " : "Follow ") + person.name);
+        followBtn.onclick = function() {
+            togglePersonFollow(person.id);
+        };
+
+        card.appendChild(header);
+        card.appendChild(followBtn);
+
+        container.appendChild(card);
+    });
+}
+
+function renderSuggestedPeople() {
+    const container = document.getElementById("suggestedPeopleContainer");
+    if (!container) return;
+
+    container.innerHTML = "";
+    suggestedPeople.forEach(person => {
+        const card = document.createElement("div");
+        card.className = "suggestedCard";
+
+        const info = document.createElement("div");
+        info.innerHTML = `
+            <button class="personNameBtn" style="font-size:16px;" onclick="showPersonProfileModal(${person.id})" aria-label="View profile of ${person.name}">${person.name}</button>
+            <div style="font-size:13px;color:#666;">${person.bio}</div>
+        `;
+
+        const btn = document.createElement("button");
+        btn.className = "action " + (person.isFollowing ? "liked" : "");
+        btn.textContent = person.isFollowing ? "Unfollow" : "Follow";
+        btn.setAttribute("aria-label", (person.isFollowing ? "Unfollow " : "Follow ") + person.name);
+        btn.onclick = function() {
+            togglePersonFollow(person.id);
+        };
+
+        card.appendChild(info);
+        card.appendChild(btn);
+        container.appendChild(card);
+    });
+}
+
+function togglePersonFollow(id) {
+    const person = peopleData.find(p => p.id === id);
+    if (!person) return;
+
+    if (!person.isFollowing) {
+        person.isFollowing = true;
+        person.followersCount++;
+        if (id === 0) {
+            isFollowing = true;
+            followersCount = person.followersCount;
+            followingCount++;
+            person.followingCount = followingCount;
+        } else {
+            followingCount++;
+            const mainUser = peopleData.find(p => p.id === 0);
+            if (mainUser) mainUser.followingCount = followingCount;
+        }
+        addNotification("You started following " + person.name + ".", "people", person.id);
+    } else {
+        person.isFollowing = false;
+        person.followersCount = Math.max(0, person.followersCount - 1);
+        if (id === 0) {
+            isFollowing = false;
+            followersCount = person.followersCount;
+            followingCount = Math.max(0, followingCount - 1);
+            person.followingCount = followingCount;
+        } else {
+            followingCount = Math.max(0, followingCount - 1);
+            const mainUser = peopleData.find(p => p.id === 0);
+            if (mainUser) mainUser.followingCount = followingCount;
+        }
+        addNotification("You unfollowed " + person.name + ".", "people", person.id);
+    }
+
+    updateFollowView();
+    renderPeopleList();
+    renderSuggestedPeople();
+}
+
+function toggleFollow() {
+    togglePersonFollow(0);
+}
+
+function updateFollowView() {
+    const mainPerson = peopleData.find(p => p.id === 0);
+    if (mainPerson) {
+        isFollowing = mainPerson.isFollowing;
+        followersCount = mainPerson.followersCount;
+    }
+}
+
+function openPeople() {
+    const section = document.querySelector("#peopleSection");
+    if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+        section.focus();
+    }
+}
+
+function showPersonProfileModal(personId) {
+    const person = peopleData.find(p => p.id === personId);
+    if (!person) return;
+
+    lastActiveElementBeforeModal = document.activeElement;
+
+    const modal = document.getElementById("peopleModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalBody = document.getElementById("modalBody");
+
+    modalTitle.textContent = person.name + "'s Profile";
+
+    modalBody.innerHTML = `
+        <div style="text-align:center;">
+            <div class="personAvatar" style="margin:0 auto 15px auto;width:90px;height:90px;font-size:45px;">👤</div>
+            <div style="font-size:22px;font-weight:bold;">${person.name}</div>
+            <div style="font-size:15px;color:#555;margin:10px 0;">${person.bio}</div>
+            <div style="margin:15px 0;">
+                <span>Followers: <strong>${person.followersCount}</strong></span> | 
+                <span>Following: <strong>${person.followingCount}</strong></span>
+            </div>
+            <button id="modalFollowBtn" class="action ${person.isFollowing ? 'liked' : ''}" aria-label="${person.isFollowing ? 'Unfollow' : 'Follow'} ${person.name}">
+                ${person.isFollowing ? 'Unfollow' : 'Follow'}
+            </button>
+        </div>
+    `;
+
+    document.getElementById("modalFollowBtn").onclick = function() {
+        togglePersonFollow(person.id);
+        showPersonProfileModal(person.id);
+    };
+
+    modal.style.display = "flex";
+    document.getElementById("modalContentEl").focus();
+}
+
+function showConnectionsModal(title, list, extraMsg) {
+    lastActiveElementBeforeModal = document.activeElement;
+
+    const modal = document.getElementById("peopleModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalBody = document.getElementById("modalBody");
+
+    modalTitle.textContent = title;
+
+    let html = "";
+    if (extraMsg) {
+        html += `<p style="font-style:italic;color:#555;">${extraMsg}</p>`;
+    }
+
+    if (!list || list.length === 0) {
+        html += "<p>No people found in this list.</p>";
+    } else {
+        html += "<ul style='list-style:none;padding:0;margin:0;'>";
+        list.forEach(name => {
+            html += `<li style='padding:10px;border-bottom:1px solid #eee;font-weight:bold;'>👤 ${name}</li>`;
+        });
+        html += "</ul>";
+    }
+
+    modalBody.innerHTML = html;
+    modal.style.display = "flex";
+    document.getElementById("modalContentEl").focus();
+}
+
+function closePeopleModal() {
+    const modal = document.getElementById("peopleModal");
+    modal.style.display = "none";
+    if (lastActiveElementBeforeModal && typeof lastActiveElementBeforeModal.focus === "function") {
+        lastActiveElementBeforeModal.focus();
+    }
+}
+
+
+/* =========================
+   BASIC NAVIGATION
+========================= */
+
+
+window.getIndianPersonById = function(personId){
+    return peopleData.find(function(p){ return p.id === personId; }) || null;
+};
+
+window.getIndianPersonFirebaseUid = function(personId){
+    const person = peopleData.find(function(p){ return p.id === personId; });
+    return person && person.firebaseUid ? person.firebaseUid : null;
+};
+
+window.replaceIndianConversationMessages = function(personId, messages){
+    let chat = messageData.find(function(item){ return item.personId === personId; });
+    if(!chat){
+        chat = {personId:personId, messages:[]};
+        messageData.push(chat);
+    }
+    chat.messages = messages;
+    renderChat(personId);
+    renderConversationList();
+};
+
+window.addFirebasePeopleToIndian = function(profiles){
+    let nextId = 10000;
+    profiles.forEach(function(profile){
+        if(!profile || !profile.uid || profile.uid === (window.firebaseCurrentUid || "")) return;
+        let existing = peopleData.find(function(p){ return p.firebaseUid === profile.uid; });
+        if(existing){
+            existing.name = sanitizePlainText(profile.displayName, 60) || existing.name;
+            return;
+        }
+        while(peopleData.some(function(p){ return p.id === nextId; })) nextId++;
+        const person = {
+            id: nextId++,
+            name: sanitizePlainText(profile.displayName, 60) || "Indian User",
+            bio: "Firebase user on Indian.",
+            firebaseUid: profile.uid,
+            isFollowing:false,
+            followersCount:0,
+            followingCount:0,
+            followersList:[],
+            followingList:[]
+        };
+        peopleData.push(person);
+        suggestedPeople.push(person);
+    });
+    renderConversationList();
+    renderSuggestedPeople();
+};
+
+function getPersonNameById(personId){
+    const person = peopleData.find(function(p){ return p.id === personId; });
+    return person ? person.name : "Unknown Person";
+}
+
+function getMessagesForPerson(personId){
+    let chat = messageData.find(function(item){ return item.personId === personId; });
+    if(!chat){
+        chat = {personId: personId, messages: []};
+        messageData.push(chat);
+    }
+    return chat.messages;
+}
+
+function openMessages(){
+    const section = document.getElementById("messagesSection");
+    if(!section) return;
+
+    section.style.display = "block";
+    section.scrollIntoView({behavior:"smooth", block:"start"});
+    section.focus();
+    renderConversationList();
+
+    if(selectedConversationPersonId !== null){
+        renderChat(selectedConversationPersonId);
+    }
+}
+
+function getMessageMeta(personId){
+    if(!messageMeta[personId]){
+        messageMeta[personId] = {unread:0,pinned:false,muted:false,online:false,lastSeen:"Unknown"};
+    }
+    return messageMeta[personId];
+}
+
+function getTotalUnreadMessages(){
+    return Object.keys(messageMeta).reduce(function(total, key){
+        return total + (Number(messageMeta[key].unread) || 0);
+    }, 0);
+}
+
+function renderMessageBadge(){
+    const badge = document.getElementById("navMessageBadge");
+    if(!badge) return;
+
+    const total = getTotalUnreadMessages();
+    badge.textContent = total;
+    badge.style.display = total > 0 ? "inline" : "none";
+}
+
+function markConversationRead(personId){
+    const meta = getMessageMeta(personId);
+    meta.unread = 0;
+    renderMessageBadge();
+    renderConversationList();
+}
+
+function markConversationUnread(personId){
+    const meta = getMessageMeta(personId);
+    if(meta.unread < 1) meta.unread = 1;
+    renderMessageBadge();
+}
+
+function renderConversationList(){
+    const container = document.getElementById("conversationList");
+    if(!container) return;
+
+    container.innerHTML = "";
+
+    const conversationQuery = conversationSearchQuery.trim().toLowerCase();
+    let visiblePeople = peopleData.slice();
+
+    if(conversationQuery){
+        visiblePeople = visiblePeople.filter(function(person){
+            const msgs = getMessagesForPerson(person.id);
+            const latestMsg = msgs.length ? msgs[msgs.length - 1] : null;
+            const haystack = [
+                person.name || "",
+                person.bio || "",
+                latestMsg ? (latestMsg.text || "") : "",
+                latestMsg && latestMsg.attachment ? latestMsg.attachment.name : ""
+            ].join(" ").toLowerCase();
+            return haystack.includes(conversationQuery);
+        });
+    }
+
+    const sortedPeople = visiblePeople.sort(function(a,b){
+        const aMeta = getMessageMeta(a.id);
+        const bMeta = getMessageMeta(b.id);
+        if(aMeta.pinned !== bMeta.pinned) return aMeta.pinned ? -1 : 1;
+        const aMessages = getMessagesForPerson(a.id);
+        const bMessages = getMessagesForPerson(b.id);
+        const aTime = aMessages.length ? aMessages[aMessages.length-1].timestampValue || 0 : 0;
+        const bTime = bMessages.length ? bMessages[bMessages.length-1].timestampValue || 0 : 0;
+        return bTime - aTime;
+    });
+
+    sortedPeople.forEach(function(person){
+        const messages = getMessagesForPerson(person.id);
+        const latest = messages.length ? messages[messages.length - 1] : null;
+        const meta = getMessageMeta(person.id);
+
+        const card = document.createElement("div");
+        card.className = "conversationCard";
+
+        const header = document.createElement("div");
+        header.className = "conversationHeader";
+
+        const avatar = document.createElement("div");
+        avatar.className = "personAvatar";
+        avatar.setAttribute("aria-hidden", "true");
+        avatar.textContent = "👤";
+
+        const info = document.createElement("div");
+        info.className = "conversationInfo";
+
+        const name = document.createElement("div");
+        name.className = "conversationName";
+        name.textContent = person.name;
+
+        if(meta.unread > 0){
+            const unread = document.createElement("span");
+            unread.className = "messageUnreadBadge";
+            unread.textContent = meta.unread;
+            unread.setAttribute("aria-label", meta.unread + " unread message" + (meta.unread === 1 ? "" : "s"));
+            name.appendChild(unread);
+        }
+        if(meta.pinned){
+            const pin = document.createElement("span");
+            pin.className = "messagePinnedBadge";
+            pin.textContent = "Pinned";
+            name.appendChild(pin);
+        }
+        if(meta.muted){
+            const mute = document.createElement("span");
+            mute.className = "messageMutedBadge";
+            mute.textContent = "Muted";
+            name.appendChild(mute);
+        }
+
+        const preview = document.createElement("div");
+        preview.className = "conversationPreview";
+        if(latest){
+            if(latest.text){
+                preview.textContent = latest.attachment ? latest.text + " [" + (latest.attachment.type === "image" ? "Photo attached" : "Video attached") + "]" : latest.text;
+            } else if(latest.attachment){
+                preview.textContent = latest.attachment.type === "image" ? "Photo attached: " + latest.attachment.name : "Video attached: " + latest.attachment.name;
+            } else {
+                preview.textContent = "Message";
+            }
+        } else {
+            preview.textContent = "No messages yet.";
+        }
+
+        const presence = document.createElement("div");
+        presence.className = "messageConversationMeta";
+        presence.textContent = meta.online ? "Online now" : "Last seen " + meta.lastSeen;
+
+        info.appendChild(name);
+        info.appendChild(preview);
+        info.appendChild(presence);
+
+        const openBtn = document.createElement("button");
+        openBtn.className = "action";
+        openBtn.textContent = "Open Chat";
+        openBtn.setAttribute("aria-label", "Open chat with " + person.name);
+        openBtn.onclick = function(){ openConversation(person.id); };
+
+        const tools = document.createElement("div");
+        tools.className = "messageConversationTools";
+
+        const pinBtn = document.createElement("button");
+        pinBtn.type = "button";
+        pinBtn.className = "action";
+        pinBtn.textContent = meta.pinned ? "Unpin" : "Pin";
+        pinBtn.setAttribute("aria-label", (meta.pinned ? "Unpin" : "Pin") + " chat with " + person.name);
+        pinBtn.onclick = function(){ toggleConversationPin(person.id); };
+
+        const muteBtn = document.createElement("button");
+        muteBtn.type = "button";
+        muteBtn.className = "action";
+        muteBtn.textContent = meta.muted ? "Unmute" : "Mute";
+        muteBtn.setAttribute("aria-label", (meta.muted ? "Unmute" : "Mute") + " chat with " + person.name);
+        muteBtn.onclick = function(){ toggleConversationMute(person.id); };
+
+        const unreadBtn = document.createElement("button");
+        unreadBtn.type = "button";
+        unreadBtn.className = "action";
+        unreadBtn.textContent = "Mark Unread";
+        unreadBtn.setAttribute("aria-label", "Mark chat with " + person.name + " as unread");
+        unreadBtn.onclick = function(){ markConversationUnread(person.id); renderConversationList(); };
+
+        tools.appendChild(pinBtn);
+        tools.appendChild(muteBtn);
+        tools.appendChild(unreadBtn);
+
+        header.appendChild(avatar);
+        header.appendChild(info);
+        header.appendChild(openBtn);
+        card.appendChild(header);
+        card.appendChild(tools);
+        container.appendChild(card);
+    });
+
+    if(sortedPeople.length === 0){
+        const empty = document.createElement("p");
+        empty.textContent = "No conversations found.";
+        empty.tabIndex = 0;
+        container.appendChild(empty);
+    }
+
+    renderMessageBadge();
+}
+
+function filterConversationList(){
+    const input = document.getElementById("conversationSearchBox");
+    conversationSearchQuery = input ? input.value : "";
+    renderConversationList();
+}
+
+function openConversation(personId){
+    const person = peopleData.find(function(p){ return p.id === personId; });
+    if(!person) return;
+
+    selectedConversationPersonId = personId;
+    editingMessageIndex = null;
+    selectedReplyMessageIndex = null;
+    messageSearchQuery = "";
+
+    const draftStatus = document.getElementById("messageDraftStatus");
+    if(draftStatus) draftStatus.textContent = "";
+
+    const searchBox = document.getElementById("messageSearchBox");
+    if(searchBox) searchBox.value = "";
+
+    markConversationRead(personId);
+
+    const section = document.getElementById("messagesSection");
+    if(section) section.style.display = "block";
+
+    renderChat(personId);
+    if(window.firebaseIndianMessages){
+        window.firebaseIndianMessages.subscribe(personId);
+    }
+
+    const textBox = document.getElementById("messageText");
+    if(textBox){
+        const draftKey = "indian_chat_draft_" + personId;
+        let savedDraft = "";
+        try { savedDraft = sessionStorage.getItem(draftKey) || ""; } catch(e) {}
+        textBox.value = savedDraft;
+        updateMessageComposerStatus();
+        const draftStatus = document.getElementById("messageDraftStatus");
+        if(draftStatus && savedDraft) draftStatus.textContent = "Draft restored.";
+        setTimeout(function(){ textBox.focus(); }, 100);
+    }
+}
+
+function getDisplayedChatMessages(personId){
+    const messages = getMessagesForPerson(personId);
+    const q = messageSearchQuery.trim().toLowerCase();
+    if(!q) return messages.map(function(message, index){ return {message:message,index:index}; });
+
+    return messages.reduce(function(list, message, index){
+        const haystack = [
+            message.text || "",
+            message.attachment ? message.attachment.name : "",
+            message.replyTo ? (message.replyTo.text || "") : ""
+        ].join(" ").toLowerCase();
+        if(haystack.includes(q)) list.push({message:message,index:index});
+        return list;
+    }, []);
+}
+
+function renderChat(personId){
+    const person = peopleData.find(function(p){ return p.id === personId; });
+    const title = document.getElementById("chatTitle");
+    const container = document.getElementById("chatMessages");
+    const composer = document.getElementById("messageComposer");
+    const presence = document.getElementById("chatPresence");
+    const typing = document.getElementById("chatTypingStatus");
+    const searchBar = document.getElementById("messageSearchBar");
+    const searchInfo = document.getElementById("messageSearchInfo");
+
+    if(!person || !container || !title || !composer) return;
+
+    const meta = getMessageMeta(personId);
+    title.textContent = "Chat with " + person.name;
+    if(presence) presence.textContent = meta.online ? person.name + " is online now." : person.name + " was last seen " + meta.lastSeen + ".";
+    if(typing && !typing.textContent) typing.textContent = "";
+    if(searchBar) searchBar.style.display = "block";
+
+    container.innerHTML = "";
+
+    const displayed = getDisplayedChatMessages(personId);
+    const allMessages = getMessagesForPerson(personId);
+
+    if(searchInfo){
+        if(messageSearchQuery.trim()){
+            searchInfo.textContent = displayed.length + " matching message" + (displayed.length === 1 ? "" : "s") + " found.";
+        } else {
+            searchInfo.textContent = allMessages.length + " message" + (allMessages.length === 1 ? "" : "s") + " in this chat.";
+        }
+    }
+
+    if(displayed.length === 0){
+        const empty = document.createElement("p");
+        empty.className = "chatEmpty";
+        empty.textContent = messageSearchQuery.trim() ? "No matching messages found." : "No messages yet. Start the conversation.";
+        container.appendChild(empty);
+    } else {
+        displayed.forEach(function(item){
+            const message = item.message;
+            ensureMessageReactions(message);
+            const index = item.index;
+            const bubble = document.createElement("div");
+            bubble.className = "chatMessage " + (message.sender === "me" ? "mine" : "theirs");
+            bubble.setAttribute("tabindex", "0");
+
+            const author = document.createElement("div");
+            author.className = "chatMessageAuthor";
+            author.textContent = message.sender === "me" ? profileName : person.name;
+
+            if(message.replyTo){
+                const replyBlock = document.createElement("div");
+                replyBlock.className = "messageReplyQuote";
+                replyBlock.setAttribute("tabindex", "0");
+                replyBlock.textContent = "Replying to " + message.replyTo.senderName + ": " + (message.replyTo.text || "Attachment");
+                bubble.appendChild(replyBlock);
+            }
+
+            const text = document.createElement("div");
+            text.textContent = message.text || "";
+            if(message.text){
+                bubble.appendChild(text);
+            }
+
+            if(message.attachment){
+                const attachmentWrap = document.createElement("div");
+                attachmentWrap.className = "messageAttachments";
+
+                const attachmentName = document.createElement("div");
+                attachmentName.className = "messageAttachmentName";
+                attachmentName.textContent = (message.attachment.type === "image" ? "Photo: " : "Video: ") + message.attachment.name;
+                attachmentWrap.appendChild(attachmentName);
+
+                if(message.attachment.type === "image"){
+                    const image = document.createElement("img");
+                    image.className = "messageAttachmentImage";
+                    image.src = message.attachment.url;
+                    image.alt = "Attached photo: " + message.attachment.name;
+                    image.setAttribute("tabindex", "0");
+                    attachmentWrap.appendChild(image);
+                } else if(message.attachment.type === "video"){
+                    const video = document.createElement("video");
+                    video.className = "messageAttachmentVideo";
+                    video.src = message.attachment.url;
+                    video.controls = true;
+                    video.setAttribute("aria-label", "Attached video: " + message.attachment.name);
+                    attachmentWrap.appendChild(video);
+                }
+
+                bubble.appendChild(attachmentWrap);
+            }
+
+            const reactBar = document.createElement("div");
+            reactBar.className = "messageReactionBar";
+            reactBar.style.display = "none";
+            ["👍","❤️","😂","😮","😢"].forEach(function(emoji){
+                const rb = document.createElement("button");
+                rb.type = "button";
+                rb.className = "action messageReactionButton";
+                rb.textContent = emoji;
+                rb.setAttribute("aria-label", "React with " + emoji);
+                rb.onclick = function(){ addMessageReaction(personId, index, emoji); };
+                reactBar.appendChild(rb);
+            });
+            bubble.appendChild(reactBar);
+
+            const reactionSummary = document.createElement("div");
+            reactionSummary.className = "messageReactions";
+            if(message.reactions){
+                Object.keys(message.reactions).forEach(function(emoji){
+                    const count = Number(message.reactions[emoji]) || 0;
+                    if(count > 0){
+                        const span = document.createElement("span");
+                        span.className = "messageReactionCount";
+                        span.textContent = emoji + " " + count;
+                        reactionSummary.appendChild(span);
+                    }
+                });
+            }
+            if(reactionSummary.textContent) bubble.appendChild(reactionSummary);
+
+            const time = document.createElement("div");
+            time.className = "chatMessageTime";
+            time.textContent = message.time;
+
+            const actions = document.createElement("div");
+            actions.className = "chatMessageActions";
+
+            const replyBtn = document.createElement("button");
+            replyBtn.type = "button";
+            replyBtn.className = "action";
+            replyBtn.textContent = "Reply";
+            replyBtn.setAttribute("aria-label", "Reply to message from " + (message.sender === "me" ? profileName : person.name));
+            replyBtn.onclick = function(){ startMessageReply(personId, index); };
+            actions.appendChild(replyBtn);
+
+            const copyBtn = document.createElement("button");
+            copyBtn.type = "button";
+            copyBtn.className = "action";
+            copyBtn.textContent = "Copy";
+            copyBtn.setAttribute("aria-label", "Copy message from " + (message.sender === "me" ? profileName : person.name));
+            copyBtn.onclick = function(){ copyChatMessage(personId, index); };
+            actions.appendChild(copyBtn);
+
+            const reactBtn = document.createElement("button");
+            reactBtn.type = "button";
+            reactBtn.className = "action";
+            reactBtn.textContent = "React";
+            reactBtn.setAttribute("aria-label", "Add reaction to this message");
+            reactBtn.onclick = function(){ toggleMessageReactions(reactBar); };
+            actions.appendChild(reactBtn);
+
+            if(message.sender === "me") {
+                const editBtn = document.createElement("button");
+                editBtn.type = "button";
+                editBtn.className = "action";
+                editBtn.textContent = "Edit";
+                editBtn.setAttribute("aria-label", "Edit your message sent at " + message.time);
+                editBtn.onclick = function(){ startMessageEdit(personId, index); };
+                actions.appendChild(editBtn);
+
+                const deleteBtn = document.createElement("button");
+                deleteBtn.type = "button";
+                deleteBtn.className = "action";
+                deleteBtn.textContent = "Delete";
+                deleteBtn.setAttribute("aria-label", "Delete your message sent at " + message.time);
+                deleteBtn.onclick = function(){ deleteMessage(personId, index); };
+                actions.appendChild(deleteBtn);
+            }
+
+            bubble.appendChild(author);
+            bubble.appendChild(time);
+
+            const status = document.createElement("span");
+            status.className = "messageStatus";
+            if(message.sender === "me"){
+                status.textContent = message.status === "read" ? "✓✓ Read" : "✓ Sent";
+                status.setAttribute("aria-label", message.status === "read" ? "Message read" : "Message sent");
+            }
+            if(message.edited){
+                const edited = document.createElement("span");
+                edited.className = "messageEditedLabel";
+                edited.textContent = "(edited)";
+                status.appendChild(edited);
+            }
+            if(status.textContent) bubble.appendChild(status);
+
+            bubble.appendChild(actions);
+            container.appendChild(bubble);
+        });
+    }
+
+    composer.style.display = "block";
+    updateMessageComposerMode();
+    updateMessageComposerStatus();
+    updateConversationControlButtons(personId);
+    container.scrollTop = container.scrollHeight;
+}
+
+function ensureMessageReactions(message){
+    if(!message.reactions) message.reactions = {};
+    return message.reactions;
+}
+
+function toggleMessageReactions(bar){
+    if(!bar) return;
+    bar.style.display = bar.style.display === "none" ? "flex" : "none";
+}
+
+function addMessageReaction(personId, messageIndex, emoji){
+    const messages = getMessagesForPerson(personId);
+    const message = messages[messageIndex];
+    if(!message) return;
+    const reactions = ensureMessageReactions(message);
+    reactions[emoji] = (Number(reactions[emoji]) || 0) + 1;
+    renderChat(personId);
+}
+
+async function copyChatMessage(personId, messageIndex){
+    const messages = getMessagesForPerson(personId);
+    const message = messages[messageIndex];
+    if(!message) return;
+    const copyText = message.text || (message.attachment ? ((message.attachment.type === "image" ? "Photo: " : "Video: ") + message.attachment.name) : "Message");
+    let copied = false;
+    try {
+        if(navigator.clipboard && navigator.clipboard.writeText){
+            await navigator.clipboard.writeText(copyText);
+            copied = true;
+        }
+    } catch(e) {}
+    if(!copied){
+        const temp = document.createElement("textarea");
+        temp.value = copyText;
+        temp.style.position = "fixed";
+        temp.style.left = "-9999px";
+        document.body.appendChild(temp);
+        temp.select();
+        try { copied = document.execCommand("copy"); } catch(e) {}
+        temp.remove();
+    }
+    const status = document.getElementById("chatTypingStatus");
+    if(status) status.textContent = copied ? "Message copied." : "Unable to copy this message.";
+}
+
+function updateMessageComposerStatus(){
+    const textBox = document.getElementById("messageText");
+    const count = document.getElementById("messageCharCount");
+    if(count && textBox) count.textContent = textBox.value.length + " / 2000 characters";
+}
+
+function saveCurrentMessageDraft(){
+    if(selectedConversationPersonId === null) return;
+    const textBox = document.getElementById("messageText");
+    if(!textBox) return;
+    const draftKey = "indian_chat_draft_" + selectedConversationPersonId;
+    try {
+        if(textBox.value){
+            sessionStorage.setItem(draftKey, textBox.value);
+        } else {
+            sessionStorage.removeItem(draftKey);
+        }
+    } catch(e) {}
+}
+
+function handleMessageComposerKeydown(event){
+    if(event.key === "Enter" && !event.shiftKey){
+        event.preventDefault();
+        sendMessage();
+    }
+}
+
+function removeSelectedMessagePhoto(){
+    selectedMessagePhoto = null;
+    const input = document.getElementById("messagePhotoInput");
+    if(input) input.value = "";
+    updateMessageAttachmentLabels();
+}
+
+function removeSelectedMessageVideo(){
+    selectedMessageVideo = null;
+    const input = document.getElementById("messageVideoInput");
+    if(input) input.value = "";
+    updateMessageAttachmentLabels();
+}
+
+function clearCurrentConversation(){
+    if(selectedConversationPersonId === null) return;
+    const person = peopleData.find(function(p){ return p.id === selectedConversationPersonId; });
+    if(!person) return;
+    if(!confirm("Clear all messages with " + person.name + " from this browser session? Firebase messages are managed separately and are not deleted by this local clear action.")) return;
+    const messages = getMessagesForPerson(selectedConversationPersonId);
+    messages.forEach(function(message){ revokeSelectedMessageAttachmentURL(message.attachment); });
+    messages.length = 0;
+    getMessageMeta(selectedConversationPersonId).unread = 0;
+    try { sessionStorage.removeItem("indian_chat_draft_" + selectedConversationPersonId); } catch(e) {}
+    renderChat(selectedConversationPersonId);
+    renderConversationList();
+    renderMessageBadge();
+}
+
+function updateMessageAttachmentLabels(){
+    const photoLabel = document.getElementById("messageSelectedPhoto");
+    const videoLabel = document.getElementById("messageSelectedVideo");
+
+    if(photoLabel){
+        photoLabel.textContent = selectedMessagePhoto ? "Selected photo: " + selectedMessagePhoto.name : "No photo selected.";
+    }
+    if(videoLabel){
+        videoLabel.textContent = selectedMessageVideo ? "Selected video: " + selectedMessageVideo.name : "No video selected.";
+    }
+    const removePhoto = document.getElementById("removeMessagePhotoButton");
+    const removeVideo = document.getElementById("removeMessageVideoButton");
+    if(removePhoto) removePhoto.style.display = selectedMessagePhoto ? "inline-block" : "none";
+    if(removeVideo) removeVideo.style.display = selectedMessageVideo ? "inline-block" : "none";
+}
+
+function handleMessagePhotoChange(){
+    const input = document.getElementById("messagePhotoInput");
+    if(!input || !input.files || !input.files[0]) return;
+
+    selectedMessagePhoto = input.files[0];
+    selectedMessageVideo = null;
+
+    const videoInput = document.getElementById("messageVideoInput");
+    if(videoInput) videoInput.value = "";
+    updateMessageAttachmentLabels();
+}
+
+function handleMessageVideoChange(){
+    const input = document.getElementById("messageVideoInput");
+    if(!input || !input.files || !input.files[0]) return;
+
+    selectedMessageVideo = input.files[0];
+    selectedMessagePhoto = null;
+
+    const photoInput = document.getElementById("messagePhotoInput");
+    if(photoInput) photoInput.value = "";
+    updateMessageAttachmentLabels();
+}
+
+function revokeSelectedMessageAttachmentURL(attachment){
+    if(attachment && attachment.url && attachment.url.indexOf("blob:") === 0){
+        try { URL.revokeObjectURL(attachment.url); } catch(e) {}
+    }
+}
+
+function startMessageReply(personId, messageIndex){
+    if(personId !== selectedConversationPersonId){
+        openConversation(personId);
+    }
+
+    const messages = getMessagesForPerson(personId);
+    if(!messages[messageIndex]) return;
+
+    selectedReplyMessageIndex = messageIndex;
+    const preview = document.getElementById("messageReplyPreview");
+    const replyText = document.getElementById("messageReplyText");
+    const message = messages[messageIndex];
+    const person = peopleData.find(function(p){ return p.id === personId; });
+    const senderName = message.sender === "me" ? profileName : (person ? person.name : "Person");
+    const content = message.text || (message.attachment ? (message.attachment.type === "image" ? "Photo attachment" : "Video attachment") : "Message");
+
+    if(replyText){
+        replyText.textContent = "Replying to " + senderName + ": " + content;
+    }
+    if(preview){
+        preview.style.display = "block";
+    }
+
+    const textBox = document.getElementById("messageText");
+    if(textBox){
+        textBox.focus();
+    }
+}
+
+function cancelMessageReply(){
+    selectedReplyMessageIndex = null;
+    const preview = document.getElementById("messageReplyPreview");
+    if(preview){
+        preview.style.display = "none";
+    }
+    const replyText = document.getElementById("messageReplyText");
+    if(replyText){
+        replyText.textContent = "";
+    }
+}
+
+function deleteMessage(personId, messageIndex){
+    const messages = getMessagesForPerson(personId);
+    if(!messages[messageIndex] || messages[messageIndex].sender !== "me") return;
+
+    const deletedMessage = messages[messageIndex];
+    if(window.firebaseIndianMessages && deletedMessage.firestoreId){
+        window.firebaseIndianMessages.remove(deletedMessage).catch(function(error){
+            alert("Firebase message could not be deleted: " + (error && error.message ? error.message : "Unknown error"));
+        });
+        return;
+    }
+    revokeSelectedMessageAttachmentURL(deletedMessage.attachment);
+    messages.splice(messageIndex, 1);
+
+    if(selectedReplyMessageIndex === messageIndex){
+        cancelMessageReply();
+    } else if(selectedReplyMessageIndex !== null && selectedReplyMessageIndex > messageIndex){
+        selectedReplyMessageIndex -= 1;
+    }
+
+    if(editingMessageIndex === messageIndex){
+        cancelMessageEdit();
+    } else if(editingMessageIndex !== null && editingMessageIndex > messageIndex){
+        editingMessageIndex -= 1;
+    }
+
+    renderChat(personId);
+    renderConversationList();
+}
+
+async function sendMessage(){
+    if(selectedConversationPersonId === null) return;
+
+    const textBox = document.getElementById("messageText");
+    if(!textBox) return;
+
+    const text = textBox.value.trim();
+
+    if(editingMessageIndex !== null){
+        const messages = getMessagesForPerson(selectedConversationPersonId);
+        const target = messages[editingMessageIndex];
+        if(!target || target.sender !== "me") return;
+
+        target.text = text;
+        target.edited = true;
+        target.time = target.time;
+        if(window.firebaseIndianMessages && target.firestoreId){
+            try{ await window.firebaseIndianMessages.update(target); }
+            catch(error){
+                alert("Firebase edited message could not be saved: " + (error && error.message ? error.message : "Unknown error"));
+                return;
+            }
+        }
+        cancelMessageEdit();
+        textBox.value = "";
+        try { sessionStorage.removeItem("indian_chat_draft_" + selectedConversationPersonId); } catch(e) {}
+        updateMessageComposerStatus();
+        renderChat(selectedConversationPersonId);
+        renderConversationList();
+        textBox.focus();
+        return;
+    }
+
+    let attachment = null;
+
+    if(selectedMessagePhoto){
+        attachment = {
+            type:"image",
+            name:selectedMessagePhoto.name,
+            url:URL.createObjectURL(selectedMessagePhoto)
+        };
+    } else if(selectedMessageVideo){
+        attachment = {
+            type:"video",
+            name:selectedMessageVideo.name,
+            url:URL.createObjectURL(selectedMessageVideo)
+        };
+    }
+
+    if(!text && !attachment){
+        alert("Please write a message or attach a photo/video first.");
+        textBox.focus();
+        return;
+    }
+
+    const messages = getMessagesForPerson(selectedConversationPersonId);
+    let replyTo = null;
+    if(selectedReplyMessageIndex !== null && messages[selectedReplyMessageIndex]){
+        const replied = messages[selectedReplyMessageIndex];
+        const person = peopleData.find(function(p){ return p.id === selectedConversationPersonId; });
+        replyTo = {
+            senderName: replied.sender === "me" ? profileName : (person ? person.name : "Person"),
+            text: replied.text || (replied.attachment ? (replied.attachment.type === "image" ? "Photo attachment" : "Video attachment") : "Message")
+        };
+    }
+
+    const newMessage = {
+        sender:"me",
+        text:text,
+        time:new Date().toLocaleTimeString(),
+        timestampValue:Date.now(),
+        attachment:attachment,
+        replyTo:replyTo,
+        status:"sent",
+        edited:false,
+        reactions:{}
+    };
+
+    const recipientPerson = peopleData.find(function(p){ return p.id === selectedConversationPersonId; });
+    const firebaseMessageAvailable = !!(window.firebaseIndianMessages && window.firebaseIndianMessages.isAvailable(selectedConversationPersonId));
+
+    if(firebaseMessageAvailable){
+        if(attachment){
+            alert("Firebase Messages currently support text messages only. Photo/video message storage will be added after Firebase Storage is enabled. Your existing local attachment feature remains unchanged for demo contacts.");
+            textBox.focus();
+            return;
+        }
+        try{
+            newMessage.firestoreId = await window.firebaseIndianMessages.save(selectedConversationPersonId, text, replyTo);
+        }
+        catch(error){
+            alert("Firebase message could not be sent: " + (error && error.message ? error.message : "Unknown error"));
+            textBox.focus();
+            return;
+        }
+    }
+
+    messages.push(newMessage);
+
+    const recipient = getPersonNameById(selectedConversationPersonId);
+    addNotification("Message sent to " + recipient + ".", "messages", selectedConversationPersonId);
+
+    setTimeout(function(){
+        if(messages.indexOf(newMessage) !== -1){
+            newMessage.status = "read";
+            if(selectedConversationPersonId !== null){
+                renderChat(selectedConversationPersonId);
+            }
+        }
+    }, 800);
+
+    textBox.value = "";
+    try { sessionStorage.removeItem("indian_chat_draft_" + selectedConversationPersonId); } catch(e) {}
+    updateMessageComposerStatus();
+    selectedMessagePhoto = null;
+    selectedMessageVideo = null;
+    selectedReplyMessageIndex = null;
+    cancelMessageReply();
+
+    const photoInput = document.getElementById("messagePhotoInput");
+    const videoInput = document.getElementById("messageVideoInput");
+    if(photoInput) photoInput.value = "";
+    if(videoInput) videoInput.value = "";
+
+    updateMessageAttachmentLabels();
+    renderChat(selectedConversationPersonId);
+    renderConversationList();
+    textBox.focus();
+}
+
+function startMessageEdit(personId, messageIndex){
+    if(personId !== selectedConversationPersonId){
+        openConversation(personId);
+    }
+
+    const messages = getMessagesForPerson(personId);
+    const message = messages[messageIndex];
+    if(!message || message.sender !== "me") return;
+
+    editingMessageIndex = messageIndex;
+    selectedReplyMessageIndex = null;
+    cancelMessageReply();
+
+    const textBox = document.getElementById("messageText");
+    if(textBox){
+        textBox.value = message.text || "";
+        textBox.focus();
+    }
+    updateMessageComposerMode();
+}
+
+function cancelMessageEdit(){
+    editingMessageIndex = null;
+    const notice = document.getElementById("messageEditNotice");
+    const noticeText = document.getElementById("messageEditText");
+    if(notice) notice.style.display = "none";
+    if(noticeText) noticeText.textContent = "";
+    updateMessageComposerMode();
+}
+
+function updateMessageComposerMode(){
+    const button = document.getElementById("sendMessageButton");
+    const notice = document.getElementById("messageEditNotice");
+    const noticeText = document.getElementById("messageEditText");
+    const person = peopleData.find(function(p){ return p.id === selectedConversationPersonId; });
+
+    if(button){
+        button.textContent = editingMessageIndex !== null ? "Save Edited Message" : "Send Message";
+        button.setAttribute("aria-label", editingMessageIndex !== null ? "Save edited message" : "Send message");
+    }
+    if(notice){
+        notice.style.display = editingMessageIndex !== null ? "block" : "none";
+    }
+    if(noticeText && editingMessageIndex !== null && person){
+        noticeText.textContent = "Editing your message to " + person.name + ".";
+    }
+}
+
+function toggleMessageSearch(){
+    const searchBar = document.getElementById("messageSearchBar");
+    const input = document.getElementById("messageSearchBox");
+    if(!searchBar) return;
+
+    searchBar.style.display = "block";
+    if(input){
+        input.focus();
+        input.select();
+    }
+}
+
+function filterCurrentChatMessages(){
+    const input = document.getElementById("messageSearchBox");
+    messageSearchQuery = input ? input.value : "";
+    if(selectedConversationPersonId !== null) renderChat(selectedConversationPersonId);
+}
+
+function updateConversationControlButtons(personId){
+    const meta = getMessageMeta(personId);
+    const muteBtn = document.getElementById("muteConversationButton");
+    const pinBtn = document.getElementById("pinConversationButton");
+    const unreadBtn = document.getElementById("markUnreadButton");
+    if(muteBtn) muteBtn.textContent = meta.muted ? "Unmute Chat" : "Mute Chat";
+    if(pinBtn) pinBtn.textContent = meta.pinned ? "Unpin Chat" : "Pin Chat";
+    if(unreadBtn) unreadBtn.textContent = "Mark Unread";
+}
+
+function toggleConversationMute(personId){
+    const meta = getMessageMeta(personId);
+    meta.muted = !meta.muted;
+    renderConversationList();
+    if(selectedConversationPersonId === personId) updateConversationControlButtons(personId);
+}
+
+function toggleConversationPin(personId){
+    const meta = getMessageMeta(personId);
+    meta.pinned = !meta.pinned;
+    renderConversationList();
+    if(selectedConversationPersonId === personId) updateConversationControlButtons(personId);
+}
+
+function toggleCurrentConversationMute(){
+    if(selectedConversationPersonId === null) return;
+    toggleConversationMute(selectedConversationPersonId);
+}
+
+function toggleCurrentConversationPin(){
+    if(selectedConversationPersonId === null) return;
+    toggleConversationPin(selectedConversationPersonId);
+}
+
+function markCurrentConversationUnread(){
+    if(selectedConversationPersonId === null) return;
+    markConversationUnread(selectedConversationPersonId);
+    renderConversationList();
+}
+
+function receiveDemoReply(){
+    if(selectedConversationPersonId === null) return;
+
+    const person = peopleData.find(function(p){ return p.id === selectedConversationPersonId; });
+    if(!person) return;
+
+    const messages = getMessagesForPerson(selectedConversationPersonId);
+    const demoMessage = {
+        sender:"them",
+        text:"Thanks for your message! This is a local demo reply.",
+        time:new Date().toLocaleTimeString(),
+        timestampValue:Date.now(),
+        attachment:null,
+        replyTo:null,
+        status:"read",
+        edited:false,
+        reactions:{}
+    };
+    messages.push(demoMessage);
+
+    const meta = getMessageMeta(selectedConversationPersonId);
+    meta.unread += 1;
+
+    renderConversationList();
+    renderMessageBadge();
+
+    if(!meta.muted){
+        addNotification("New message from " + person.name + ".", "messages", selectedConversationPersonId);
+    }
+
+    renderChat(selectedConversationPersonId);
+}
+
+function handleMessageTyping(){
+    const typing = document.getElementById("chatTypingStatus");
+    if(!typing) return;
+
+    if(selectedConversationPersonId === null){
+        typing.textContent = "";
+        return;
+    }
+
+    const person = peopleData.find(function(p){ return p.id === selectedConversationPersonId; });
+    if(!person) return;
+
+    const textBox = document.getElementById("messageText");
+    updateMessageComposerStatus();
+    clearTimeout(messageTypingTimer);
+    clearTimeout(messageDraftSaveTimer);
+    saveCurrentMessageDraft();
+    if(textBox && textBox.value){
+        typing.textContent = "Drafting message to " + person.name + "...";
+    } else {
+        typing.textContent = "";
+    }
+    messageTypingTimer = setTimeout(function(){
+        if(typing) typing.textContent = "";
+    }, 1500);
+    messageDraftSaveTimer = setTimeout(saveCurrentMessageDraft, 300);
+}
+
+function clearMessageDraft(){
+    const textBox = document.getElementById("messageText");
+    if(textBox){
+        textBox.value = "";
+    }
+    try {
+        if(selectedConversationPersonId !== null) sessionStorage.removeItem("indian_chat_draft_" + selectedConversationPersonId);
+    } catch(e) {}
+    updateMessageComposerStatus();
+    cancelMessageReply();
+    cancelMessageEdit();
+    const typing = document.getElementById("chatTypingStatus");
+    if(typing) typing.textContent = "";
+    clearTimeout(messageTypingTimer);
+
+    selectedMessagePhoto = null;
+    selectedMessageVideo = null;
+
+    const photoInput = document.getElementById("messagePhotoInput");
+    const videoInput = document.getElementById("messageVideoInput");
+    if(photoInput) photoInput.value = "";
+    if(videoInput) videoInput.value = "";
+
+    updateMessageAttachmentLabels();
+
+    if(textBox){
+        textBox.focus();
+    }
+}
+
+function showMessage(name){
+    alert(name + " section is ready.");
+}
+
+function openLiveZone(){
+    const section = document.getElementById("liveZoneSection");
+    if(section){
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+        section.focus();
+    }
+}
+
+function scrollToPosts(){
+
+    const section =
+        document.querySelector("#postsSection");
+
+    if(section){
+        section.scrollIntoView({
+            behavior:"smooth",
+            block:"start"
+        });
+        section.focus();
+    }
+}
+
+
+function openProfile(){
+
+    const section =
+        document.querySelector("#profileSection");
+
+    if(section){
+        section.scrollIntoView({
+            behavior:"smooth",
+            block:"start"
+        });
+        section.focus();
+    }
+}
+
+
+function createPost(){
+
+    const form =
+        document.querySelector("#postForm");
+
+    const box =
+        document.querySelector("#postBox");
+
+    form.style.display = "block";
+
+    scrollToPosts();
+
+    setTimeout(function(){
+        box.focus();
+    },400);
+}
+
+
+function cancelPost(){
+
+    document.querySelector("#postBox").value = "";
+
+    document.querySelector("#mediaInput").value = "";
+
+    document.querySelector("#postForm").style.display = "none";
+}
+
+
+function openPlace(){
+    const section = document.getElementById("placeSection");
+    if(section){
+        section.scrollIntoView({behavior:"smooth", block:"start"});
+        section.focus();
+    }
+}
+
+function renderPlaceList(){
+    const container = document.getElementById("placeContainer");
+    if(!container) return;
+
+    container.innerHTML = "";
+    placeData.forEach(function(place){
+        const card = document.createElement("div");
+        card.className = "searchResult";
+        card.setAttribute("tabindex", "0");
+        card.setAttribute("aria-label", place.name + ": " + place.description);
+
+        const title = document.createElement("div");
+        title.className = "searchTitle";
+        title.textContent = place.name;
+
+        const description = document.createElement("p");
+        description.textContent = place.description;
+
+        card.appendChild(title);
+        card.appendChild(description);
+        container.appendChild(card);
+    });
+}
+
+
+/* =========================
+   SEARCH
+========================= */
+
+function showSearch(){
+
+    const section =
+        document.querySelector("#searchSection");
+
+    section.style.display = "block";
+
+    section.scrollIntoView({
+        behavior:"smooth",
+        block:"start"
+    });
+
+    setTimeout(function(){
+
+        document
+            .querySelector("#searchBox")
+            .focus();
+
+    },400);
+}
+
+
+function performSearch(){
+
+    const searchInput =
+        document.querySelector("#searchBox");
+
+    const query =
+        searchInput.value.trim().toLowerCase();
+
+    const results =
+        document.querySelector("#searchResults");
+
+    results.innerHTML = "";
+
+    if(query === ""){
+
+        results.innerHTML =
+            "<p>Type something to search.</p>";
+
+        return;
+    }
+
+    let found = false;
+
+
+    /* PEOPLE SEARCH */
+    peopleData.forEach(function(person) {
+        if (person.name.toLowerCase().includes(query) || person.bio.toLowerCase().includes(query) || "people".includes(query)) {
+            found = true;
+            const result = createSearchResult(
+                "Person",
+                person.name + " — " + person.bio,
+                null,
+                person.id
+            );
+            results.appendChild(result);
+        }
+    });
+
+
+    /* PLACE */
+
+    placeData.forEach(function(place){
+        const searchable = (place.name + " " + place.description).toLowerCase();
+        if(searchable.includes(query)){
+            found = true;
+
+            const result = createSearchResult(
+                "Place",
+                place.name + " — " + place.description,
+                "placeSection"
+            );
+
+            results.appendChild(result);
+        }
+    });
+
+
+    /* POSTS */
+
+    const posts =
+        document.querySelectorAll(".post");
+
+    posts.forEach(function(post){
+
+        const text =
+            post.innerText.toLowerCase();
+
+        if(text.includes(query)){
+
+            found = true;
+
+            const title =
+                post.querySelector(".postTitle");
+
+            const postName =
+                title
+                ? title.textContent
+                : "Post";
+
+            const result =
+                createSearchResult(
+                    "Post",
+                    postName + " — matching post",
+                    null
+                );
+
+            const openButton =
+                result.querySelector("button");
+
+            if(openButton){
+
+                openButton.onclick = function(){
+
+                    post.scrollIntoView({
+                        behavior:"smooth",
+                        block:"center"
+                    });
+                };
+            }
+
+            results.appendChild(result);
+        }
+    });
+
+
+    /* HELP REQUESTS */
+
+    const helpRequests =
+        document.querySelectorAll(".helpRequest");
+
+    helpRequests.forEach(function(request){
+
+        const text =
+            request.innerText.toLowerCase();
+
+        if(text.includes(query)){
+
+            found = true;
+
+            const result =
+                createSearchResult(
+                    "Help Request",
+                    "Matching help request",
+                    null
+                );
+
+            const openButton =
+                result.querySelector("button");
+
+            if(openButton){
+
+                openButton.onclick = function(){
+
+                    request.scrollIntoView({
+                        behavior:"smooth",
+                        block:"center"
+                    });
+                };
+            }
+
+            results.appendChild(result);
+        }
+    });
+
+
+    if(!found){
+
+        results.innerHTML =
+            "<div class='noResults'>No results found.</div>";
+    }
+}
+
+
+function createSearchResult(type,title,sectionId,personId){
+
+    const result =
+        document.createElement("div");
+
+    result.className =
+        "searchResult";
+
+    const typeText =
+        document.createElement("div");
+
+    typeText.className =
+        "searchType";
+
+    typeText.textContent =
+        type;
+
+    const titleText =
+        document.createElement("div");
+
+    titleText.className =
+        "searchTitle";
+
+    titleText.textContent =
+        title;
+
+    result.appendChild(typeText);
+
+    result.appendChild(titleText);
+
+
+    const button =
+        document.createElement("button");
+
+    button.className =
+        "action searchButton";
+
+    button.type =
+        "button";
+
+    if(type === "Person" && personId !== undefined && personId !== null){
+        button.textContent = "Open Profile";
+        button.setAttribute("aria-label", "Open profile of " + title.split(" — ")[0]);
+        button.onclick = function(){
+            showPersonProfileModal(personId);
+        };
+    }
+    else{
+        button.textContent = "Open";
+        button.onclick = function(){
+
+        if(sectionId){
+
+            const section =
+                document.getElementById(sectionId);
+
+            if(section){
+
+                section.scrollIntoView({
+                    behavior:"smooth",
+                    block:"start"
+                });
+            }
+        }
+        };
+    }
+
+
+    result.appendChild(button);
+
+    return result;
+}
+
+
+/* =========================
+   PROFILE
+========================= */
+
+function editProfile(){
+
+    document
+        .querySelector("#profileNameInput")
+        .value = profileName;
+
+    document
+        .querySelector("#profileBioInput")
+        .value = profileBio;
+
+    document
+        .querySelector("#profileForm")
+        .style.display = "block";
+
+    document
+        .querySelector("#profileNameInput")
+        .focus();
+}
+
+
+function cancelProfileEdit(){
+
+    document
+        .querySelector("#profileForm")
+        .style.display = "none";
+}
+
+
+function saveProfile(){
+
+    const name =
+        document
+            .querySelector("#profileNameInput")
+            .value
+            .trim();
+
+    const bio =
+        document
+            .querySelector("#profileBioInput")
+            .value
+            .trim();
+
+    const input =
+        document.querySelector("#profilePhotoInput");
+
+
+    if(name !== ""){
+        profileName = name;
+    }
+
+    if(bio !== ""){
+        profileBio = bio;
+    }
+
+
+    document
+        .querySelector("#profileNameView")
+        .textContent = profileName;
+
+    document
+        .querySelector("#profileBioView")
+        .textContent = profileBio;
+
+
+    if(
+        input.files &&
+        input.files.length > 0
+    ){
+
+        profilePhotoURL =
+            URL.createObjectURL(
+                input.files[0]
+            );
+
+        const img =
+            document.querySelector("#profileImage");
+
+        img.src =
+            profilePhotoURL;
+
+        img.style.display =
+            "block";
+
+        document
+            .querySelector("#profileDefaultPhoto")
+            .style.display = "none";
+    }
+
+
+    document
+        .querySelector("#profileForm")
+        .style.display = "none";
+}
+
+
+/* =========================
+   MEDIA HELPER
+========================= */
+
+function addMediaToContainer(
+    container,
+    files,
+    type
+){
+
+    files.forEach(function(file){
+
+        const url =
+            URL.createObjectURL(file);
+
+
+        if(file.type.startsWith("image/")){
+
+            const img =
+                document.createElement("img");
+
+            img.src = url;
+
+            img.alt =
+                type + " image";
+
+            container.appendChild(img);
+
+        }
+
+        else if(
+            file.type.startsWith("video/")
+        ){
+
+            const video =
+                document.createElement("video");
+
+            video.src = url;
+
+            video.controls = true;
+
+            video.setAttribute(
+                "aria-label",
+                type + " video"
+            );
+
+            container.appendChild(video);
+        }
+
+    });
+}
+
+
+/* =========================
+   LIKE / SHARE
+========================= */
+
+function createLikeButton(contextType, contextId){
+
+    const button =
+        document.createElement("button");
+
+    button.className =
+        "action likeButton";
+
+    button.type = "button";
+
+    button.textContent =
+        "Like";
+
+    const count =
+        document.createElement("span");
+
+    count.className =
+        "likeCount";
+
+    count.textContent =
+        "0";
+
+    button.appendChild(count);
+
+
+    let liked = false;
+
+    let likes = 0;
+
+
+    button.onclick = function(){
+
+        if(!liked){
+
+            liked = true;
+
+            likes++;
+
+            button.classList.add("liked");
+
+            button.firstChild.textContent =
+                "Unlike";
+
+            addNotification("You liked a post.", "post", contextId);
+        }
+
+        else{
+
+            liked = false;
+
+            likes =
+                Math.max(0,likes-1);
+
+            button.classList.remove("liked");
+
+            button.firstChild.textContent =
+                "Like";
+        }
+
+        count.textContent =
+            likes;
+    };
+
+
+    return button;
+}
+
+
+function shareContent(text){
+
+    const shareText =
+        "Indian: " + text;
+
+
+    if(navigator.share){
+
+        navigator.share({
+            title:"Indian",
+            text:shareText
+        }).catch(function(){});
+
+    }
+
+    else if(navigator.clipboard){
+
+        navigator.clipboard
+            .writeText(shareText)
+            .then(function(){
+
+                alert(
+                    "Content copied. You can share it."
+                );
+
+            })
+            .catch(function(){
+
+                alert(
+                    "Share: " + shareText
+                );
+            });
+
+    }
+
+    else{
+
+        alert(
+            "Share: " + shareText
+        );
+    }
+}
+
+
+/* =========================
+   POSTS
+========================= */
+
+function publishPost(){
+
+    const postText =
+        document
+            .querySelector("#postBox")
+            .value
+            .trim();
+
+    const selectedFiles =
+        Array.from(
+            document
+                .querySelector("#mediaInput")
+                .files
+        );
+
+
+    if(
+        postText === "" &&
+        selectedFiles.length === 0
+    ){
+
+        alert(
+            "Please write a post or select a photo or video."
+        );
+
+        document
+            .querySelector("#postBox")
+            .focus();
+
+        return;
+    }
+
+
+    const postId = "post-" + Date.now();
+
+    const post =
+        document.createElement("div");
+
+    post.className =
+        "post";
+
+    post.id = postId;
+
+    post.setAttribute("tabindex", "-1");
+
+
+    const title =
+        document.createElement("div");
+
+    title.className =
+        "postTitle";
+
+    title.textContent =
+        profileName;
+
+    post.appendChild(title);
+
+
+    if(postText !== ""){
+
+        const content =
+            document.createElement("div");
+
+        content.textContent =
+            postText;
+
+        post.appendChild(content);
+    }
+
+
+    if(selectedFiles.length > 0){
+
+        const media =
+            document.createElement("div");
+
+        media.className =
+            "postMedia";
+
+        addMediaToContainer(
+            media,
+            selectedFiles,
+            "post"
+        );
+
+        post.appendChild(media);
+    }
+
+
+    const time =
+        document.createElement("div");
+
+    time.className =
+        "postTime";
+
+    time.textContent =
+        "Posted at " +
+        new Date().toLocaleTimeString();
+
+    post.appendChild(time);
+
+
+    const actions =
+        document.createElement("div");
+
+    actions.className =
+        "postActions";
+
+
+    actions.appendChild(
+        createLikeButton("post", postId)
+    );
+
+
+    const share =
+        document.createElement("button");
+
+    share.className =
+        "action shareButton";
+
+    share.type =
+        "button";
+
+    share.textContent =
+        "Share";
+
+
+    share.onclick = function(){
+
+        shareContent(
+            postText ||
+            "Photo or video post"
+        );
+    };
+
+
+    actions.appendChild(share);
+
+    post.appendChild(actions);
+
+
+    addCommentSystem(post, postId);
+
+
+    document
+        .querySelector("#postsContainer")
+        .prepend(post);
+
+
+    addPostToProfile(
+        postText,
+        selectedFiles.length
+    );
+
+    /* NOTIFICATION FOR POST PUBLISH */
+    addNotification("Your post was successfully published.", "post", postId);
+
+
+    document
+        .querySelector("#postBox")
+        .value = "";
+
+    document
+        .querySelector("#mediaInput")
+        .value = "";
+
+    document
+        .querySelector("#postForm")
+        .style.display = "none";
+}
+
+
+function addPostToProfile(
+    text,
+    mediaCount
+){
+
+    const list =
+        document
+            .querySelector("#profilePostList");
+
+
+    if(
+        list.textContent.trim() ===
+        "No posts yet."
+    ){
+
+        list.innerHTML = "";
+    }
+
+
+    const item =
+        document.createElement("div");
+
+    item.className =
+        "profilePostItem";
+
+
+    item.textContent =
+        text !== ""
+        ? text
+        : "Photo/Video Post";
+
+
+    if(mediaCount > 0){
+
+        item.textContent +=
+            " (" +
+            mediaCount +
+            " media)";
+    }
+
+
+    list.prepend(item);
+}
+
+
+/* =========================
+   COMMENTS
+========================= */
+
+function addCommentSystem(post, postId){
+
+    const commentSection =
+        document.createElement("div");
+
+    commentSection.className =
+        "commentSection";
+
+
+    const commentButton =
+        document.createElement("button");
+
+    commentButton.className =
+        "action";
+
+    commentButton.type =
+        "button";
+
+    commentButton.textContent =
+        "Comment";
+
+
+    const commentForm =
+        document.createElement("div");
+
+    commentForm.style.display =
+        "none";
+
+
+    const commentLabel =
+        document.createElement("label");
+
+    commentLabel.textContent =
+        "Write your comment:";
+
+
+    const commentBox =
+        document.createElement("textarea");
+
+    commentBox.className =
+        "commentBox";
+
+    commentBox.placeholder =
+        "Write a comment...";
+
+
+    const commentMediaLabel =
+        document.createElement("label");
+
+    commentMediaLabel.className =
+        "fileLabel";
+
+    commentMediaLabel.textContent =
+        "Add photo or video to comment:";
+
+
+    const commentMediaInput =
+        document.createElement("input");
+
+    commentMediaInput.type =
+        "file";
+
+    commentMediaInput.className =
+        "smallFileInput";
+
+    commentMediaInput.accept =
+        "image/*,video/*";
+
+    commentMediaInput.multiple =
+        true;
+
+
+    const commentSubmit =
+        document.createElement("button");
+
+    commentSubmit.className =
+        "action";
+
+    commentSubmit.type =
+        "button";
+
+    commentSubmit.textContent =
+        "Post Comment";
+
+
+    const commentCancel =
+        document.createElement("button");
+
+    commentCancel.className =
+        "action";
+
+    commentCancel.type =
+        "button";
+
+    commentCancel.textContent =
+        "Cancel";
+
+
+    const commentsContainer =
+        document.createElement("div");
+
+
+    commentButton.onclick =
+        function(){
+
+            commentForm.style.display =
+                "block";
+
+            commentBox.focus();
+        };
+
+
+    commentCancel.onclick =
+        function(){
+
+            commentBox.value = "";
+
+            commentMediaInput.value = "";
+
+            commentForm.style.display =
+                "none";
+
+            commentButton.focus();
+        };
+
+
+    commentSubmit.onclick =
+        function(){
+
+            addComment(
+                commentBox,
+                commentMediaInput,
+                commentsContainer,
+                commentForm,
+                commentButton,
+                postId
+            );
+        };
+
+
+    commentForm.appendChild(
+        commentLabel
+    );
+
+    commentForm.appendChild(
+        commentBox
+    );
+
+    commentForm.appendChild(
+        commentMediaLabel
+    );
+
+    commentForm.appendChild(
+        commentMediaInput
+    );
+
+    commentForm.appendChild(
+        commentSubmit
+    );
+
+    commentForm.appendChild(
+        commentCancel
+    );
+
+
+    commentSection.appendChild(
+        commentButton
+    );
+
+    commentSection.appendChild(
+        commentForm
+    );
+
+    commentSection.appendChild(
+        commentsContainer
+    );
+
+
+    post.appendChild(
+        commentSection
+    );
+}
+
+
+function addComment(
+    commentBox,
+    commentMediaInput,
+    commentsContainer,
+    commentForm,
+    commentButton,
+    postId
+){
+
+    const commentText =
+        commentBox.value.trim();
+
+    const files =
+        Array.from(
+            commentMediaInput.files
+        );
+
+
+    if(
+        commentText === "" &&
+        files.length === 0
+    ){
+
+        alert(
+            "Please write a comment or select a photo or video."
+        );
+
+        commentBox.focus();
+
+        return;
+    }
+
+
+    const commentId = "comment-" + Date.now();
+
+    const comment =
+        document.createElement("div");
+
+    comment.className =
+        "comment";
+
+    comment.id = commentId;
+
+    comment.setAttribute("tabindex", "-1");
+
+
+    const title =
+        document.createElement("div");
+
+    title.className =
+        "commentTitle";
+
+    title.textContent =
+        profileName;
+
+    comment.appendChild(title);
+
+
+    if(commentText !== ""){
+
+        const content =
+            document.createElement("div");
+
+        content.textContent =
+            commentText;
+
+        comment.appendChild(content);
+    }
+
+
+    if(files.length > 0){
+
+        const media =
+            document.createElement("div");
+
+        media.className =
+            "commentMedia";
+
+        addMediaToContainer(
+            media,
+            files,
+            "comment"
+        );
+
+        comment.appendChild(media);
+    }
+
+
+    const time =
+        document.createElement("div");
+
+    time.className =
+        "commentTime";
+
+    time.textContent =
+        "Commented at " +
+        new Date().toLocaleTimeString();
+
+    comment.appendChild(time);
+
+
+    const actions =
+        document.createElement("div");
+
+    actions.className =
+        "commentActions";
+
+
+    actions.appendChild(
+        createLikeButton("comment", commentId)
+    );
+
+
+    const share =
+        document.createElement("button");
+
+    share.className =
+        "action shareButton";
+
+    share.type =
+        "button";
+
+    share.textContent =
+        "Share";
+
+
+    share.onclick =
+        function(){
+
+            shareContent(
+                commentText ||
+                "Photo or video comment"
+            );
+        };
+
+
+    actions.appendChild(share);
+
+    comment.appendChild(actions);
+
+
+    addReplySystem(
+        comment,
+        commentText,
+        commentId
+    );
+
+
+    commentsContainer.appendChild(
+        comment
+    );
+
+    addNotification("Someone commented on a post.", "comment", commentId);
+
+
+    commentBox.value = "";
+
+    commentMediaInput.value = "";
+
+    commentForm.style.display =
+        "none";
+
+    commentButton.focus();
+}
+
+
+/* =========================
+   REPLIES
+========================= */
+
+function addReplySystem(
+    comment,
+    commentText,
+    commentId
+){
+
+    const replyButton =
+        document.createElement("button");
+
+    replyButton.className =
+        "action";
+
+    replyButton.type =
+        "button";
+
+    replyButton.textContent =
+        "Reply";
+
+
+    const replyForm =
+        document.createElement("div");
+
+    replyForm.style.display =
+        "none";
+
+
+    const replyLabel =
+        document.createElement("label");
+
+    replyLabel.textContent =
+        "Write your reply:";
+
+
+    const replyBox =
+        document.createElement("textarea");
+
+    replyBox.className =
+        "replyBox";
+
+    replyBox.placeholder =
+        "Write a reply...";
+
+
+    const replyMediaLabel =
+        document.createElement("label");
+
+    replyMediaLabel.className =
+        "fileLabel";
+
+    replyMediaLabel.textContent =
+        "Add photo or video to reply:";
+
+
+    const replyMediaInput =
+        document.createElement("input");
+
+    replyMediaInput.type =
+        "file";
+
+    replyMediaInput.className =
+        "smallFileInput";
+
+    replyMediaInput.accept =
+        "image/*,video/*";
+
+    replyMediaInput.multiple =
+        true;
+
+
+    const replySubmit =
+        document.createElement("button");
+
+    replySubmit.className =
+        "action";
+
+    replySubmit.type =
+        "button";
+
+    replySubmit.textContent =
+        "Post Reply";
+
+
+    const replyCancel =
+        document.createElement("button");
+
+    replyCancel.className =
+        "action";
+
+    replyCancel.type =
+        "button";
+
+    replyCancel.textContent =
+        "Cancel";
+
+
+    const repliesContainer =
+        document.createElement("div");
+
+
+    replyButton.onclick =
+        function(){
+
+            replyForm.style.display =
+                "block";
+
+            replyBox.focus();
+        };
+
+
+    replyCancel.onclick =
+        function(){
+
+            replyBox.value = "";
+
+            replyMediaInput.value = "";
+
+            replyForm.style.display =
+                "none";
+
+            replyButton.focus();
+        };
+
+
+    replySubmit.onclick =
+        function(){
+
+            addReply(
+                replyBox,
+                replyMediaInput,
+                repliesContainer,
+                replyForm,
+                replyButton,
+                commentId
+            );
+        };
+
+
+    replyForm.appendChild(
+        replyLabel
+    );
+
+    replyForm.appendChild(
+        replyBox
+    );
+
+    replyForm.appendChild(
+        replyMediaLabel
+    );
+
+    replyForm.appendChild(
+        replyMediaInput
+    );
+
+    replyForm.appendChild(
+        replySubmit
+    );
+
+    replyForm.appendChild(
+        replyCancel
+    );
+
+
+    comment.appendChild(
+        replyButton
+    );
+
+    comment.appendChild(
+        replyForm
+    );
+
+    comment.appendChild(
+        repliesContainer
+    );
+}
+
+
+function addReply(
+    replyBox,
+    replyMediaInput,
+    repliesContainer,
+    replyForm,
+    replyButton,
+    commentId
+){
+
+    const replyText =
+        replyBox.value.trim();
+
+    const files =
+        Array.from(
+            replyMediaInput.files
+        );
+
+
+    if(
+        replyText === "" &&
+        files.length === 0
+    ){
+
+        alert(
+            "Please write a reply or select a photo or video."
+        );
+
+        replyBox.focus();
+
+        return;
+    }
+
+
+    const replyId = "reply-" + Date.now();
+
+    const reply =
+        document.createElement("div");
+
+    reply.className =
+        "reply";
+
+    reply.id = replyId;
+
+    reply.setAttribute("tabindex", "-1");
+
+
+    const title =
+        document.createElement("div");
+
+    title.className =
+        "replyTitle";
+
+    title.textContent =
+        profileName;
+
+    reply.appendChild(title);
+
+
+    if(replyText !== ""){
+
+        const content =
+            document.createElement("div");
+
+        content.textContent =
+            replyText;
+
+        reply.appendChild(content);
+    }
+
+
+    if(files.length > 0){
+
+        const media =
+            document.createElement("div");
+
+        media.className =
+            "replyMedia";
+
+        addMediaToContainer(
+            media,
+            files,
+            "reply"
+        );
+
+        reply.appendChild(media);
+    }
+
+
+    const time =
+        document.createElement("div");
+
+    time.className =
+        "commentTime";
+
+    time.textContent =
+        "Replied at " +
+        new Date().toLocaleTimeString();
+
+    reply.appendChild(time);
+
+
+    const actions =
+        document.createElement("div");
+
+    actions.className =
+        "replyActions";
+
+
+    actions.appendChild(
+        createLikeButton("reply", replyId)
+    );
+
+
+    const share =
+        document.createElement("button");
+
+    share.className =
+        "action shareButton";
+
+    share.type =
+        "button";
+
+    share.textContent =
+        "Share";
+
+
+    share.onclick =
+        function(){
+
+            shareContent(
+                replyText ||
+                "Photo or video reply"
+            );
+        };
+
+
+    actions.appendChild(share);
+
+    reply.appendChild(actions);
+
+
+    repliesContainer.appendChild(
+        reply
+    );
+
+    addNotification("Someone replied to a comment.", "reply", replyId);
+
+
+    replyBox.value = "";
+
+    replyMediaInput.value = "";
+
+    replyForm.style.display =
+        "none";
+
+    replyButton.focus();
+}
+
+
+/* =========================
+   HELP
+   PHOTO + VIDEO INCLUDED
+========================= */
+
+function openHelp(){
+
+    const helpSection =
+        document.querySelector("#helpSection");
+
+    const helpForm =
+        document.querySelector("#helpForm");
+
+    const helpBox =
+        document.querySelector("#helpBox");
+
+
+    helpForm.style.display =
+        "block";
+
+
+    helpSection.scrollIntoView({
+        behavior:"smooth",
+        block:"center"
+    });
+
+
+    setTimeout(function(){
+
+        helpBox.focus();
+
+    },400);
+}
+
+
+function cancelHelp(){
+
+    document
+        .querySelector("#helpBox")
+        .value = "";
+
+    document
+        .querySelector("#helpMediaInput")
+        .value = "";
+
+    document
+        .querySelector("#helpForm")
+        .style.display =
+        "none";
+}
+
+
+function submitHelp(){
+
+    const helpBox =
+        document.querySelector("#helpBox");
+
+    const helpMediaInput =
+        document.querySelector("#helpMediaInput");
+
+    const helpContainer =
+        document.querySelector("#helpContainer");
+
+
+    const helpText =
+        helpBox.value.trim();
+
+
+    const selectedFiles =
+        Array.from(
+            helpMediaInput.files
+        );
+
+
+    if(
+        helpText === "" &&
+        selectedFiles.length === 0
+    ){
+
+        alert(
+            "Please write your help request or select a photo or video."
+        );
+
+        helpBox.focus();
+
+        return;
+    }
+
+
+    const noHelp =
+        document.querySelector("#noHelp");
+
+
+    if(noHelp){
+        noHelp.remove();
+    }
+
+
+    const helpRequestId = "help-" + Date.now();
+
+    const helpRequest =
+        document.createElement("div");
+
+    helpRequest.className =
+        "helpRequest";
+
+    helpRequest.id = helpRequestId;
+
+    helpRequest.setAttribute("tabindex", "-1");
+
+
+    const title =
+        document.createElement("div");
+
+    title.className =
+        "helpTitle";
+
+    title.textContent =
+        profileName;
+
+    helpRequest.appendChild(title);
+
+
+    if(helpText !== ""){
+
+        const content =
+            document.createElement("div");
+
+        content.textContent =
+            helpText;
+
+        helpRequest.appendChild(content);
+    }
+
+
+    /* PHOTO / VIDEO */
+
+    if(selectedFiles.length > 0){
+
+        const media =
+            document.createElement("div");
+
+        media.className =
+            "helpMedia";
+
+
+        addMediaToContainer(
+            media,
+            selectedFiles,
+            "help request"
+        );
+
+
+        helpRequest.appendChild(
+            media
+        );
+    }
+
+
+    const time =
+        document.createElement("div");
+
+    time.className =
+        "helpTime";
+
+    time.textContent =
+        "Requested at " +
+        new Date().toLocaleTimeString();
+
+    helpRequest.appendChild(time);
+
+
+    helpContainer.prepend(
+        helpRequest
+    );
+
+    /* NOTIFICATION FOR HELP SUBMISSION */
+    addNotification("Help request submitted successfully.", "help", helpRequestId);
+
+
+    /* CLEAR ONLY AFTER SUCCESSFUL SUBMISSION */
+
+    helpBox.value = "";
+
+    helpMediaInput.value = "";
+
+    document
+        .querySelector("#helpForm")
+        .style.display =
+        "none";
+}
+
+
+/* =========================
+   LIVE ZONE
+========================= */
+
+function updateLiveZone(){
+
+    const liveText =
+        document.querySelector("#liveStatus");
+
+    const timerText =
+        document.querySelector("#liveTimer");
+
+    const viewersText =
+        document.querySelector("#liveViewers");
+
+
+    if(liveText){
+
+        const time =
+            new Date().toLocaleTimeString();
+
+
+        if(isLive){
+
+            liveText.textContent =
+                "🔴 You are LIVE — started at " +
+                liveStartTime.toLocaleTimeString() +
+                " — current time: " +
+                time;
+
+        }
+        else{
+
+            liveText.textContent =
+                "Live Zone active — current time: " +
+                time;
+        }
+    }
+
+
+    if(
+        isLive &&
+        timerText
+    ){
+
+        const now =
+            new Date();
+
+        const seconds =
+            Math.floor(
+                (now-liveStartTime)/1000
+            );
+
+        const minutes =
+            Math.floor(seconds/60);
+
+        const remainingSeconds =
+            seconds%60;
+
+
+        timerText.textContent =
+            "Live duration: " +
+            minutes +
+            " minute(s) " +
+            remainingSeconds +
+            " second(s)";
+    }
+
+
+    if(
+        !isLive &&
+        timerText
+    ){
+
+        timerText.textContent =
+            "No live session is running.";
+    }
+
+
+    if(viewersText){
+
+        viewersText.textContent =
+            "Live viewers: " +
+            liveViewers;
+    }
+}
+
+
+function toggleLive(){
+
+    const button =
+        document.querySelector(
+            "#goLiveButton"
+        );
+
+
+    if(!isLive){
+
+        isLive = true;
+
+        liveStartTime =
+            new Date();
+
+        liveViewers = 1;
+
+        button.textContent =
+            "End Live";
+
+        updateLiveZone();
+
+        /* NOTIFICATION FOR GO LIVE */
+        addNotification("You are now LIVE on Indian!", "live");
+
+    }
+    else{
+
+        isLive = false;
+
+        liveViewers = 0;
+
+        button.textContent =
+            "Go Live";
+
+
+        document
+            .querySelector("#liveStatus")
+            .textContent =
+            "Live session ended — current time: " +
+            new Date().toLocaleTimeString();
+
+
+        document
+            .querySelector("#liveTimer")
+            .textContent =
+            "No live session is running.";
+
+
+        document
+            .querySelector("#liveViewers")
+            .textContent =
+            "Live viewers: 0";
+
+        /* NOTIFICATION FOR LIVE END */
+        addNotification("Your live session has ended.", "live");
+    }
+}
+
+
+/* =========================
+   START
+========================= */
+
+renderPeopleList();
+
+renderSuggestedPeople();
+
+renderPlaceList();
+
+renderNotifications();
+renderConversationList();
+renderMessageBadge();
+
+updateLiveZone();
+
+setInterval(
+    updateLiveZone,
+    1000
+);
+
+</script>
+
+
+<!-- Browser-side WebP compression library. It runs locally in the browser before Firebase Storage upload. -->
+<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+
+<!-- Firebase modular browser SDK. Version matches the current Firebase web CDN guidance. -->
+<script type="module">
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged,
+    updateProfile,
+    setPersistence,
+    browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {
+    getFirestore,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    setDoc,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    query,
+    where,
+    onSnapshot,
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+/* ==========================================================
+   FIREBASE CONFIG
+   1) Open Firebase Console.
+   2) Create/select your project and register a Web App.
+   3) Copy the firebaseConfig object from the Firebase setup screen.
+   4) Replace ONLY the placeholder values below.
+
+   IMPORTANT: Web app config values are identifiers, not service-account
+   private keys. Never paste a service-account JSON/private key here.
+   Real access control comes from Firebase Authentication and Security Rules.
+========================================================== */
+const firebaseConfig = {
+    apiKey: "AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs",
+    authDomain: "indian-84a86.firebaseapp.com",
+    projectId: "indian-84a86",
+    storageBucket: "indian-84a86.firebasestorage.app",
+    messagingSenderId: "333987809341",
+    appId: "1:333987809341:web:27a351f770aa7b4e808254"
+};
+
+const firebaseRequiredKeys = [
+    "apiKey",
+    "authDomain",
+    "projectId",
+    "messagingSenderId",
+    "appId"
+];
+
+const firebaseConfigReady = firebaseRequiredKeys.every(function(key){
+    const value = firebaseConfig[key];
+    return typeof value === "string" && value.trim() !== "" && !value.includes("PASTE_YOUR_");
+});
+
+let firebaseApp = null;
+let firebaseAuth = null;
+let firebaseDb = null;
+let firebaseStorage = null;
+let firebaseCurrentUser = null;
+let firebasePreparedFile = null;
+let firebaseOriginalFile = null;
+let firebasePreparedKind = null;
+
+function $(id){
+    return document.getElementById(id);
+}
+
+function setFirebaseSetupStatus(message){
+    const el = $("firebaseSetupStatus");
+    if(el) el.textContent = message;
+}
+
+function setFirebaseAuthStatus(message){
+    const el = $("firebaseAuthStatus");
+    if(el) el.textContent = message;
+}
+
+function setFirebaseUploadStatus(message, spinning){
+    const text = $("firebaseUploadStatusText");
+    const spinner = $("firebaseUploadSpinner");
+    if(text) text.textContent = message;
+    if(spinner) spinner.style.display = spinning ? "inline-block" : "none";
+}
+
+function sanitizePlainText(value, maxLength){
+    return String(value || "")
+        .normalize("NFKC")
+        .replace(/[\\u0000-\\u001F\\u007F]/g, "")
+        .trim()
+        .slice(0, maxLength || 500);
+}
+
+function sanitizeFileName(name){
+    const cleaned = String(name || "file")
+        .replace(/[\\\\/]/g, "_")
+        .replace(/[^A-Za-z0-9._-]/g, "_")
+        .slice(0, 120);
+    return cleaned || "file";
+}
+
+function getExtension(name){
+    const match = String(name || "").toLowerCase().match(/\.([a-z0-9]+)$/);
+    return match ? match[1] : "";
+}
+
+const mediaRules = {
+    image: {
+        extensions: new Set(["jpg", "png", "webp"]),
+        mime: new Set(["image/jpeg", "image/png", "image/webp"]),
+        maxBytes: 10 * 1024 * 1024,
+        label: "photo"
+    },
+    video: {
+        extensions: new Set(["mp4", "webm"]),
+        mime: new Set(["video/mp4", "video/webm"]),
+        maxBytes: 50 * 1024 * 1024,
+        label: "video"
+    }
+};
+
+function detectMediaKind(file){
+    if(!file) return null;
+    const ext = getExtension(file.name);
+    const mime = String(file.type || "").toLowerCase();
+
+    for(const kind of ["image", "video"]){
+        const rule = mediaRules[kind];
+        if(rule.extensions.has(ext) && rule.mime.has(mime)) return kind;
+    }
+    return null;
+}
+
+async function verifyMagicBytes(file, kind){
+    const buffer = await file.slice(0, 16).arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+
+    if(kind === "image"){
+        const ext = getExtension(file.name);
+        if(ext === "jpg"){
+            return bytes.length >= 3 && bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF;
+        }
+        if(ext === "png"){
+            return bytes.length >= 8 &&
+                bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47 &&
+                bytes[4] === 0x0D && bytes[5] === 0x0A && bytes[6] === 0x1A && bytes[7] === 0x0A;
+        }
+        if(ext === "webp"){
+            const ascii = new TextDecoder().decode(bytes);
+            return ascii.slice(0,4) === "RIFF" && ascii.slice(8,12) === "WEBP";
+        }
+        return false;
+    }
+
+    if(kind === "video"){
+        const ascii = new TextDecoder().decode(bytes);
+        const ext = getExtension(file.name);
+        if(ext === "mp4") return ascii.slice(4,8) === "ftyp";
+        if(ext === "webm") return bytes.length >= 4 && bytes[0] === 0x1A && bytes[1] === 0x45 && bytes[2] === 0xDF && bytes[3] === 0xA3;
+        return false;
+    }
+    return false;
+}
+
+function bytesToMB(bytes){
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+}
+
+function updateUploadButtonState(){
+    const btn = $("firebaseUploadButton");
+    if(btn) btn.disabled = !(firebasePreparedFile && firebaseCurrentUser && firebaseStorage);
+}
+
+async function handleFirebaseMediaSelection(){
+    const input = $("firebaseMediaInput");
+    const selected = $("firebaseSelectedMedia");
+    const compressionStatus = $("firebaseCompressionStatus");
+    const result = $("firebaseUploadResult");
+
+    firebasePreparedFile = null;
+    firebaseOriginalFile = null;
+    firebasePreparedKind = null;
+    updateUploadButtonState();
+    if(result) result.textContent = "";
+
+    const file = input && input.files ? input.files[0] : null;
+    if(!file){
+        if(selected) selected.textContent = "No file selected.";
+        if(compressionStatus) compressionStatus.textContent = "";
+        return;
+    }
+
+    const kind = detectMediaKind(file);
+    if(!kind){
+        if(selected) selected.textContent = "Blocked: unsupported extension or MIME type. Only .jpg, .png, .webp, .mp4 and .webm are allowed.";
+        if(compressionStatus) compressionStatus.textContent = "Executable/script or mismatched media files are rejected before upload.";
+        input.value = "";
+        return;
+    }
+
+    const rule = mediaRules[kind];
+    if(file.size > rule.maxBytes){
+        if(selected) selected.textContent = "Blocked: " + rule.label + " is " + bytesToMB(file.size) + ". Maximum is " + bytesToMB(rule.maxBytes) + ".";
+        if(compressionStatus) compressionStatus.textContent = "Choose a smaller file.";
+        input.value = "";
+        return;
+    }
+
+    setFirebaseUploadStatus("Validating " + rule.label + "...", false);
+
+    try{
+        const signatureOK = await verifyMagicBytes(file, kind);
+        if(!signatureOK){
+            if(selected) selected.textContent = "Blocked: file content does not match its declared media type.";
+            if(compressionStatus) compressionStatus.textContent = "The file was rejected before any upload.";
+            input.value = "";
+            setFirebaseUploadStatus("Validation failed.", false);
+            return;
+        }
+
+        firebaseOriginalFile = file;
+        firebasePreparedKind = kind;
+
+        if(kind === "image"){
+            if(typeof window.imageCompression !== "function"){
+                throw new Error("Image compression library did not load.");
+            }
+
+            if(selected) selected.textContent = "Selected photo: " + sanitizeFileName(file.name) + " (" + bytesToMB(file.size) + ")";
+            if(compressionStatus) compressionStatus.textContent = "Compressing photo to WebP before Firebase upload...";
+            setFirebaseUploadStatus("Compressing photo...", true);
+
+            const compressed = await window.imageCompression(file, {
+                maxSizeMB: 1.5,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true,
+                fileType: "image/webp",
+                initialQuality: 0.82,
+                onProgress: function(progress){
+                    setFirebaseUploadStatus("Compressing photo: " + Math.round(progress) + "%", true);
+                }
+            });
+
+            const baseName = sanitizeFileName(file.name).replace(/\.[^.]+$/, "");
+            firebasePreparedFile = new File(
+                [compressed],
+                (baseName || "photo") + ".webp",
+                {type:"image/webp", lastModified:Date.now()}
+            );
+
+            if(firebasePreparedFile.size > mediaRules.image.maxBytes){
+                throw new Error("Compressed photo is still larger than 10 MB.");
+            }
+
+            if(compressionStatus){
+                compressionStatus.textContent = "WebP ready: " + bytesToMB(firebasePreparedFile.size) + " from " + bytesToMB(file.size) + ". Ready for Firebase Storage.";
+            }
+            setFirebaseUploadStatus("Photo validated and compressed. Ready to upload.", false);
+        }
+        else{
+            firebasePreparedFile = file;
+            if(selected) selected.textContent = "Selected video: " + sanitizeFileName(file.name) + " (" + bytesToMB(file.size) + ")";
+            if(compressionStatus) compressionStatus.textContent = "Video validated. Video is not recompressed in this browser-only step.";
+            setFirebaseUploadStatus("Video validated. Ready to upload.", false);
+        }
+    }
+    catch(error){
+        firebasePreparedFile = null;
+        if(selected) selected.textContent = "File rejected.";
+        if(compressionStatus) compressionStatus.textContent = sanitizePlainText(error.message || "File validation failed.", 300);
+        setFirebaseUploadStatus("Validation failed.", false);
+        input.value = "";
+    }
+
+    updateUploadButtonState();
+}
+
+function updateFirebaseAuthUI(){
+    const loggedIn = !!firebaseCurrentUser;
+    const email = $("firebaseEmail");
+    const password = $("firebasePassword");
+    const displayName = $("firebaseDisplayName");
+    const signup = $("firebaseSignupButton");
+    const login = $("firebaseLoginButton");
+    const logout = $("firebaseLogoutButton");
+
+    if(signup) signup.disabled = !firebaseAuth;
+    if(login) login.disabled = !firebaseAuth;
+    if(logout) logout.disabled = !loggedIn;
+    if(email) email.disabled = loggedIn;
+    if(password) password.disabled = loggedIn;
+    if(displayName) displayName.disabled = loggedIn;
+
+    if(loggedIn){
+        const name = firebaseCurrentUser.displayName ? sanitizePlainText(firebaseCurrentUser.displayName, 60) : "";
+        setFirebaseAuthStatus("Signed in as " + (name || firebaseCurrentUser.email || firebaseCurrentUser.uid) + ". UID: " + firebaseCurrentUser.uid);
+    }
+    else{
+        setFirebaseAuthStatus("Not signed in.");
+    }
+    updateUploadButtonState();
+}
+
+async function signUpFirebase(){
+    if(!firebaseAuth){
+        setFirebaseAuthStatus("Firebase is not configured. Add the Firebase config first.");
+        return;
+    }
+    const displayNameInput = $("firebaseDisplayName");
+    const emailInput = $("firebaseEmail");
+    const passwordInput = $("firebasePassword");
+    const displayName = sanitizePlainText(displayNameInput ? displayNameInput.value : "", 60);
+    const email = String(emailInput ? emailInput.value : "").trim().toLowerCase();
+    const password = passwordInput ? passwordInput.value : "";
+
+    if(displayName.length < 2){
+        setFirebaseAuthStatus("Enter a display name with at least 2 characters.");
+        if(displayNameInput) displayNameInput.focus();
+        return;
+    }
+    if(!email || !email.includes("@") || email.length > 254){
+        setFirebaseAuthStatus("Enter a valid email address.");
+        if(emailInput) emailInput.focus();
+        return;
+    }
+    if(password.length < 8){
+        setFirebaseAuthStatus("Password must contain at least 8 characters.");
+        if(passwordInput) passwordInput.focus();
+        return;
+    }
+
+    try{
+        setFirebaseAuthStatus("Creating account...", false);
+        const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        await updateProfile(credential.user, {displayName});
+        if(firebaseDb){
+            await setDoc(doc(firebaseDb, "users", credential.user.uid), {
+                uid: credential.user.uid,
+                displayName,
+                email,
+                createdAt: serverTimestamp()
+            }, {merge:true});
+
+            // Only safe public profile fields are exposed to other authenticated users.
+            try{
+                await setDoc(doc(firebaseDb, "publicProfiles", credential.user.uid), {
+                    uid: credential.user.uid,
+                    displayName,
+                    createdAt: serverTimestamp()
+                }, {merge:true});
+            }
+            catch(publicProfileError){
+                console.warn("Public profile is not available until its Firestore Rule is published.", publicProfileError);
+            }
+        }
+        setFirebaseAuthStatus("Account created and signed in.");
+        if(passwordInput) passwordInput.value = "";
+    }
+    catch(error){
+        setFirebaseAuthStatus(firebaseAuthErrorMessage(error));
+    }
+}
+
+async function loginFirebase(){
+    if(!firebaseAuth){
+        setFirebaseAuthStatus("Firebase is not configured. Add the Firebase config first.");
+        return;
+    }
+    const emailInput = $("firebaseEmail");
+    const passwordInput = $("firebasePassword");
+    const email = String(emailInput ? emailInput.value : "").trim().toLowerCase();
+    const password = passwordInput ? passwordInput.value : "";
+
+    if(!email || !email.includes("@")){
+        setFirebaseAuthStatus("Enter a valid email address.");
+        if(emailInput) emailInput.focus();
+        return;
+    }
+    if(!password){
+        setFirebaseAuthStatus("Enter your password.");
+        if(passwordInput) passwordInput.focus();
+        return;
+    }
+
+    try{
+        setFirebaseAuthStatus("Signing in...");
+        const credential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+
+        // Verify authenticated Firestore access for this user's own profile.
+        if(firebaseDb && credential.user){
+            const userRef = doc(firebaseDb, "users", credential.user.uid);
+            await setDoc(userRef, {
+                uid: credential.user.uid,
+                displayName: credential.user.displayName || email.split("@")[0],
+                email: credential.user.email || email,
+                lastLoginAt: serverTimestamp()
+            }, {merge:true});
+
+            try{
+                await setDoc(doc(firebaseDb, "publicProfiles", credential.user.uid), {
+                    uid: credential.user.uid,
+                    displayName: credential.user.displayName || email.split("@")[0]
+                }, {merge:true});
+            }
+            catch(publicProfileError){
+                console.warn("Public profile is not available until its Firestore Rule is published.", publicProfileError);
+            }
+
+            const profileSnapshot = await getDoc(userRef);
+            if(!profileSnapshot.exists()){
+                throw new Error("Firestore profile could not be read after login.");
+            }
+            setFirebaseAuthStatus("Signed in successfully. Firestore profile saved and verified.");
+        } else {
+            setFirebaseAuthStatus("Signed in successfully.");
+        }
+
+        if(passwordInput) passwordInput.value = "";
+    }
+    catch(error){
+        setFirebaseAuthStatus(firebaseAuthErrorMessage(error));
+    }
+}
+
+async function logoutFirebase(){
+    if(!firebaseAuth) return;
+    try{
+        await signOut(firebaseAuth);
+        setFirebaseAuthStatus("Signed out.");
+    }
+    catch(error){
+        setFirebaseAuthStatus(firebaseAuthErrorMessage(error));
+    }
+}
+
+function firebaseAuthErrorMessage(error){
+    const code = error && error.code ? error.code : "";
+    const messages = {
+        "auth/email-already-in-use":"That email address is already registered.",
+        "auth/invalid-email":"The email address is invalid.",
+        "auth/weak-password":"The password is too weak. Use a stronger password.",
+        "auth/invalid-credential":"Email or password is incorrect.",
+        "auth/user-not-found":"Email or password is incorrect.",
+        "auth/wrong-password":"Email or password is incorrect.",
+        "auth/too-many-requests":"Too many attempts. Please wait and try again.",
+        "auth/network-request-failed":"Network request failed. Check your internet connection.",
+        "auth/operation-not-allowed":"Email/Password sign-in is not enabled in Firebase Authentication."
+    };
+    return messages[code] || "Firebase error: " + sanitizePlainText((error && error.message) || "Unknown error.", 240);
+}
+
+async function uploadPreparedFirebaseMedia(){
+    if(!firebaseCurrentUser || !firebaseStorage || !firebasePreparedFile || !firebasePreparedKind){
+        setFirebaseUploadStatus("Sign in and choose a valid photo or video first.", false);
+        return;
+    }
+
+    const file = firebasePreparedFile;
+    const kind = firebasePreparedKind;
+    const rule = mediaRules[kind];
+    if(file.size > rule.maxBytes){
+        setFirebaseUploadStatus("Upload blocked by size limit.", false);
+        return;
+    }
+
+    const extension = getExtension(file.name);
+    const safeFileName = sanitizeFileName(file.name).replace(/\.[^.]+$/, "") || kind;
+    const uniqueId = (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function")
+        ? globalThis.crypto.randomUUID()
+        : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+    const storagePath = "users/" + firebaseCurrentUser.uid + "/uploads/" + uniqueId + "_" + safeFileName + "." + extension;
+    const storageRef = ref(firebaseStorage, storagePath);
+    const metadata = {
+        contentType: kind === "image" ? "image/webp" : file.type,
+        cacheControl: "private, max-age=3600",
+        customMetadata: {
+            ownerUid: firebaseCurrentUser.uid,
+            source: "Indian single-file web app",
+            originalName: sanitizeFileName(firebaseOriginalFile ? firebaseOriginalFile.name : file.name),
+            mediaKind: kind
+        }
+    };
+
+    try{
+        const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+        setFirebaseUploadStatus("Uploading 0%...", true);
+
+        await new Promise(function(resolve, reject){
+            uploadTask.on("state_changed", function(snapshot){
+                const progress = snapshot.totalBytes > 0 ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100) : 0;
+                setFirebaseUploadStatus("Uploading " + progress + "%...", true);
+            }, reject, resolve);
+        });
+
+        if(firebaseDb){
+            try{
+                await setDoc(doc(firebaseDb, "users", firebaseCurrentUser.uid, "uploads", uniqueId), {
+                    ownerUid: firebaseCurrentUser.uid,
+                    storagePath,
+                    mediaKind: kind,
+                    contentType: metadata.contentType,
+                    sizeBytes: file.size,
+                    originalName: metadata.customMetadata.originalName,
+                    storedName: uniqueId + "_" + safeFileName + "." + extension,
+                    createdAt: serverTimestamp()
+                });
+            }
+            catch(firestoreError){
+                try{ await deleteObject(storageRef); } catch(cleanupError) {}
+                throw new Error("Storage upload completed, but Firestore metadata could not be saved. The uploaded file was removed for cleanup.");
+            }
+        }
+
+        setFirebaseUploadStatus("Upload complete.", false);
+        const result = $("firebaseUploadResult");
+        if(result){
+            result.textContent = "Secure upload successful. Stored privately at: " + storagePath;
+        }
+        if($("firebaseCompressionStatus")){
+            $("firebaseCompressionStatus").textContent = kind === "image"
+                ? "WebP photo uploaded after client-side compression."
+                : "Validated video uploaded without client-side recompression.";
+        }
+
+        firebasePreparedFile = null;
+        firebaseOriginalFile = null;
+        firebasePreparedKind = null;
+        const input = $("firebaseMediaInput");
+        if(input) input.value = "";
+        if($("firebaseSelectedMedia")) $("firebaseSelectedMedia").textContent = "No file selected.";
+        updateUploadButtonState();
+    }
+    catch(error){
+        setFirebaseUploadStatus("Upload failed.", false);
+        const result = $("firebaseUploadResult");
+        if(result) result.textContent = sanitizePlainText(error && error.message, 400) || "Firebase Storage upload failed.";
+    }
+}
+
+function openFirebaseAccount(){
+    const section = $("firebaseSection");
+    if(section){
+        section.style.display = "block";
+        section.scrollIntoView({behavior:"smooth", block:"start"});
+        setTimeout(function(){
+            section.focus();
+        }, 50);
+    }
+}
+
+window.openFirebaseAccount = openFirebaseAccount;
+
+/* ==========================================================
+   FIREBASE PUBLIC PROFILES + REAL-TIME MESSAGES BRIDGE
+   The main Indian UI remains local-compatible. Firebase is used
+   only when a conversation person has a real Firebase UID.
+========================================================== */
+const firestoreMessageUnsubs = new Map();
+const firestoreMessageBuckets = new Map();
+
+function setFirebaseMessageStatus(message){
+    const el = document.getElementById("firebaseMessageStatus");
+    if(el) el.textContent = message;
+}
+
+function getFirestoreMessagePersonUid(personId){
+    if(typeof window.getIndianPersonFirebaseUid === "function") {
+        return window.getIndianPersonFirebaseUid(personId);
+    }
+    return null;
+}
+
+function convertFirestoreMessage(docSnap, currentUid, person){
+    const data = docSnap.data() || {};
+    const created = data.createdAt && typeof data.createdAt.toMillis === "function"
+        ? data.createdAt.toMillis()
+        : (Number(data.createdAtMs) || Date.now());
+    const senderIsMe = data.senderId === currentUid;
+    return {
+        firestoreId: docSnap.id,
+        sender: senderIsMe ? "me" : "them",
+        text: typeof data.text === "string" ? data.text : "",
+        time: new Date(created).toLocaleTimeString(),
+        timestampValue: created,
+        status: data.read ? "read" : "sent",
+        edited: data.edited === true,
+        reactions: {},
+        replyTo: data.replyTo || null,
+        attachment: null
+    };
+}
+
+function applyFirestoreConversation(personId){
+    const person = typeof window.getIndianPersonById === "function" ? window.getIndianPersonById(personId) : null;
+    if(!person || !firebaseCurrentUser) return;
+    const bucket = firestoreMessageBuckets.get(String(personId));
+    if(!bucket) return;
+
+    const merged = new Map();
+    bucket.outgoing.forEach(function(value, key){ merged.set(key, value); });
+    bucket.incoming.forEach(function(value, key){ merged.set(key, value); });
+
+    const messages = Array.from(merged.values()).sort(function(a,b){
+        return (a.timestampValue || 0) - (b.timestampValue || 0);
+    });
+
+    if(typeof window.replaceIndianConversationMessages === "function") {
+        window.replaceIndianConversationMessages(personId, messages);
+    }
+}
+
+function subscribeFirestoreMessages(personId){
+    if(!firebaseDb || !firebaseCurrentUser){
+        setFirebaseMessageStatus("Sign in to Firebase to use real-time Messages.");
+        return false;
+    }
+
+    const recipientUid = getFirestoreMessagePersonUid(personId);
+    if(!recipientUid){
+        setFirebaseMessageStatus("This demo contact is not linked to a Firebase account yet. Its conversation remains local.");
+        return false;
+    }
+
+    const key = String(personId);
+    if(firestoreMessageUnsubs.has(key)) return true;
+
+    const currentUid = firebaseCurrentUser.uid;
+    const person = typeof window.getIndianPersonById === "function" ? window.getIndianPersonById(personId) : null;
+    const bucket = {outgoing:new Map(), incoming:new Map()};
+    firestoreMessageBuckets.set(key, bucket);
+
+    const outgoingQuery = query(
+        collection(firebaseDb, "messages"),
+        where("senderId", "==", currentUid),
+        where("receiverId", "==", recipientUid)
+    );
+    const incomingQuery = query(
+        collection(firebaseDb, "messages"),
+        where("senderId", "==", recipientUid),
+        where("receiverId", "==", currentUid)
+    );
+
+    let outgoingReady = false;
+    let incomingReady = false;
+    let outUnsub = null;
+    let inUnsub = null;
+
+    function cleanup(){
+        try{ if(outUnsub) outUnsub(); }catch(e){}
+        try{ if(inUnsub) inUnsub(); }catch(e){}
+        firestoreMessageUnsubs.delete(key);
+        firestoreMessageBuckets.delete(key);
+    }
+
+    outUnsub = onSnapshot(outgoingQuery, function(snapshot){
+        bucket.outgoing.clear();
+        snapshot.docs.forEach(function(docSnap){
+            bucket.outgoing.set(docSnap.id, convertFirestoreMessage(docSnap, currentUid, person));
+        });
+        outgoingReady = true;
+        applyFirestoreConversation(personId);
+        if(outgoingReady && incomingReady) setFirebaseMessageStatus("Firebase Messages connected for " + (person ? person.name : "this user") + ".");
+    }, function(error){
+        setFirebaseMessageStatus("Firebase Messages read failed: " + sanitizePlainText(error.message, 250));
+        cleanup();
+    });
+
+    inUnsub = onSnapshot(incomingQuery, function(snapshot){
+        bucket.incoming.clear();
+        snapshot.docs.forEach(function(docSnap){
+            bucket.incoming.set(docSnap.id, convertFirestoreMessage(docSnap, currentUid, person));
+        });
+        incomingReady = true;
+        applyFirestoreConversation(personId);
+        if(outgoingReady && incomingReady) setFirebaseMessageStatus("Firebase Messages connected for " + (person ? person.name : "this user") + ".");
+    }, function(error){
+        setFirebaseMessageStatus("Firebase Messages read failed: " + sanitizePlainText(error.message, 250));
+        cleanup();
+    });
+
+    firestoreMessageUnsubs.set(key, cleanup);
+    return true;
+}
+
+async function saveFirestoreMessage(personId, text, replyTo){
+    if(!firebaseDb || !firebaseCurrentUser) return null;
+    const recipientUid = getFirestoreMessagePersonUid(personId);
+    if(!recipientUid) return null;
+
+    const safeText = sanitizePlainText(text, 2000);
+    if(!safeText) throw new Error("Firebase Messages currently require text. Photo/video storage will be added separately when Firebase Storage is enabled.");
+
+    const payload = {
+        senderId: firebaseCurrentUser.uid,
+        receiverId: recipientUid,
+        text: safeText,
+        edited: false,
+        read: false,
+        createdAt: serverTimestamp(),
+        createdAtMs: Date.now()
+    };
+    if(replyTo) payload.replyTo = {
+        senderName: sanitizePlainText(replyTo.senderName, 60),
+        text: sanitizePlainText(replyTo.text, 500)
+    };
+
+    const ref = await addDoc(collection(firebaseDb, "messages"), payload);
+    return ref.id;
+}
+
+async function updateFirestoreMessage(message){
+    if(!firebaseDb || !message || !message.firestoreId) return false;
+    await updateDoc(doc(firebaseDb, "messages", message.firestoreId), {
+        text: sanitizePlainText(message.text, 2000),
+        edited: true
+    });
+    return true;
+}
+
+async function deleteFirestoreMessage(message){
+    if(!firebaseDb || !message || !message.firestoreId) return false;
+    await deleteDoc(doc(firebaseDb, "messages", message.firestoreId));
+    return true;
+}
+
+window.firebaseIndianMessages = {
+    subscribe: subscribeFirestoreMessages,
+    save: saveFirestoreMessage,
+    update: updateFirestoreMessage,
+    remove: deleteFirestoreMessage,
+    isAvailable: function(personId){
+        return !!(firebaseDb && firebaseCurrentUser && getFirestoreMessagePersonUid(personId));
+    }
+};
+
+async function loadFirebasePublicProfiles(){
+    if(!firebaseDb || !firebaseCurrentUser) return;
+    try{
+        const snapshot = await getDocs(collection(firebaseDb, "publicProfiles"));
+        const profiles = snapshot.docs.map(function(d){ return d.data() || {}; }).filter(function(profile){
+            return profile.uid && profile.uid !== firebaseCurrentUser.uid && profile.displayName;
+        });
+        if(typeof window.addFirebasePeopleToIndian === "function") {
+            window.addFirebasePeopleToIndian(profiles);
+        }
+        if(profiles.length === 0){
+            setFirebaseMessageStatus("Firebase is connected. No other Firebase users are available yet.");
+        }
+    }
+    catch(error){
+        setFirebaseMessageStatus("Firebase user discovery needs the publicProfiles Firestore Rule: " + sanitizePlainText(error.message, 250));
+    }
+}
+
+if(!firebaseConfigReady){
+    setFirebaseSetupStatus("Firebase setup pending. Replace the six placeholder Firebase Web App config values in the FIREBASE CONFIG block inside this index.html.");
+    setFirebaseAuthStatus("Not configured. The local Indian features remain available.");
+    setFirebaseUploadStatus("Waiting for Firebase configuration.", false);
+    updateFirebaseAuthUI();
+}
+else{
+    try{
+        firebaseApp = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+        firebaseAuth = getAuth(firebaseApp);
+        firebaseDb = getFirestore(firebaseApp);
+        firebaseStorage = null;
+
+        setFirebaseSetupStatus("Firebase initialized. Authentication and Firestore are ready. Cloud Storage is intentionally disabled on the free Spark plan.");
+        setPersistence(firebaseAuth, browserLocalPersistence).catch(function(){
+            setFirebaseAuthStatus("Firebase initialized. Persistent login could not be enabled in this browser.");
+        });
+
+        onAuthStateChanged(firebaseAuth, function(user){
+            firebaseCurrentUser = user || null;
+            window.firebaseCurrentUid = user ? user.uid : "";
+            updateFirebaseAuthUI();
+            if(user){
+                loadFirebasePublicProfiles();
+                setFirebaseAuthStatus("Signed in as " + (user.displayName || user.email || user.uid) + ". UID: " + user.uid);
+            }
+        });
+    }
+    catch(error){
+        firebaseAuth = null;
+        firebaseDb = null;
+        firebaseStorage = null;
+        setFirebaseSetupStatus("Firebase initialization failed: " + sanitizePlainText(error.message, 300));
+        updateFirebaseAuthUI();
+    }
+}
+
+$("firebaseSignupButton")?.addEventListener("click", signUpFirebase);
+$("firebaseLoginButton")?.addEventListener("click", loginFirebase);
+$("firebaseLogoutButton")?.addEventListener("click", logoutFirebase);
+$("firebaseMediaInput")?.addEventListener("change", handleFirebaseMediaSelection);
+$("firebaseUploadButton")?.addEventListener("click", uploadPreparedFirebaseMedia);
+
+/* Keyboard-friendly Enter handling for auth text fields. */
+["firebaseDisplayName", "firebaseEmail", "firebasePassword"].forEach(function(id){
+    const input = $(id);
+    if(!input) return;
+    input.addEventListener("keydown", function(event){
+        if(event.key === "Enter"){
+            event.preventDefault();
+            if(id === "firebaseDisplayName" || id === "firebaseEmail"){
+                $("firebasePassword")?.focus();
+            }else{
+                loginFirebase();
+            }
+        }
+    });
+});
+</script>
+
+
+<!-- INDIAN FIRESTORE PERSISTENCE BRIDGE -->
+<script type="module">
+import { getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {
+  getFirestore, collection, addDoc, deleteDoc, doc, query, where,
+  onSnapshot, serverTimestamp, getDocs, setDoc
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+const apps=getApps();
+if(!apps.length){ console.warn("Indian Firestore persistence: Firebase app is not initialized."); }
+else{
+ const auth=getAuth(apps[0]);
+ const db=getFirestore(apps[0]);
+ let currentUser=null;
+ let persistenceBusy=false;
+ const unsub=[];
+ const clean=(v,n=5000)=>String(v??"").normalize("NFKC").replace(/[\u0000-\u001F\u007F]/g,"").trim().slice(0,n);
+ const now=()=>Date.now();
+ const clear=()=>{while(unsub.length){try{unsub.pop()();}catch(e){}}};
+ const name=()=>clean(window.profileName||currentUser?.displayName||currentUser?.email||"Indian User",60)||"Indian User";
+ const alertSave=(label,e)=>{console.error(label,e); alert(label+" Firestore mein save nahi hua: "+clean(e?.message||e,300));};
+
+ async function savePost(text,files,el){
+   if(!currentUser||!el)return;
+   try{
+     const ref=await addDoc(collection(db,"posts"),{uid:currentUser.uid,displayName:name(),text:clean(text,5000),mediaCount:Math.min(files.length,10),clientId:el.id,createdAt:serverTimestamp(),createdAtMs:now()});
+     el.dataset.firestoreId=ref.id;
+     el.dataset.clientId=el.id;
+   }catch(e){alertSave("Post",e);}
+ }
+ async function saveComment(postId,commentId,text){
+   if(!currentUser)return;
+   try{
+     const post=document.getElementById(postId);
+     const ref=await addDoc(collection(db,"comments"),{uid:currentUser.uid,displayName:name(),postId:post?.dataset.firestoreId||postId,parentId:null,type:"comment",text:clean(text,3000),clientId:commentId,createdAt:serverTimestamp(),createdAtMs:now()});
+     const el=document.getElementById(commentId); if(el)el.dataset.firestoreId=ref.id;
+   }catch(e){alertSave("Comment",e);}
+ }
+ async function saveReply(commentId,replyId,text){
+   if(!currentUser)return;
+   try{
+     const c=document.getElementById(commentId), post=c?.closest(".post");
+     const ref=await addDoc(collection(db,"comments"),{uid:currentUser.uid,displayName:name(),postId:post?.dataset.firestoreId||post?.id||"",parentId:c?.dataset.firestoreId||commentId,type:"reply",text:clean(text,3000),clientId:replyId,createdAt:serverTimestamp(),createdAtMs:now()});
+     const el=document.getElementById(replyId); if(el)el.dataset.firestoreId=ref.id;
+   }catch(e){alertSave("Reply",e);}
+ }
+ async function saveHelp(text,count,id){
+   if(!currentUser)return;
+   try{await addDoc(collection(db,"helpRequests"),{uid:currentUser.uid,displayName:name(),text:clean(text,3000),mediaCount:Math.min(Number(count)||0,10),clientId:id,createdAt:serverTimestamp(),createdAtMs:now()});}
+   catch(e){alertSave("Help request",e);}
+ }
+ async function saveNotification(n){
+   if(!currentUser||!n)return null;
+   try{
+     const ref=await addDoc(collection(db,"notifications"),{recipientId:currentUser.uid,actorId:currentUser.uid,message:clean(n.message,500),type:clean(n.targetType||"general",50),targetId:n.targetId??null,read:!!n.read,createdAt:serverTimestamp(),createdAtMs:now()});
+     n.firestoreId=ref.id;
+     return ref.id;
+   }catch(e){console.error("Notification save failed",e);return null;}
+ }
+ async function markFirestoreNotificationAsRead(id){
+   if(!currentUser||!id)return;
+   await setDoc(doc(db,"notifications",String(id)),{read:true},{merge:true});
+ }
+ window.markFirestoreNotificationAsRead=markFirestoreNotificationAsRead;
+ async function saveFollow(person){
+   if(!currentUser||!person)return;
+   const key=person.firebaseUid||("demo_"+person.id);
+   try{
+     const q=query(collection(db,"follows"),where("followerId","==",currentUser.uid),where("followingKey","==",key));
+     const snap=await getDocs(q);
+     if(person.isFollowing&&snap.empty){
+       await addDoc(collection(db,"follows"),{followerId:currentUser.uid,followingKey:key,followingUid:person.firebaseUid||null,followingName:clean(person.name,60),createdAt:serverTimestamp(),createdAtMs:now()});
+     }else if(!person.isFollowing&&snap.docs.length){
+       await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));
+     }
+   }catch(e){console.error("Follow save failed",e);alertSave("Follow",e);}
+ }
+ async function saveLike(type,id,liked){
+   if(!currentUser||!id)return;
+   try{
+     const key=type+":"+id, q=query(collection(db,"likes"),where("uid","==",currentUser.uid),where("targetKey","==",key)), snap=await getDocs(q);
+     if(liked&&snap.empty)await addDoc(collection(db,"likes"),{uid:currentUser.uid,targetType:type,targetId:id,targetKey:key,createdAt:serverTimestamp(),createdAtMs:now()});
+     if(!liked)await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));
+   }catch(e){console.error("Like save failed",e);}
+ }
+ function renderStoredPost(d){
+   const x=d.data(),cid=x.clientId||("firestore-post-"+d.id), old=document.querySelector('[data-firestore-id="'+CSS.escape(d.id)+'"]')||document.querySelector('[data-client-id="'+CSS.escape(cid)+'"]');
+   if(old){old.dataset.firestoreId=d.id;return;}
+   const box=document.getElementById("postsContainer");if(!box)return;
+   const post=document.createElement("div");post.className="post";post.id=cid;post.dataset.firestoreId=d.id;post.dataset.clientId=cid;post.tabIndex=-1;
+   const t=document.createElement("div");t.className="postTitle";t.textContent=clean(x.displayName,60)||"Indian User";post.appendChild(t);
+   if(x.text){const c=document.createElement("div");c.textContent=clean(x.text,5000);post.appendChild(c);}
+   const tm=document.createElement("div");tm.className="postTime";tm.textContent="Saved in Firestore";post.appendChild(tm);
+   const a=document.createElement("div");a.className="postActions";a.appendChild(window.createLikeButton("post",cid));post.appendChild(a);
+   window.addCommentSystem(post,cid);box.prepend(post);loadLikes(post,"post",cid);loadComments(post,d.id);
+ }
+ async function loadLikes(el,type,id){try{const s=await getDocs(query(collection(db,"likes"),where("targetType","==",type),where("targetId","==",id))),b=el.querySelector(".likeButton");if(!b)return;const c=b.querySelector(".likeCount");if(c)c.textContent=String(s.size);if(s.docs.some(d=>d.data().uid===currentUser?.uid)){b.classList.add("liked");if(b.firstChild)b.firstChild.textContent="Unlike";}}catch(e){}}
+ async function loadComments(post,postId){
+   try{const s=await getDocs(query(collection(db,"comments"),where("postId","==",postId),where("type","==","comment"))),box=post.querySelector(".commentSection")?.querySelector("div:last-child");if(!box)return;
+     s.docs.sort((a,b)=>(a.data().createdAtMs||0)-(b.data().createdAtMs||0)).forEach(d=>{const x=d.data(),c=document.createElement("div");c.className="comment";c.id=x.clientId||("comment-"+d.id);c.dataset.firestoreId=d.id;c.tabIndex=-1;const t=document.createElement("div");t.className="commentTitle";t.textContent=clean(x.displayName,60)||"Indian User";c.appendChild(t);const z=document.createElement("div");z.textContent=clean(x.text,3000);c.appendChild(z);box.appendChild(c);loadLikes(c,"comment",c.id);loadReplies(c,d.id);});
+   }catch(e){console.error("Comments load failed",e);}
+ }
+ async function loadReplies(comment,parentId){try{const s=await getDocs(query(collection(db,"comments"),where("parentId","==",parentId),where("type","==","reply"))),box=comment.querySelector("div:last-child")||comment; s.docs.sort((a,b)=>(a.data().createdAtMs||0)-(b.data().createdAtMs||0)).forEach(d=>{const x=d.data(),r=document.createElement("div");r.className="reply";r.id=x.clientId||("reply-"+d.id);r.dataset.firestoreId=d.id;const t=document.createElement("div");t.className="replyTitle";t.textContent=clean(x.displayName,60)||"Indian User";r.appendChild(t);const z=document.createElement("div");z.textContent=clean(x.text,3000);r.appendChild(z);box.appendChild(r);});}catch(e){}}
+ async function markAllFirestoreNotificationsAsRead(){
+   if(!currentUser)return;
+   const snap=await getDocs(query(collection(db,"notifications"),where("recipientId","==",currentUser.uid)));
+   await Promise.all(snap.docs.map(d=>setDoc(d.ref,{read:true},{merge:true})));
+ }
+ window.markAllFirestoreNotificationsAsRead=markAllFirestoreNotificationsAsRead;
+ function listeners(){
+   clear();if(!currentUser)return;const uid=currentUser.uid;
+   unsub.push(onSnapshot(query(collection(db,"posts")),s=>[...s.docs].sort((a,b)=>(b.data().createdAtMs||0)-(a.data().createdAtMs||0)).forEach(renderStoredPost),e=>console.error("Posts listener",e)));
+   unsub.push(onSnapshot(query(collection(db,"notifications"),where("recipientId","==",uid)),s=>{if(Array.isArray(window.notifications)){window.notifications.splice(0,window.notifications.length,...s.docs.map(d=>({id:d.id,firestoreId:d.id,...d.data(),time:new Date(d.data().createdAtMs||Date.now()).toLocaleTimeString()})).sort((a,b)=>(b.createdAtMs||0)-(a.createdAtMs||0)));window.renderNotifications();}},e=>console.error("Notifications listener",e)));
+   unsub.push(onSnapshot(query(collection(db,"follows"),where("followerId","==",uid)),s=>{const docs=s.docs.map(d=>d.data()||{}),keys=new Set(docs.map(d=>d.followingKey));if(Array.isArray(window.peopleData)){window.peopleData.forEach(p=>{const key=p.firebaseUid||("demo_"+p.id),wasFollowing=keys.has(key);p.isFollowing=wasFollowing;const baseFollowers=Number(p.__baseFollowersCount ?? p.followersCount ?? 0);p.__baseFollowersCount=baseFollowers;p.followersCount=baseFollowers+(wasFollowing?1:0);});const mainUser=window.peopleData.find(p=>p.id===0);if(mainUser){mainUser.followingCount=docs.length;}window.updateFollowView?.();window.renderPeopleList?.();window.renderSuggestedPeople?.();}},e=>console.error("Follow listener",e)));
+   unsub.push(onSnapshot(query(collection(db,"helpRequests")),s=>{const box=document.getElementById("helpContainer");if(!box)return;s.docs.sort((a,b)=>(b.data().createdAtMs||0)-(a.data().createdAtMs||0)).forEach(d=>{const x=d.data(),id=x.clientId||("help-"+d.id);if(document.getElementById(id))return;document.getElementById("noHelp")?.remove();const el=document.createElement("div");el.className="helpRequest";el.id=id;el.dataset.firestoreId=d.id;el.textContent=(clean(x.displayName,60)||"Indian User")+": "+(clean(x.text,3000)||"Media help request")+" — Saved in Firestore";box.appendChild(el);});},e=>console.error("Help listener",e)));
+ }
+ function wrap(){
+   if(window.__indianFirestoreWrapped)return;window.__indianFirestoreWrapped=true;
+   const pub=window.publishPost;window.publishPost=async function(){const box=document.getElementById("postBox"),input=document.getElementById("mediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),before=new Set([...document.querySelectorAll("#postsContainer .post")].map(x=>x.id));pub?.();const created=[...document.querySelectorAll("#postsContainer .post")].find(x=>!before.has(x.id));if(created)await savePost(text,files,created);};
+   const ac=window.addComment;window.addComment=async function(a,b,c,d,e,f){const text=a?.value.trim()||"",before=new Set([...c.children].map(x=>x.id));ac?.(a,b,c,d,e,f);const created=[...c.children].find(x=>!before.has(x.id));if(created&&text)await saveComment(f,created.id,text);};
+   const ar=window.addReply;window.addReply=async function(a,b,c,d,e,f){const text=a?.value.trim()||"",before=new Set([...c.children].map(x=>x.id));ar?.(a,b,c,d,e,f);const created=[...c.children].find(x=>!before.has(x.id));if(created&&text)await saveReply(f,created.id,text);};
+   const ah=window.submitHelp;window.submitHelp=async function(){const box=document.getElementById("helpBox"),input=document.getElementById("helpMediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),before=new Set([...document.querySelectorAll("#helpContainer .helpRequest")].map(x=>x.id));ah?.();const created=[...document.querySelectorAll("#helpContainer .helpRequest")].find(x=>!before.has(x.id));if(created)await saveHelp(text,files.length,created.id);};
+   const an=window.addNotification;window.addNotification=async function(message,type,id){an?.(message,type,id);const n=window.notifications?.[0];if(n)await saveNotification(n);};
+   const af=window.togglePersonFollow;window.togglePersonFollow=async function(id){af?.(id);const p=window.peopleData?.find(x=>x.id===id);if(p)await saveFollow(p);};
+   const lb=window.createLikeButton;window.createLikeButton=function(type,id){const b=lb(type,id),old=b.onclick;b.onclick=async function(){old?.();await saveLike(type,id,b.classList.contains("liked"));};return b;};
+ }
+ onAuthStateChanged(auth,u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Firestore persistence active. Posts, comments, replies, likes, follows, notifications, help requests and Firebase messages are being synchronized.";}else clear();});
+}
+</script>
+
+</body>
+</html>

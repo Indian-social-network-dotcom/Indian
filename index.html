@@ -3112,6 +3112,8 @@ function showSearch(){
 }
 
 
+window.indianFirebasePublicProfiles = window.indianFirebasePublicProfiles || [];
+
 function performSearch(){
 
     const searchInput =
@@ -3150,6 +3152,20 @@ function performSearch(){
         }
     });
 
+
+    /* FIREBASE PEOPLE SEARCH */
+    (window.indianFirebasePublicProfiles || []).forEach(function(profile){
+        const pname = String(profile.displayName || "");
+        const pbio = String(profile.bio || "");
+        if((pname + " " + pbio).toLowerCase().includes(query)){
+            const person = peopleData.find(function(p){ return p.firebaseUid === profile.uid; });
+            if(person){
+                found = true;
+                const result = createSearchResult("Firebase Person", pname + (pbio ? " — " + pbio : ""), null, person.id);
+                results.appendChild(result);
+            }
+        }
+    });
 
     /* PLACE */
 
@@ -3439,7 +3455,7 @@ async function saveProfile(){
     // Persist the editable profile fields for the signed-in Firebase user.
     if(typeof window.saveIndianProfileToFirestore === "function"){
         try{
-            await window.saveIndianProfileToFirestore(profileName, profileBio);
+            await window.saveIndianProfileToFirestore(profileName, profileBio, savedPhotoURL);
         }catch(error){
             console.error("Profile save failed", error);
             alert("Profile Firestore mein save nahi hua: " + String(error?.message || error).slice(0,300));
@@ -4926,6 +4942,7 @@ import {
     onSnapshot,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
 /* ==========================================================
    FIREBASE CONFIG
@@ -5640,6 +5657,24 @@ window.firebaseIndianMessages = {
     }
 };
 
+async function ensureCurrentUserPublicProfile(){
+    if(!firebaseDb || !firebaseCurrentUser) return false;
+    try{
+        const user = firebaseCurrentUser;
+        const safeName = sanitizePlainText(user.displayName || (user.email ? user.email.split("@")[0] : "Indian User"), 60) || "Indian User";
+        await setDoc(doc(firebaseDb, "publicProfiles", user.uid), {
+            uid: user.uid,
+            displayName: safeName,
+            updatedAt: serverTimestamp()
+        }, {merge:true});
+        return true;
+    }
+    catch(error){
+        console.warn("Current user's public profile could not be ensured.", error);
+        return false;
+    }
+}
+
 async function loadFirebasePublicProfiles(){
     if(!firebaseDb || !firebaseCurrentUser) return;
     try{
@@ -5647,6 +5682,7 @@ async function loadFirebasePublicProfiles(){
         const profiles = snapshot.docs.map(function(d){ return d.data() || {}; }).filter(function(profile){
             return profile.uid && profile.uid !== firebaseCurrentUser.uid && profile.displayName;
         });
+        window.indianFirebasePublicProfiles = profiles;
         if(typeof window.addFirebasePeopleToIndian === "function") {
             window.addFirebasePeopleToIndian(profiles);
         }
@@ -5682,7 +5718,9 @@ else{
             window.firebaseCurrentUid = user ? user.uid : "";
             updateFirebaseAuthUI();
             if(user){
-                loadFirebasePublicProfiles();
+                ensureCurrentUserPublicProfile().then(function(){
+                    return loadFirebasePublicProfiles();
+                });
                 setFirebaseAuthStatus("Signed in as " + (user.displayName || user.email || user.uid) + ". UID: " + user.uid);
             }
         });
@@ -5728,12 +5766,14 @@ import {
   getFirestore, collection, addDoc, deleteDoc, doc, query, where,
   onSnapshot, serverTimestamp, getDocs, getDoc, setDoc
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
 const apps=getApps();
 if(!apps.length){ console.warn("Indian Firestore persistence: Firebase app is not initialized."); }
 else{
  const auth=getAuth(apps[0]);
  const db=getFirestore(apps[0]);
+ const storage=getStorage(apps[0]);
  let currentUser=null;
  let persistenceBusy=false;
  const unsub=[];
@@ -5744,7 +5784,7 @@ else{
  const alertSave=(label,e)=>{console.error(label,e); alert(label+" Firestore mein save nahi hua: "+clean(e?.message||e,300));};
 
  // Profile persistence: save and restore only the user's own safe public fields.
- window.saveIndianProfileToFirestore=async function(displayName,bio){
+ window.saveIndianProfileToFirestore=async function(displayName,bio,photoURL){
    if(!currentUser)return;
    const safeName=clean(displayName,60)||"Indian User";
    if(safeName.length<2)throw new Error("Profile name must contain at least 2 characters.");
@@ -5753,7 +5793,8 @@ else{
      uid:currentUser.uid,
      displayName:safeName,
      bio:safeBio,
-     updatedAt:serverTimestamp()
+     updatedAt:serverTimestamp(),
+     photoURL:clean(photoURL,2000)
    },{merge:true});
    try{
      await setDoc(doc(db,"users",currentUser.uid),{
@@ -5766,6 +5807,17 @@ else{
    }
  };
 
+ window.saveIndianProfilePhoto=async function(file){
+   if(!currentUser || !storage || !file) return "";
+   const kind=String(file.type||"").toLowerCase();
+   if(!kind.startsWith("image/")) throw new Error("Profile photo must be an image.");
+   if(file.size > 5*1024*1024) throw new Error("Profile photo must be 5 MB or smaller.");
+   const path="users/"+currentUser.uid+"/profile/profile-photo";
+   const storageRef=ref(storage,path);
+   await uploadBytes(storageRef,file,{contentType:file.type,cacheControl:"private, max-age=3600"});
+   return await getDownloadURL(storageRef);
+ };
+
  window.loadIndianProfileFromFirestore=async function(){
    if(!currentUser)return;
    try{
@@ -5776,10 +5828,13 @@ else{
      const savedBio=clean(data.bio,500);
      if(savedName)window.profileName=savedName;
      if(typeof data.bio === "string")window.profileBio=savedBio;
+     if(typeof data.photoURL === "string" && data.photoURL) window.profilePhotoURL=data.photoURL;
      const nameView=document.getElementById("profileNameView");
      const bioView=document.getElementById("profileBioView");
      if(nameView)nameView.textContent=window.profileName||"Indian User";
      if(bioView)bioView.textContent=window.profileBio||"";
+     const savedPhoto=document.getElementById("profileImage");
+     if(savedPhoto && window.profilePhotoURL){ savedPhoto.src=window.profilePhotoURL; savedPhoto.style.display="block"; document.getElementById("profileDefaultPhoto")?.style && (document.getElementById("profileDefaultPhoto").style.display="none"); }
      const nameInput=document.getElementById("profileNameInput");
      const bioInput=document.getElementById("profileBioInput");
      if(nameInput)nameInput.value=window.profileName||"Indian User";
@@ -5795,6 +5850,22 @@ else{
      const ref=await addDoc(collection(db,"posts"),{uid:currentUser.uid,displayName:name(),text:clean(text,5000),mediaCount:Math.min(files.length,10),clientId:el.id,createdAt:serverTimestamp(),createdAtMs:now()});
      el.dataset.firestoreId=ref.id;
      el.dataset.clientId=el.id;
+     if(files.length && storage){
+       const media=[];
+       for(const file of files.slice(0,10)){
+         const kind=String(file.type||"");
+         if(!kind.startsWith("image/") && !kind.startsWith("video/")) continue;
+         if(file.size > 50*1024*1024) continue;
+         try{
+           const safe=String(file.name||"media").replace(/[^A-Za-z0-9._-]/g,"_").slice(-100);
+           const storageRef=ref(storage,"users/"+currentUser.uid+"/posts/"+ref.id+"/"+Date.now()+"_"+safe);
+           await uploadBytes(storageRef,file,{contentType:kind,cacheControl:"private, max-age=3600"});
+           const url=await getDownloadURL(storageRef);
+           media.push({url:url,type:kind.startsWith("video/")?"video":"image",name:safe});
+         }catch(mediaError){ console.warn("Post media upload failed",mediaError); }
+       }
+       if(media.length) await updateDoc(ref,{media:media,mediaCount:media.length});
+     }
    }catch(e){alertSave("Post",e);}
  }
  async function saveComment(postId,commentId,text){
@@ -5818,6 +5889,14 @@ else{
    try{await addDoc(collection(db,"helpRequests"),{uid:currentUser.uid,displayName:name(),text:clean(text,3000),mediaCount:Math.min(Number(count)||0,10),clientId:id,createdAt:serverTimestamp(),createdAtMs:now()});}
    catch(e){alertSave("Help request",e);}
  }
+ async function saveRemoteNotification(recipientId,message,type,targetId){
+   if(!currentUser || !recipientId || recipientId===currentUser.uid) return;
+   try{
+     await addDoc(collection(db,"notifications"),{recipientId:recipientId,actorId:currentUser.uid,message:clean(message,500),type:clean(type||"general",50),targetId:targetId||null,read:false,createdAt:serverTimestamp(),createdAtMs:now()});
+   }catch(e){ console.warn("Remote notification failed",e); }
+ }
+ window.saveRemoteNotification=saveRemoteNotification;
+
  async function saveNotification(n){
    if(!currentUser||!n)return null;
    try{
@@ -5859,6 +5938,15 @@ else{
    const post=document.createElement("div");post.className="post";post.id=cid;post.dataset.firestoreId=d.id;post.dataset.clientId=cid;post.tabIndex=-1;
    const t=document.createElement("div");t.className="postTitle";t.textContent=clean(x.displayName,60)||"Indian User";post.appendChild(t);
    if(x.text){const c=document.createElement("div");c.textContent=clean(x.text,5000);post.appendChild(c);}
+   if(Array.isArray(x.media)){
+     const mediaBox=document.createElement("div"); mediaBox.className="postMedia";
+     x.media.slice(0,10).forEach(function(m){
+       if(!m || !m.url) return;
+       if(m.type === "video"){ const v=document.createElement("video"); v.src=m.url; v.controls=true; v.preload="metadata"; v.setAttribute("aria-label","Saved post video"); mediaBox.appendChild(v); }
+       else { const img=document.createElement("img"); img.src=m.url; img.alt="Saved post image"; mediaBox.appendChild(img); }
+     });
+     if(mediaBox.children.length) post.appendChild(mediaBox);
+   }
    const tm=document.createElement("div");tm.className="postTime";tm.textContent="Saved in Firestore";post.appendChild(tm);
    const a=document.createElement("div");a.className="postActions";a.appendChild(window.createLikeButton("post",cid));post.appendChild(a);
    window.addCommentSystem(post,cid);box.prepend(post);loadLikes(post,"post",cid);loadComments(post,d.id);
@@ -5890,7 +5978,7 @@ else{
    const ar=window.addReply;window.addReply=async function(a,b,c,d,e,f){const text=a?.value.trim()||"",before=new Set([...c.children].map(x=>x.id));ar?.(a,b,c,d,e,f);const created=[...c.children].find(x=>!before.has(x.id));if(created&&text)await saveReply(f,created.id,text);};
    const ah=window.submitHelp;window.submitHelp=async function(){const box=document.getElementById("helpBox"),input=document.getElementById("helpMediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),before=new Set([...document.querySelectorAll("#helpContainer .helpRequest")].map(x=>x.id));ah?.();const created=[...document.querySelectorAll("#helpContainer .helpRequest")].find(x=>!before.has(x.id));if(created)await saveHelp(text,files.length,created.id);};
    const an=window.addNotification;window.addNotification=async function(message,type,id){an?.(message,type,id);const n=window.notifications?.[0];if(n)await saveNotification(n);};
-   const af=window.togglePersonFollow;window.togglePersonFollow=async function(id){af?.(id);const p=window.peopleData?.find(x=>x.id===id);if(p)await saveFollow(p);};
+   const af=window.togglePersonFollow;window.togglePersonFollow=async function(id){af?.(id);const p=window.peopleData?.find(x=>x.id===id);if(p){ await saveFollow(p); if(p.isFollowing && p.firebaseUid) await saveRemoteNotification(p.firebaseUid, name()+" started following you.", "follow", p.id); }};
    const lb=window.createLikeButton;window.createLikeButton=function(type,id){const b=lb(type,id),old=b.onclick;b.onclick=async function(){old?.();await saveLike(type,id,b.classList.contains("liked"));};return b;};
  }
  onAuthStateChanged(auth,async u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){await window.loadIndianProfileFromFirestore?.();wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Firestore persistence active. Posts, comments, replies, likes, follows, notifications, help requests and Firebase messages are being synchronized.";}else clear();});
@@ -5898,4 +5986,4 @@ else{
 </script>
 
 </body>
-</html>                
+</html>            

@@ -913,8 +913,9 @@ Notifications <span id="navUnreadBadge" class="nav-badge" style="display:none;">
 Messages <span id="navMessageBadge" class="nav-badge" style="display:none;">0</span>
 </button>
 <button type="button" onclick="openFirebaseAccount()" id="navFirebaseBtn" aria-label="Firebase account and secure uploads section">Account / Firebase</button>
-<button onclick="openPeople()">People</button>
 <button onclick="showSearch()">Search</button>
+<button type="button" onclick="openStories()">Stories</button>
+<button type="button" onclick="openShorts()">Reels / Shorts</button>
 <button onclick="openPlace()">Place</button>
 <button onclick="scrollToPosts()">Posts</button>
 </nav>
@@ -1004,7 +1005,7 @@ Firebase is not configured yet. Add your Firebase Web App config in the code com
 <h2>Search Indian</h2>
 
 <label for="searchBox">
-Search people, places, posts or help requests:
+Search registered users, places, posts or help requests:
 </label>
 
 <input
@@ -1021,6 +1022,45 @@ Search people, places, posts or help requests:
 
 </section>
 
+
+<!-- STORIES SECTION: local prototype; online sync is a later storage step -->
+<section id="storiesSection" style="display:none;" tabindex="-1">
+<h2>Stories</h2>
+<p>Stories created here are saved on this device for this prototype. They expire after 24 hours. Cross-account online sharing will be enabled after media storage is configured.</p>
+<form id="storyForm">
+<label for="storyCaption">Story caption (optional):</label>
+<textarea id="storyCaption" rows="3" maxlength="300" style="width:100%;margin:8px 0;" placeholder="Write something about your story..."></textarea>
+<label for="storyMediaInput">Choose a photo or video for your story:</label>
+<input id="storyMediaInput" type="file" accept="image/*,video/mp4,video/webm" aria-label="Choose photo or video for story" style="display:block;margin:8px 0;">
+<label for="storyMusicChoice">Choose music from the website list:</label>
+<select id="storyMusicChoice" style="display:block;margin:8px 0;padding:10px;width:100%;">
+<option value="none">No music</option>
+<option value="gentle">Gentle instrumental demo tone</option>
+<option value="bright">Bright instrumental demo tone</option>
+<option value="calm">Calm instrumental demo tone</option>
+</select>
+<p>These built-in choices are simple generated demo tones, not copyrighted songs. You can also choose your own audio file below.</p>
+<label for="storyAudioInput">Or choose your own audio file:</label>
+<input id="storyAudioInput" type="file" accept="audio/*" aria-label="Choose your own music audio file" style="display:block;margin:8px 0;">
+<button class="action" type="button" onclick="publishLocalStory()">Add Story</button>
+</form>
+<div id="storiesStatus" role="status" aria-live="polite" style="margin-top:12px;"></div>
+<h3>Active stories</h3>
+<div id="storiesList" aria-live="polite"><p>No stories yet.</p></div>
+</section>
+
+<!-- REELS / SHORTS SECTION: local preview prototype -->
+<section id="shortsSection" style="display:none;" tabindex="-1">
+<h2>Reels / Shorts</h2>
+<p>Choose a vertical short video to preview it here. In this first stage, the video is local to this browser; online publishing and shared likes/comments require media storage.</p>
+<label for="shortVideoInput">Choose a video file (MP4 or WebM):</label>
+<input id="shortVideoInput" type="file" accept="video/mp4,video/webm" aria-label="Choose a video for Shorts" style="display:block;margin:8px 0;">
+<label for="shortCaption">Video caption:</label>
+<textarea id="shortCaption" rows="2" maxlength="300" style="width:100%;margin:8px 0;" placeholder="Write a caption..."></textarea>
+<button class="action" type="button" onclick="previewLocalShort()">Preview Short</button>
+<div id="shortsStatus" role="status" aria-live="polite" style="margin-top:12px;"></div>
+<div id="shortsFeed" style="margin-top:16px;"></div>
+</section>
 
 <!-- NOTIFICATIONS SECTION -->
 <section id="notificationsSection" style="display:none;" tabindex="-1">
@@ -1041,6 +1081,12 @@ Search people, places, posts or help requests:
 
 <p>Send messages to people on Indian. Firebase-connected users can use real-time Firestore messages; demo contacts continue to work locally until they have a Firebase profile.</p>
 <div id="firebaseMessageStatus" aria-live="polite" style="margin:10px 0;padding:10px;border:1px solid #ddd;border-radius:6px;background:#f8fafc;">Checking Firebase Messages...</div>
+<div id="messageUserDiscovery" style="margin:14px 0;padding:12px;border:1px solid #cbd5e1;border-radius:8px;">
+<h3>Find registered users</h3>
+<label for="messageUserSearch">Search registered users by name:</label>
+<input id="messageUserSearch" type="search" placeholder="Type a user's name..." aria-label="Search registered users for messaging" style="display:block;width:100%;padding:10px;margin:8px 0;" oninput="searchRegisteredUsersForMessages()">
+<div id="messageUserResults" aria-live="polite">Sign in to search registered users.</div>
+</div>
 
 <div id="messagesLayout">
 
@@ -1297,8 +1343,8 @@ No help requests yet.
 </section>
 
 
-<!-- PEOPLE -->
-<section id="peopleSection" tabindex="-1">
+<!-- PEOPLE: legacy UI hidden; discover registered users through Search -->
+<section id="peopleSection" tabindex="-1" style="display:none;">
 
 <h2>People</h2>
 
@@ -1942,16 +1988,20 @@ window.addFirebasePeopleToIndian = function(profiles){
     let nextId = 10000;
     profiles.forEach(function(profile){
         if(!profile || !profile.uid || profile.uid === (window.firebaseCurrentUid || "")) return;
+        const safeName = String(profile.displayName || "Indian User").normalize("NFKC").replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0, 60) || "Indian User";
         let existing = peopleData.find(function(p){ return p.firebaseUid === profile.uid; });
         if(existing){
-            existing.name = sanitizePlainText(profile.displayName, 60) || existing.name;
+            existing.name = safeName;
+            existing.bio = String(profile.bio || existing.bio || "Firebase user on Indian.").slice(0, 500);
+            existing.photoURL = String(profile.photoURL || existing.photoURL || "");
             return;
         }
         while(peopleData.some(function(p){ return p.id === nextId; })) nextId++;
         const person = {
             id: nextId++,
-            name: sanitizePlainText(profile.displayName, 60) || "Indian User",
-            bio: "Firebase user on Indian.",
+            name: safeName,
+            bio: String(profile.bio || "Firebase user on Indian.").slice(0, 500),
+            photoURL: String(profile.photoURL || ""),
             firebaseUid: profile.uid,
             isFollowing:false,
             followersCount:0,
@@ -1962,7 +2012,6 @@ window.addFirebasePeopleToIndian = function(profiles){
         peopleData.push(person);
         suggestedPeople.push(person);
     });
-    renderPeopleList();
     renderConversationList();
     renderSuggestedPeople();
 };
@@ -3322,12 +3371,20 @@ function createSearchResult(type,title,sectionId,personId){
     button.type =
         "button";
 
-    if(type === "Person" && personId !== undefined && personId !== null){
-        button.textContent = "Open Profile";
-        button.setAttribute("aria-label", "Open profile of " + title.split(" — ")[0]);
-        button.onclick = function(){
-            showPersonProfileModal(personId);
-        };
+    if((type === "Person" || type === "Firebase Person") && personId !== undefined && personId !== null){
+        if(type === "Firebase Person"){
+            button.textContent = "Message";
+            button.setAttribute("aria-label", "Message " + title.split(" — ")[0]);
+            button.onclick = function(){
+                openConversation(personId);
+            };
+        } else {
+            button.textContent = "Open Profile";
+            button.setAttribute("aria-label", "Open profile of " + title.split(" — ")[0]);
+            button.onclick = function(){
+                showPersonProfileModal(personId);
+            };
+        }
     }
     else{
         button.textContent = "Open";
@@ -4889,6 +4946,111 @@ function toggleLive(){
 
 
 /* =========================
+   STORIES + SHORTS (LOCAL FIRST STAGE)
+========================= */
+const INDIAN_STORY_KEY = "indian_local_stories_v1";
+let localStoryUrls = new Map();
+let localShortUrls = [];
+let storyAudioContext = null;
+let storyToneNodes = [];
+
+function focusIndianSection(id){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.style.display = "block";
+    el.scrollIntoView({behavior:"smooth", block:"start"});
+    el.focus();
+}
+function openStories(){ focusIndianSection("storiesSection"); renderLocalStories(); }
+function openShorts(){ focusIndianSection("shortsSection"); }
+
+function readLocalStories(){
+    try{
+        const raw = JSON.parse(localStorage.getItem(INDIAN_STORY_KEY) || "[]");
+        const now = Date.now();
+        const active = raw.filter(item => item && Number(item.expiresAt) > now);
+        if(active.length !== raw.length) localStorage.setItem(INDIAN_STORY_KEY, JSON.stringify(active));
+        return active;
+    }catch(error){ return []; }
+}
+function renderLocalStories(){
+    const list = document.getElementById("storiesList");
+    if(!list) return;
+    const items = readLocalStories();
+    list.replaceChildren();
+    if(!items.length){ list.textContent = "No active stories yet. Add a photo or video above."; return; }
+    items.slice().reverse().forEach(item => {
+        const card = document.createElement("article");
+        card.style.cssText = "border:1px solid #ddd;border-radius:8px;padding:12px;margin:12px 0;";
+        const heading = document.createElement("h4"); heading.textContent = (item.owner || "Your story") + " — expires " + new Date(item.expiresAt).toLocaleString(); card.appendChild(heading);
+        const caption = document.createElement("p"); caption.textContent = item.caption || "(No caption)"; card.appendChild(caption);
+        const url = localStoryUrls.get(item.id);
+        if(url){
+            const media = item.kind === "video" ? document.createElement("video") : document.createElement("img");
+            media.src = url; media.controls = item.kind === "video"; media.alt = item.kind === "image" ? "Story photo" : "Story video";
+            media.style.cssText = "display:block;max-width:100%;max-height:480px;border-radius:6px;margin:8px 0;"; card.appendChild(media);
+        } else {
+            const note = document.createElement("p"); note.textContent = "This story's media is only available in the current page session. Re-add it after refreshing."; card.appendChild(note);
+        }
+        if(item.musicLabel){ const m=document.createElement("p"); m.textContent="Music: "+item.musicLabel; card.appendChild(m); }
+        const remove = document.createElement("button"); remove.className="action"; remove.type="button"; remove.textContent="Delete my story";
+        remove.addEventListener("click",()=>{ localStorage.setItem(INDIAN_STORY_KEY,JSON.stringify(readLocalStories().filter(x=>x.id!==item.id))); const old=localStoryUrls.get(item.id); if(old) URL.revokeObjectURL(old); localStoryUrls.delete(item.id); renderLocalStories(); });
+        card.appendChild(remove); list.appendChild(card);
+    });
+}
+function playStoryDemoTone(choice){
+    stopStoryDemoTone();
+    if(!choice || choice === "none") return;
+    try{
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if(!AudioCtx) return;
+        storyAudioContext = new AudioCtx();
+        const patterns = {gentle:[392,494,587], bright:[523,659,784], calm:[262,330,392]};
+        const notes = patterns[choice] || patterns.gentle;
+        notes.forEach((freq,index)=>{
+            const osc=storyAudioContext.createOscillator(); const gain=storyAudioContext.createGain();
+            osc.type="sine"; osc.frequency.value=freq; gain.gain.value=0.035;
+            osc.connect(gain); gain.connect(storyAudioContext.destination); osc.start();
+            const start=storyAudioContext.currentTime+index*0.35; gain.gain.setValueAtTime(0.035,start); gain.gain.setTargetAtTime(0.001,start+0.25,0.08); osc.stop(start+0.8); storyToneNodes.push(osc);
+        });
+    }catch(error){}
+}
+function stopStoryDemoTone(){
+    storyToneNodes.forEach(node=>{try{node.stop()}catch(error){}}); storyToneNodes=[];
+    if(storyAudioContext){try{storyAudioContext.close()}catch(error){} storyAudioContext=null;}
+}
+function publishLocalStory(){
+    const mediaInput=document.getElementById("storyMediaInput"); const audioInput=document.getElementById("storyAudioInput");
+    const status=document.getElementById("storiesStatus"); const file=mediaInput && mediaInput.files && mediaInput.files[0];
+    if(!file){status.textContent="Please choose a photo or video first.";return;}
+    if(!(file.type.startsWith("image/") || file.type==="video/mp4" || file.type==="video/webm")){status.textContent="Choose an image, MP4 or WebM video.";return;}
+    if(file.size>25*1024*1024){status.textContent="Please choose a file smaller than 25 MB for this prototype.";return;}
+    const audio=audioInput && audioInput.files && audioInput.files[0];
+    if(audio && !audio.type.startsWith("audio/")){status.textContent="Please choose a valid audio file.";return;}
+    const items=readLocalStories(); const id="story-"+Date.now()+"-"+Math.random().toString(36).slice(2,8);
+    const kind=file.type.startsWith("image/")?"image":"video"; const musicChoice=document.getElementById("storyMusicChoice").value;
+    const musicLabel=audio ? audio.name : ({none:"",gentle:"Gentle instrumental demo tone",bright:"Bright instrumental demo tone",calm:"Calm instrumental demo tone"}[musicChoice]||"");
+    items.push({id,owner:typeof profileName==="string"?profileName:"Indian user",caption:(document.getElementById("storyCaption").value||"").slice(0,300),kind,createdAt:Date.now(),expiresAt:Date.now()+24*60*60*1000,musicLabel});
+    try{localStorage.setItem(INDIAN_STORY_KEY,JSON.stringify(items));}catch(error){status.textContent="Browser storage is full or unavailable. Remove older stories and try again.";return;}
+    localStoryUrls.set(id,URL.createObjectURL(file));
+    if(audio){ const audioUrl=URL.createObjectURL(audio); const player=document.createElement("audio"); player.controls=true; player.src=audioUrl; player.setAttribute("aria-label","Your selected story music preview"); status.replaceChildren(document.createTextNode("Story added on this device. Preview your selected audio: "),player); }
+    else {status.textContent="Story added on this device. It will expire after 24 hours."; if(musicChoice!=="none") playStoryDemoTone(musicChoice);}
+    renderLocalStories(); mediaInput.value=""; if(audioInput)audioInput.value=""; document.getElementById("storyCaption").value="";
+}
+function previewLocalShort(){
+    const input=document.getElementById("shortVideoInput"); const status=document.getElementById("shortsStatus"); const feed=document.getElementById("shortsFeed"); const file=input && input.files && input.files[0];
+    if(!file){status.textContent="Please choose a video first.";return;}
+    if(!["video/mp4","video/webm"].includes(file.type)){status.textContent="Choose an MP4 or WebM video.";return;}
+    if(file.size>50*1024*1024){status.textContent="Please choose a video smaller than 50 MB for this prototype.";return;}
+    const url=URL.createObjectURL(file); localShortUrls.push(url);
+    const card=document.createElement("article"); card.style.cssText="max-width:420px;margin:12px auto;border:1px solid #ddd;border-radius:12px;padding:12px;text-align:center;";
+    const video=document.createElement("video"); video.src=url; video.controls=true; video.playsInline=true; video.style.cssText="width:100%;max-height:70vh;object-fit:contain;background:#111;border-radius:8px;"; video.setAttribute("aria-label","Short video preview"); card.appendChild(video);
+    const caption=document.createElement("p"); caption.textContent=(document.getElementById("shortCaption").value||"").slice(0,300); card.appendChild(caption);
+    const note=document.createElement("p"); note.textContent="Local preview only — not yet published to other users."; card.appendChild(note);
+    feed.prepend(card); status.textContent="Short video preview is ready."; input.value="";
+}
+
+/* =========================
    START
 ========================= */
 
@@ -5679,6 +5841,7 @@ async function ensureCurrentUserPublicProfile(){
 async function loadFirebasePublicProfiles(){
     if(!firebaseDb || !firebaseCurrentUser) return;
     try{
+        await ensureCurrentUserPublicProfile();
         const snapshot = await getDocs(collection(firebaseDb, "publicProfiles"));
         const profiles = snapshot.docs.map(function(d){ return d.data() || {}; }).filter(function(profile){
             return profile.uid && profile.uid !== firebaseCurrentUser.uid && profile.displayName;
@@ -5984,6 +6147,98 @@ else{
  }
  onAuthStateChanged(auth,async u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){await window.loadIndianProfileFromFirestore?.();wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Firestore persistence active. Posts, comments, replies, likes, follows, notifications, help requests and Firebase messages are being synchronized.";}else clear();});
 }
+</script>
+
+
+<script>
+/* Indian Stage 2: registered-user discovery, profile details, shared follow controls, story like controls. */
+(function(){
+  'use strict';
+  function el(id){return document.getElementById(id);}
+  function profiles(){return Array.isArray(window.indianFirebasePublicProfiles)?window.indianFirebasePublicProfiles:[];}
+  function people(){return Array.isArray(window.peopleData)?window.peopleData:[];}
+  function findPerson(profile){return people().find(function(p){return p.firebaseUid===profile.uid;})||null;}
+  function actionButton(label,aria,handler){var b=document.createElement('button');b.type='button';b.className='action';b.textContent=label;b.setAttribute('aria-label',aria);b.addEventListener('click',handler);return b;}
+  window.searchRegisteredUsersForMessages=function(){
+    var box=el('messageUserSearch'),out=el('messageUserResults');if(!box||!out)return;
+    var q=box.value.trim().toLowerCase();out.replaceChildren();
+    if(!q){out.textContent='Type a registered user name to search.';return;}
+    var list=profiles().filter(function(p){return p.uid && String(p.displayName||'').toLowerCase().includes(q);});
+    if(!list.length){out.textContent='No registered users found. Sign in and make sure the other user has saved a public profile.';return;}
+    list.forEach(function(profile){
+      var card=document.createElement('article');card.style.cssText='border:1px solid #ddd;border-radius:8px;padding:10px;margin:8px 0;';
+      var name=document.createElement('h4');name.textContent=String(profile.displayName||'Indian User');card.appendChild(name);
+      if(profile.bio){var bio=document.createElement('p');bio.textContent=String(profile.bio);card.appendChild(bio);}
+      if(profile.photoURL){var img=document.createElement('img');img.src=String(profile.photoURL);img.alt=String(profile.displayName||'User')+' profile photo';img.style.cssText='max-width:90px;max-height:90px;border-radius:50%;';card.appendChild(img);}
+      card.appendChild(actionButton('View Profile','View profile of '+name.textContent,function(){showRegisteredProfile(profile);}));
+      var person=findPerson(profile);
+      if(person){
+        card.appendChild(actionButton(person.isFollowing?'Unfollow':'Follow',(person.isFollowing?'Unfollow ':'Follow ')+name.textContent,function(){
+          if(profile.uid===window.firebaseCurrentUid){alert('You cannot follow your own account.');return;}
+          if(typeof window.togglePersonFollow==='function'){window.togglePersonFollow(person.id);setTimeout(window.searchRegisteredUsersForMessages,100);}else{alert('Please sign in to use Follow.');}
+        }));
+        card.appendChild(actionButton('Message','Message '+name.textContent,function(){
+          if(typeof window.openConversation==='function'){window.openConversation(person.id);}else{alert('The messaging panel is not ready.');}
+        }));
+      }else{
+        var note=document.createElement('p');note.textContent='This profile is visible, but its messaging connection is not ready yet.';card.appendChild(note);
+      }
+      out.appendChild(card);
+    });
+  };
+  function showRegisteredProfile(profile){
+    var old=el('indianPublicProfileDialog');if(old)old.remove();
+    var dialog=document.createElement('section');dialog.id='indianPublicProfileDialog';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','indianPublicProfileTitle');dialog.style.cssText='position:relative;border:2px solid #2563eb;background:#fff;padding:16px;margin:14px 0;border-radius:10px;';
+    var close=actionButton('Close profile','Close profile details',function(){dialog.remove();});dialog.appendChild(close);
+    var title=document.createElement('h3');title.id='indianPublicProfileTitle';title.textContent=String(profile.displayName||'Indian User');dialog.appendChild(title);
+    if(profile.photoURL){var img=document.createElement('img');img.src=String(profile.photoURL);img.alt=title.textContent+' profile photo';img.style.cssText='max-width:120px;max-height:120px;border-radius:50%;';dialog.appendChild(img);}
+    var bio=document.createElement('p');bio.textContent='Bio: '+String(profile.bio||'No bio shared.');dialog.appendChild(bio);
+    var uid=document.createElement('p');uid.textContent='Account: registered Indian user';dialog.appendChild(uid);
+    var person=findPerson(profile);
+    if(person){
+      var counts=document.createElement('p');counts.textContent='Followers: '+Number(person.followersCount||0)+' | Following: '+Number(person.followingCount||0);dialog.appendChild(counts);
+      dialog.appendChild(actionButton(person.isFollowing?'Unfollow':'Follow',(person.isFollowing?'Unfollow ':'Follow ')+title.textContent,function(){if(profile.uid===window.firebaseCurrentUid){alert('You cannot follow your own account.');return;}if(typeof window.togglePersonFollow==='function'){window.togglePersonFollow(person.id);counts.textContent='Followers: '+Number(person.followersCount||0)+' | Following: '+Number(person.followingCount||0); }else alert('Please sign in to use Follow.');}));
+      dialog.appendChild(actionButton('Message','Message '+title.textContent,function(){if(typeof window.openConversation==='function')window.openConversation(person.id);else alert('The messaging panel is not ready.');}));
+    }
+    var postsTitle=document.createElement('h4');postsTitle.textContent='Public posts';dialog.appendChild(postsTitle);
+    var matched=Array.from(document.querySelectorAll('#postsContainer .post')).filter(function(post){return (post.dataset.uid===profile.uid)||(post.querySelector('.postTitle')&&post.querySelector('.postTitle').textContent.trim().toLowerCase()===String(profile.displayName||'').toLowerCase());});
+    if(!matched.length){var empty=document.createElement('p');empty.textContent='No matching public posts are currently loaded.';dialog.appendChild(empty);}else matched.forEach(function(post){var copy=document.createElement('div');copy.style.cssText='border-top:1px solid #ddd;padding:8px 0;';copy.textContent=(post.querySelector('.postTitle')?.textContent||title.textContent)+': '+(post.innerText||'').slice(0,250);dialog.appendChild(copy);});
+    var target=el('messagesSection')||el('searchSection')||document.querySelector('main');target.prepend(dialog);dialog.focus();dialog.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  function addStoryActions(){
+    var list=el('storiesList');if(!list)return;
+    Array.from(list.querySelectorAll('article')).forEach(function(card){
+      if(card.dataset.stage2Actions==='yes')return;card.dataset.stage2Actions='yes';
+      var owner=(card.querySelector('h4')?.textContent||'').split(' — expires')[0].trim();
+      var storyId='story:'+owner+':'+(card.querySelector('p')?.textContent||'');
+      var stateKey='indian_story_likes_v1';var state={};try{state=JSON.parse(localStorage.getItem(stateKey)||'{}')||{};}catch(e){}
+      var row=document.createElement('div');row.className='storySocialActions';
+      var like=actionButton(state[storyId]?'Unlike story':'Like story','Like or unlike story by '+owner,function(){var next={};try{next=JSON.parse(localStorage.getItem(stateKey)||'{}')||{};}catch(e){};next[storyId]=!next[storyId];try{localStorage.setItem(stateKey,JSON.stringify(next));}catch(e){};like.textContent=next[storyId]?'Unlike story':'Like story';});row.appendChild(like);
+      var person=people().find(function(p){return String(p.name||'').toLowerCase()===owner.toLowerCase();});
+      if(person&&Number(person.id)!==0){row.appendChild(actionButton(person.isFollowing?'Unfollow':'Follow','Follow or unfollow story creator '+owner,function(){if(typeof window.togglePersonFollow==='function'){window.togglePersonFollow(person.id);this.textContent=person.isFollowing?'Unfollow':'Follow';}else alert('Please sign in to use Follow.');}));}
+      card.appendChild(row);
+    });
+  }
+  function addPostFollowActions(){
+    Array.from(document.querySelectorAll('#postsContainer .post')).forEach(function(post){
+      if(post.dataset.stage2Follow==='yes')return;
+      var title=post.querySelector('.postTitle');if(!title)return;
+      var author=title.textContent.trim();var person=people().find(function(p){return String(p.name||'').toLowerCase()===author.toLowerCase();});
+      if(!person||Number(person.id)===0)return;
+      var actions=post.querySelector('.postActions')||post;
+      var b=actionButton(person.isFollowing?'Unfollow':'Follow','Follow or unfollow '+author,function(){if(typeof window.togglePersonFollow==='function'){window.togglePersonFollow(person.id);b.textContent=person.isFollowing?'Unfollow':'Follow';}else alert('Please sign in to use Follow.');});
+      actions.appendChild(b);post.dataset.stage2Follow='yes';
+      title.style.cursor='pointer';title.setAttribute('role','button');title.setAttribute('tabindex','0');title.setAttribute('aria-label','View profile of '+author);
+      title.addEventListener('click',function(){var profile=profiles().find(function(p){return String(p.displayName||'').toLowerCase()===author.toLowerCase();});if(profile)showRegisteredProfile(profile);});
+      title.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();title.click();}});
+    });
+  }
+  function refreshSocialActions(){addStoryActions();addPostFollowActions();}
+  document.addEventListener('DOMContentLoaded',function(){refreshSocialActions();});
+  var observer=new MutationObserver(function(){refreshSocialActions();});
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+  window.showIndianRegisteredProfile=showRegisteredProfile;
+})();
 </script>
 
 </body>

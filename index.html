@@ -5171,9 +5171,9 @@ function setFirebaseUploadStatus(message, spinning){
 }
 
 function sanitizePlainText(value, maxLength){
-    return String(value || "")
+    return String(value == null ? "" : value)
         .normalize("NFKC")
-        .replace(/[\\u0000-\\u001F\\u007F]/g, "")
+        .replace(/[\u0000-\u001F\u007F\u200B\uFEFF]/g, "")
         .trim()
         .slice(0, maxLength || 500);
 }

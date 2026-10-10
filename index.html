@@ -3916,693 +3916,206 @@ function addPostToProfile(
 ========================= */
 
 function addCommentSystem(post, postId){
-
-    const commentSection =
-        document.createElement("div");
-
-    commentSection.className =
-        "commentSection";
-
-
-    const commentButton =
-        document.createElement("button");
-
-    commentButton.className =
-        "action";
-
-    commentButton.type =
-        "button";
-
-    commentButton.textContent =
-        "Comment";
-
-
-    const commentForm =
-        document.createElement("div");
-
-    commentForm.style.display =
-        "none";
-
-
-    const commentLabel =
-        document.createElement("label");
-
-    commentLabel.textContent =
-        "Write your comment:";
-
-
-    const commentBox =
-        document.createElement("textarea");
-
-    commentBox.className =
-        "commentBox";
-
-    commentBox.placeholder =
-        "Write a comment...";
-
-
-    const commentMediaLabel =
-        document.createElement("label");
-
-    commentMediaLabel.className =
-        "fileLabel";
-
-    commentMediaLabel.textContent =
-        "Add photo or video to comment:";
-
-
-    const commentMediaInput =
-        document.createElement("input");
-
-    commentMediaInput.type =
-        "file";
-
-    commentMediaInput.className =
-        "smallFileInput";
-
-    commentMediaInput.accept =
-        "image/*,video/*";
-
-    commentMediaInput.multiple =
-        true;
-
-
-    const commentSubmit =
-        document.createElement("button");
-
-    commentSubmit.className =
-        "action";
-
-    commentSubmit.type =
-        "button";
-
-    commentSubmit.textContent =
-        "Post Comment";
-
-
-    const commentCancel =
-        document.createElement("button");
-
-    commentCancel.className =
-        "action";
-
-    commentCancel.type =
-        "button";
-
-    commentCancel.textContent =
-        "Cancel";
-
-
-    const commentsContainer =
-        document.createElement("div");
-
-
-    commentButton.onclick =
-        function(){
-
-            commentForm.style.display =
-                "block";
-
-            commentBox.focus();
-        };
-
-
-    commentCancel.onclick =
-        function(){
-
-            commentBox.value = "";
-
-            commentMediaInput.value = "";
-
-            commentForm.style.display =
-                "none";
-
-            commentButton.focus();
-        };
-
-
-    commentSubmit.onclick =
-        function(){
-
-            addComment(
-                commentBox,
-                commentMediaInput,
-                commentsContainer,
-                commentForm,
-                commentButton,
-                postId
-            );
-        };
-
-
-    commentForm.appendChild(
-        commentLabel
-    );
-
-    commentForm.appendChild(
-        commentBox
-    );
-
-    commentForm.appendChild(
-        commentMediaLabel
-    );
-
-    commentForm.appendChild(
-        commentMediaInput
-    );
-
-    commentForm.appendChild(
-        commentSubmit
-    );
-
-    commentForm.appendChild(
-        commentCancel
-    );
-
-
-    commentSection.appendChild(
-        commentButton
-    );
-
-    commentSection.appendChild(
-        commentForm
-    );
-
-    commentSection.appendChild(
-        commentsContainer
-    );
-
-
-    post.appendChild(
-        commentSection
-    );
+    const commentSection = document.createElement("div");
+    commentSection.className = "commentSection";
+
+    const commentButton = document.createElement("button");
+    commentButton.className = "action";
+    commentButton.type = "button";
+    commentButton.textContent = "Comment";
+
+    const commentForm = document.createElement("div");
+    commentForm.style.display = "none";
+
+    const commentLabel = document.createElement("label");
+    commentLabel.textContent = "Write your comment:";
+
+    const commentBox = document.createElement("textarea");
+    commentBox.className = "commentBox";
+    commentBox.placeholder = "Write a comment...";
+
+    const commentSubmit = document.createElement("button");
+    commentSubmit.className = "action";
+    commentSubmit.type = "button";
+    commentSubmit.textContent = "Post Comment";
+
+    const commentCancel = document.createElement("button");
+    commentCancel.className = "action";
+    commentCancel.type = "button";
+    commentCancel.textContent = "Cancel";
+
+    const commentsContainer = document.createElement("div");
+
+    commentButton.onclick = function(){
+        commentForm.style.display = "block";
+        commentBox.focus();
+    };
+    commentCancel.onclick = function(){
+        commentBox.value = "";
+        commentForm.style.display = "none";
+        commentButton.focus();
+    };
+    commentSubmit.onclick = function(){
+        addComment(commentBox, commentsContainer, commentForm, commentButton, postId);
+    };
+
+    commentForm.appendChild(commentLabel);
+    commentForm.appendChild(commentBox);
+    commentForm.appendChild(commentSubmit);
+    commentForm.appendChild(commentCancel);
+    commentSection.appendChild(commentButton);
+    commentSection.appendChild(commentForm);
+    commentSection.appendChild(commentsContainer);
+    post.appendChild(commentSection);
 }
 
-
-function addComment(
-    commentBox,
-    commentMediaInput,
-    commentsContainer,
-    commentForm,
-    commentButton,
-    postId
-){
-
-    const commentText =
-        commentBox.value.trim();
-
-    const files =
-        Array.from(
-            commentMediaInput.files
-        );
-
-
-    if(
-        commentText === "" &&
-        files.length === 0
-    ){
-
-        alert(
-            "Please write a comment or select a photo or video."
-        );
-
+function addComment(commentBox, commentsContainer, commentForm, commentButton, postId){
+    const commentText = commentBox.value.trim();
+    if(commentText === ""){
+        alert("Please write a comment.");
         commentBox.focus();
-
         return;
     }
 
-
     const commentId = "comment-" + Date.now();
-
-    const comment =
-        document.createElement("div");
-
-    comment.className =
-        "comment";
-
+    const comment = document.createElement("div");
+    comment.className = "comment";
     comment.id = commentId;
-
     comment.setAttribute("tabindex", "-1");
 
-
-    const title =
-        document.createElement("div");
-
-    title.className =
-        "commentTitle";
-
-    title.textContent =
-        profileName;
-
+    const title = document.createElement("div");
+    title.className = "commentTitle";
+    title.textContent = profileName;
     comment.appendChild(title);
 
+    const content = document.createElement("div");
+    content.textContent = commentText;
+    comment.appendChild(content);
 
-    if(commentText !== ""){
-
-        const content =
-            document.createElement("div");
-
-        content.textContent =
-            commentText;
-
-        comment.appendChild(content);
-    }
-
-
-    if(files.length > 0){
-
-        const media =
-            document.createElement("div");
-
-        media.className =
-            "commentMedia";
-
-        addMediaToContainer(
-            media,
-            files,
-            "comment"
-        );
-
-        comment.appendChild(media);
-    }
-
-
-    const time =
-        document.createElement("div");
-
-    time.className =
-        "commentTime";
-
-    time.textContent =
-        "Commented at " +
-        new Date().toLocaleTimeString();
-
+    const time = document.createElement("div");
+    time.className = "commentTime";
+    time.textContent = "Commented at " + new Date().toLocaleTimeString();
     comment.appendChild(time);
 
+    const actions = document.createElement("div");
+    actions.className = "commentActions";
+    actions.appendChild(createLikeButton("comment", commentId));
 
-    const actions =
-        document.createElement("div");
-
-    actions.className =
-        "commentActions";
-
-
-    actions.appendChild(
-        createLikeButton("comment", commentId)
-    );
-
-
-    const share =
-        document.createElement("button");
-
-    share.className =
-        "action shareButton";
-
-    share.type =
-        "button";
-
-    share.textContent =
-        "Share";
-
-
-    share.onclick =
-        function(){
-
-            shareContent(
-                commentText ||
-                "Photo or video comment"
-            );
-        };
-
-
+    const share = document.createElement("button");
+    share.className = "action shareButton";
+    share.type = "button";
+    share.textContent = "Share";
+    share.onclick = function(){ shareContent(commentText); };
     actions.appendChild(share);
-
     comment.appendChild(actions);
 
-
-    addReplySystem(
-        comment,
-        commentText,
-        commentId
-    );
-
-
-    commentsContainer.appendChild(
-        comment
-    );
-
+    addReplySystem(comment, commentText, commentId);
+    commentsContainer.appendChild(comment);
     addNotification("Someone commented on a post.", "comment", commentId);
-
-
     commentBox.value = "";
-
-    commentMediaInput.value = "";
-
-    commentForm.style.display =
-        "none";
-
+    commentForm.style.display = "none";
     commentButton.focus();
 }
-
 
 /* =========================
    REPLIES
 ========================= */
 
-function addReplySystem(
-    comment,
-    commentText,
-    commentId
-){
+function addReplySystem(comment, commentText, commentId){
+    const replyButton = document.createElement("button");
+    replyButton.className = "action";
+    replyButton.type = "button";
+    replyButton.textContent = "Reply";
 
-    const replyButton =
-        document.createElement("button");
+    const replyForm = document.createElement("div");
+    replyForm.style.display = "none";
 
-    replyButton.className =
-        "action";
+    const replyLabel = document.createElement("label");
+    replyLabel.textContent = "Write your reply:";
 
-    replyButton.type =
-        "button";
+    const replyBox = document.createElement("textarea");
+    replyBox.className = "replyBox";
+    replyBox.placeholder = "Write a reply...";
 
-    replyButton.textContent =
-        "Reply";
+    const replySubmit = document.createElement("button");
+    replySubmit.className = "action";
+    replySubmit.type = "button";
+    replySubmit.textContent = "Post Reply";
 
+    const replyCancel = document.createElement("button");
+    replyCancel.className = "action";
+    replyCancel.type = "button";
+    replyCancel.textContent = "Cancel";
 
-    const replyForm =
-        document.createElement("div");
+    const repliesContainer = document.createElement("div");
+    replyButton.onclick = function(){
+        replyForm.style.display = "block";
+        replyBox.focus();
+    };
+    replyCancel.onclick = function(){
+        replyBox.value = "";
+        replyForm.style.display = "none";
+        replyButton.focus();
+    };
+    replySubmit.onclick = function(){
+        addReply(replyBox, repliesContainer, replyForm, replyButton, commentId);
+    };
 
-    replyForm.style.display =
-        "none";
-
-
-    const replyLabel =
-        document.createElement("label");
-
-    replyLabel.textContent =
-        "Write your reply:";
-
-
-    const replyBox =
-        document.createElement("textarea");
-
-    replyBox.className =
-        "replyBox";
-
-    replyBox.placeholder =
-        "Write a reply...";
-
-
-    const replyMediaLabel =
-        document.createElement("label");
-
-    replyMediaLabel.className =
-        "fileLabel";
-
-    replyMediaLabel.textContent =
-        "Add photo or video to reply:";
-
-
-    const replyMediaInput =
-        document.createElement("input");
-
-    replyMediaInput.type =
-        "file";
-
-    replyMediaInput.className =
-        "smallFileInput";
-
-    replyMediaInput.accept =
-        "image/*,video/*";
-
-    replyMediaInput.multiple =
-        true;
-
-
-    const replySubmit =
-        document.createElement("button");
-
-    replySubmit.className =
-        "action";
-
-    replySubmit.type =
-        "button";
-
-    replySubmit.textContent =
-        "Post Reply";
-
-
-    const replyCancel =
-        document.createElement("button");
-
-    replyCancel.className =
-        "action";
-
-    replyCancel.type =
-        "button";
-
-    replyCancel.textContent =
-        "Cancel";
-
-
-    const repliesContainer =
-        document.createElement("div");
-
-
-    replyButton.onclick =
-        function(){
-
-            replyForm.style.display =
-                "block";
-
-            replyBox.focus();
-        };
-
-
-    replyCancel.onclick =
-        function(){
-
-            replyBox.value = "";
-
-            replyMediaInput.value = "";
-
-            replyForm.style.display =
-                "none";
-
-            replyButton.focus();
-        };
-
-
-    replySubmit.onclick =
-        function(){
-
-            addReply(
-                replyBox,
-                replyMediaInput,
-                repliesContainer,
-                replyForm,
-                replyButton,
-                commentId
-            );
-        };
-
-
-    replyForm.appendChild(
-        replyLabel
-    );
-
-    replyForm.appendChild(
-        replyBox
-    );
-
-    replyForm.appendChild(
-        replyMediaLabel
-    );
-
-    replyForm.appendChild(
-        replyMediaInput
-    );
-
-    replyForm.appendChild(
-        replySubmit
-    );
-
-    replyForm.appendChild(
-        replyCancel
-    );
-
-
-    comment.appendChild(
-        replyButton
-    );
-
-    comment.appendChild(
-        replyForm
-    );
-
-    comment.appendChild(
-        repliesContainer
-    );
+    replyForm.appendChild(replyLabel);
+    replyForm.appendChild(replyBox);
+    replyForm.appendChild(replySubmit);
+    replyForm.appendChild(replyCancel);
+    comment.appendChild(replyButton);
+    comment.appendChild(replyForm);
+    comment.appendChild(repliesContainer);
 }
 
-
-function addReply(
-    replyBox,
-    replyMediaInput,
-    repliesContainer,
-    replyForm,
-    replyButton,
-    commentId
-){
-
-    const replyText =
-        replyBox.value.trim();
-
-    const files =
-        Array.from(
-            replyMediaInput.files
-        );
-
-
-    if(
-        replyText === "" &&
-        files.length === 0
-    ){
-
-        alert(
-            "Please write a reply or select a photo or video."
-        );
-
+function addReply(replyBox, repliesContainer, replyForm, replyButton, commentId){
+    const replyText = replyBox.value.trim();
+    if(replyText === ""){
+        alert("Please write a reply.");
         replyBox.focus();
-
         return;
     }
 
-
     const replyId = "reply-" + Date.now();
-
-    const reply =
-        document.createElement("div");
-
-    reply.className =
-        "reply";
-
+    const reply = document.createElement("div");
+    reply.className = "reply";
     reply.id = replyId;
-
     reply.setAttribute("tabindex", "-1");
 
-
-    const title =
-        document.createElement("div");
-
-    title.className =
-        "replyTitle";
-
-    title.textContent =
-        profileName;
-
+    const title = document.createElement("div");
+    title.className = "replyTitle";
+    title.textContent = profileName;
     reply.appendChild(title);
 
+    const content = document.createElement("div");
+    content.textContent = replyText;
+    reply.appendChild(content);
 
-    if(replyText !== ""){
-
-        const content =
-            document.createElement("div");
-
-        content.textContent =
-            replyText;
-
-        reply.appendChild(content);
-    }
-
-
-    if(files.length > 0){
-
-        const media =
-            document.createElement("div");
-
-        media.className =
-            "replyMedia";
-
-        addMediaToContainer(
-            media,
-            files,
-            "reply"
-        );
-
-        reply.appendChild(media);
-    }
-
-
-    const time =
-        document.createElement("div");
-
-    time.className =
-        "commentTime";
-
-    time.textContent =
-        "Replied at " +
-        new Date().toLocaleTimeString();
-
+    const time = document.createElement("div");
+    time.className = "commentTime";
+    time.textContent = "Replied at " + new Date().toLocaleTimeString();
     reply.appendChild(time);
 
+    const actions = document.createElement("div");
+    actions.className = "replyActions";
+    actions.appendChild(createLikeButton("reply", replyId));
 
-    const actions =
-        document.createElement("div");
-
-    actions.className =
-        "replyActions";
-
-
-    actions.appendChild(
-        createLikeButton("reply", replyId)
-    );
-
-
-    const share =
-        document.createElement("button");
-
-    share.className =
-        "action shareButton";
-
-    share.type =
-        "button";
-
-    share.textContent =
-        "Share";
-
-
-    share.onclick =
-        function(){
-
-            shareContent(
-                replyText ||
-                "Photo or video reply"
-            );
-        };
-
-
+    const share = document.createElement("button");
+    share.className = "action shareButton";
+    share.type = "button";
+    share.textContent = "Share";
+    share.onclick = function(){ shareContent(replyText); };
     actions.appendChild(share);
-
     reply.appendChild(actions);
 
-
-    repliesContainer.appendChild(
-        reply
-    );
-
+    repliesContainer.appendChild(reply);
     addNotification("Someone replied to a comment.", "reply", replyId);
-
-
     replyBox.value = "";
-
-    replyMediaInput.value = "";
-
-    replyForm.style.display =
-        "none";
-
+    replyForm.style.display = "none";
     replyButton.focus();
 }
-
 
 /* =========================
    HELP
@@ -6011,8 +5524,8 @@ else{
  async function savePost(text,files,el){
    if(!currentUser||!el)return;
    try{
-     const ref=await addDoc(collection(db,"posts"),{uid:currentUser.uid,displayName:name(),text:clean(text,5000),mediaCount:Math.min(files.length,10),clientId:el.id,createdAt:serverTimestamp(),createdAtMs:now()});
-     el.dataset.firestoreId=ref.id;
+     const postDocRef=await addDoc(collection(db,"posts"),{uid:currentUser.uid,displayName:name(),text:clean(text,5000),mediaCount:Math.min(files.length,10),clientId:el.id,createdAt:serverTimestamp(),createdAtMs:now()});
+     el.dataset.firestoreId=postDocRef.id;
      el.dataset.clientId=el.id;
      if(files.length && storage){
        const media=[];
@@ -6022,13 +5535,13 @@ else{
          if(file.size > 50*1024*1024) continue;
          try{
            const safe=String(file.name||"media").replace(/[^A-Za-z0-9._-]/g,"_").slice(-100);
-           const storageRef=ref(storage,"users/"+currentUser.uid+"/posts/"+ref.id+"/"+Date.now()+"_"+safe);
+           const storageRef=ref(storage,"users/"+currentUser.uid+"/posts/"+postDocRef.id+"/"+Date.now()+"_"+safe);
            await uploadBytes(storageRef,file,{contentType:kind,cacheControl:"private, max-age=3600"});
            const url=await getDownloadURL(storageRef);
            media.push({url:url,type:kind.startsWith("video/")?"video":"image",name:safe});
          }catch(mediaError){ console.warn("Post media upload failed",mediaError); }
        }
-       if(media.length) await updateDoc(ref,{media:media,mediaCount:media.length});
+       if(media.length) await updateDoc(postDocRef,{media:media,mediaCount:media.length});
      }
    }catch(e){alertSave("Post",e);}
  }
@@ -6138,8 +5651,8 @@ else{
  function wrap(){
    if(window.__indianFirestoreWrapped)return;window.__indianFirestoreWrapped=true;
    const pub=window.publishPost;window.publishPost=async function(){const box=document.getElementById("postBox"),input=document.getElementById("mediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),before=new Set([...document.querySelectorAll("#postsContainer .post")].map(x=>x.id));pub?.();const created=[...document.querySelectorAll("#postsContainer .post")].find(x=>!before.has(x.id));if(created)await savePost(text,files,created);};
-   const ac=window.addComment;window.addComment=async function(a,b,c,d,e,f){const text=a?.value.trim()||"",before=new Set([...c.children].map(x=>x.id));ac?.(a,b,c,d,e,f);const created=[...c.children].find(x=>!before.has(x.id));if(created&&text)await saveComment(f,created.id,text);};
-   const ar=window.addReply;window.addReply=async function(a,b,c,d,e,f){const text=a?.value.trim()||"",before=new Set([...c.children].map(x=>x.id));ar?.(a,b,c,d,e,f);const created=[...c.children].find(x=>!before.has(x.id));if(created&&text)await saveReply(f,created.id,text);};
+   const ac=window.addComment;window.addComment=async function(a,b,c,d,e){const text=a?.value.trim()||"",before=new Set([...b.children].map(x=>x.id));ac?.(a,b,c,d,e);const created=[...b.children].find(x=>!before.has(x.id));if(created&&text)await saveComment(e,created.id,text);};
+   const ar=window.addReply;window.addReply=async function(a,b,c,d,e){const text=a?.value.trim()||"",before=new Set([...b.children].map(x=>x.id));ar?.(a,b,c,d,e);const created=[...b.children].find(x=>!before.has(x.id));if(created&&text)await saveReply(e,created.id,text);};
    const ah=window.submitHelp;window.submitHelp=async function(){const box=document.getElementById("helpBox"),input=document.getElementById("helpMediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),before=new Set([...document.querySelectorAll("#helpContainer .helpRequest")].map(x=>x.id));ah?.();const created=[...document.querySelectorAll("#helpContainer .helpRequest")].find(x=>!before.has(x.id));if(created)await saveHelp(text,files.length,created.id);};
    const an=window.addNotification;window.addNotification=async function(message,type,id){an?.(message,type,id);const n=window.notifications?.[0];if(n)await saveNotification(n);};
    const af=window.togglePersonFollow;window.togglePersonFollow=async function(id){af?.(id);const p=window.peopleData?.find(x=>x.id===id);if(p){ await saveFollow(p); if(p.isFollowing && p.firebaseUid) await saveRemoteNotification(p.firebaseUid, name()+" started following you.", "follow", p.id); }};

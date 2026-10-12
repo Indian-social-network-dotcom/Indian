@@ -1253,6 +1253,25 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 #onlineStoryViewer img{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:8px auto;border-radius:10px}
 @media(prefers-contrast:more){button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline-width:4px!important}}
 </style>
+
+<style id="indianHelpLiveVoiceEnhancements">
+.story-audio-options{margin:12px 0;padding:12px;border:1px solid #dbe3eb;border-radius:12px;background:#f9fbfd}
+.story-audio-options summary{font-weight:750;color:#173e69;cursor:pointer;padding:5px;min-height:40px;display:flex;align-items:center}
+.voice-entry-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:7px 0 12px}
+.voice-entry-tools button{min-height:42px;padding:8px 13px;border:1px solid #b8cce0;border-radius:10px;background:#f0f6fb;color:#173e69;font-weight:700;cursor:pointer}
+.voice-entry-tools button[aria-pressed="true"]{background:#ffe9e5;border-color:#d92d20;color:#9a271e}
+.voice-entry-status{margin:0;font-size:.9rem;color:#42556a;min-height:1.4em}
+.help-status-badge{display:inline-block;padding:4px 10px;border-radius:999px;background:#edf5fc;color:#174a7e;font-weight:750;font-size:.85rem}
+.help-status-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.help-status-actions button{min-height:42px}
+.helpRequest[data-help-status="Resolved"]{border-left-color:#138808}
+.helpRequest[data-help-status="In Progress"]{border-left-color:#d97706}
+.live-person-card .live-topic{padding:8px 10px;background:#f3f7fb;border-radius:8px}
+.live-person-card .live-meta{font-size:.9rem;color:#56677a}
+#liveActionStatus,#helpActionStatus,.voice-entry-status{overflow-wrap:anywhere}
+@media(prefers-reduced-motion:reduce){.voice-entry-tools button{transition:none!important}}
+</style>
+
 </head>
 
 <body class="auth-required">
@@ -1467,16 +1486,19 @@ Search registered users, places, posts or help requests:
 <textarea id="storyCaption" rows="3" maxlength="300" style="width:100%;margin:8px 0;" placeholder="Write something about your story..."></textarea>
 <label for="storyMediaInput">Choose a photo or video for your story:</label>
 <input id="storyMediaInput" type="file" accept="image/*,video/mp4,video/webm" aria-label="Choose photo or video for story" style="display:block;margin:8px 0;">
-<label for="storyMusicChoice">Choose music from the website list:</label>
-<select id="storyMusicChoice" style="display:block;margin:8px 0;padding:10px;width:100%;">
-<option value="none">No music</option>
-<option value="gentle">Gentle instrumental demo tone</option>
-<option value="bright">Bright instrumental demo tone</option>
-<option value="calm">Calm instrumental demo tone</option>
-</select>
-<p>These built-in choices are simple generated demo tones, not copyrighted songs. You can also choose your own audio file below.</p>
-<label for="storyAudioInput">Or choose your own audio file:</label>
-<input id="storyAudioInput" type="file" accept="audio/*" aria-label="Choose your own music audio file" style="display:block;margin:8px 0;">
+<details id="storyAudioOptions" class="story-audio-options">
+  <summary>Optional music and audio settings</summary>
+  <p>Built-in sounds are short generated demo tones, not songs. Other users must press Play in the story viewer because browsers usually block automatic audio.</p>
+  <label for="storyMusicChoice">Choose a website demo tune:</label>
+  <select id="storyMusicChoice" style="display:block;margin:8px 0;padding:10px;width:100%;">
+    <option value="none">No music</option>
+    <option value="gentle">Gentle instrumental demo tone</option>
+    <option value="bright">Bright instrumental demo tone</option>
+    <option value="calm">Calm instrumental demo tone</option>
+  </select>
+  <label for="storyAudioInput">Or choose your own short audio file (up to 16 KB to share online):</label>
+  <input id="storyAudioInput" type="file" accept="audio/*" aria-label="Choose your own music audio file" style="display:block;margin:8px 0;">
+</details>
 <button class="action" type="button" onclick="publishLocalStory()">Add Story</button>
 </form>
 <div id="storiesStatus" role="status" aria-live="polite" style="margin-top:12px;"></div>
@@ -1701,8 +1723,12 @@ Cancel
 <section id="liveZoneSection" tabindex="-1" aria-labelledby="liveZoneHeading">
 
 <h2 id="liveZoneHeading">Live Zone</h2>
-<p class="live-streaming-limit" role="note">Starting a session shares your live status with Indian users. Real-time camera video streaming is not connected in this version.</p>
+<p class="live-streaming-limit" role="note">You can share your live status, add a topic, and message other users marked live. Real-time camera video streaming is not connected in this version.</p>
+<label for="liveTitleInput">What is your live session about? (optional)</label>
+<input id="liveTitleInput" type="text" maxlength="100" autocomplete="off" placeholder="Example: Computer help, study session, community chat" aria-describedby="liveTitleHelp" style="display:block;width:100%;padding:12px;margin:8px 0 12px;border:1px solid #b9c9d6;border-radius:11px;">
+<p id="liveTitleHelp" class="mediaHelp">Your topic will appear to other registered users while your live status is active.</p>
 <button class="action" id="liveZoneToggleButton" type="button" onclick="toggleLive()" aria-label="Start or end your live status">Go Live</button>
+<div id="liveActionStatus" role="status" aria-live="polite" style="margin:8px 0;"></div>
 <div id="livePeopleFeed" aria-live="polite" aria-label="Indian users with live status"><p>No users are live right now.</p></div>
 
 <p id="liveStatus" role="status" aria-live="polite">
@@ -1726,9 +1752,16 @@ Live viewers: 0
 <h2 id="helpSectionHeading">Help</h2>
 
 <p>
-Ask for help or offer help to other people.
+Ask for help or offer help to other people. Each request starts as Open. The person who created it can update it to In Progress or Resolved.
 </p>
-
+<label for="helpStatusFilter">Filter help requests by status:</label>
+<select id="helpStatusFilter" aria-label="Filter help requests by status" style="display:block;width:100%;padding:10px;margin:8px 0 12px;border:1px solid #b9c9d6;border-radius:11px;background:#fff;color:#172b3a;">
+  <option value="all">All requests</option>
+  <option value="Open">Open</option>
+  <option value="In Progress">In Progress</option>
+  <option value="Resolved">Resolved</option>
+</select>
+<div id="helpActionStatus" role="status" aria-live="polite" style="margin:8px 0;"></div>
 <div id="helpForm" style="display:none;">
 
 <label for="helpCategory">Help category:</label>
@@ -4925,6 +4958,8 @@ function renderLocalStories(){
     if(!items.length){ list.textContent = "No active stories yet. Add a photo or video above."; return; }
     items.slice().reverse().forEach(item => {
         const card = document.createElement("article");
+        card.className = "local-story-card";
+        card.dataset.storyId = item.id;
         card.style.cssText = "border:1px solid #ddd;border-radius:8px;padding:12px;margin:12px 0;";
         const heading = document.createElement("h4"); heading.textContent = (item.owner || "Your story") + " — expires " + new Date(item.expiresAt).toLocaleString(); card.appendChild(heading);
         const caption = document.createElement("p"); caption.textContent = item.caption || "(No caption)"; card.appendChild(caption);
@@ -5853,17 +5888,19 @@ async function saveIndianStoryRecord(story){
     const data=snap.exists()?(snap.data()||{}):{};
     const nowMs=Date.now();
     const active=(Array.isArray(data.activeStories)?data.activeStories:[]).filter(item=>item && Number(item.expiresAt)>nowMs);
-    active.push({id:String(story.id||("story-"+nowMs)),owner:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),ownerUid:firebaseCurrentUser.uid,caption:sanitizePlainText(story.caption||"",300),imageData:story.imageData,createdAtMs:nowMs,expiresAt:nowMs+24*60*60*1000});
+    const musicChoice=["none","gentle","bright","calm"].includes(String(story.musicChoice||"none"))?String(story.musicChoice||"none"):"none";
+    const audioData=typeof story.audioData==="string" && story.audioData.startsWith("data:audio/") && story.audioData.length<=24000 ? story.audioData : "";
+    active.push({id:String(story.id||("story-"+nowMs)),owner:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),ownerUid:firebaseCurrentUser.uid,caption:sanitizePlainText(story.caption||"",300),imageData:story.imageData,musicChoice:musicChoice,audioData:audioData,createdAtMs:nowMs,expiresAt:nowMs+24*60*60*1000});
     await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),activeStories:active.slice(-3),lastStoryAtMs:nowMs,updatedAt:serverTimestamp()},{merge:true});
     return true;
 }
 
-async function setIndianFirestoreLiveStatus(isLiveNow, startedAtMs){
+async function setIndianFirestoreLiveStatus(isLiveNow, startedAtMs, liveTitle){
     if(!firebaseDb || !firebaseCurrentUser) throw new Error("Sign in to share your live status.");
-    await setDoc(doc(firebaseDb,"publicProfiles",firebaseCurrentUser.uid),{
+    await setDoc(doc(firebaseDb, "publicProfiles", firebaseCurrentUser.uid),{
       uid:firebaseCurrentUser.uid,
       displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),
-      liveSession:{isLive:!!isLiveNow,startedAtMs:isLiveNow?(Number(startedAtMs)||Date.now()):0,updatedAtMs:Date.now()},
+      liveSession:{isLive:!!isLiveNow,startedAtMs:isLiveNow?(Number(startedAtMs)||Date.now()):0,title:isLiveNow?sanitizePlainText(liveTitle||"",100):"",updatedAtMs:Date.now()},
       updatedAt:serverTimestamp()
     },{merge:true});
     return true;
@@ -6220,7 +6257,7 @@ else{
    if(!currentUser)return;
    try{
      const category=clean(document.getElementById("helpCategory")?.value||"General",50);
-     await addDoc(collection(db,"helpRequests"),{uid:currentUser.uid,displayName:name(),category:category,text:clean(text,3000),mediaCount:Math.min(Number(count)||0,10),clientId:id,createdAt:serverTimestamp(),createdAtMs:now()});
+     await addDoc(collection(db,"helpRequests"),{uid:currentUser.uid,displayName:name(),category:category,text:clean(text,3000),status:"Open",mediaCount:Math.min(Number(count)||0,10),clientId:id,createdAt:serverTimestamp(),createdAtMs:now()});
    }
    catch(e){alertSave("Help request",e);}
  }
@@ -6304,7 +6341,36 @@ else{
    unsub.push(onSnapshot(query(collection(db,"posts")),s=>[...s.docs].sort((a,b)=>(b.data().createdAtMs||0)-(a.data().createdAtMs||0)).forEach(renderStoredPost),e=>console.error("Posts listener",e)));
    unsub.push(onSnapshot(query(collection(db,"notifications"),where("recipientId","==",uid)),s=>{if(Array.isArray(window.notifications)){window.notifications.splice(0,window.notifications.length,...s.docs.map(d=>({id:d.id,firestoreId:d.id,...d.data(),time:new Date(d.data().createdAtMs||Date.now()).toLocaleTimeString()})).sort((a,b)=>(b.createdAtMs||0)-(a.createdAtMs||0)));window.renderNotifications();}},e=>console.error("Notifications listener",e)));
    unsub.push(onSnapshot(query(collection(db,"follows"),where("followerId","==",uid)),s=>{const docs=s.docs.map(d=>d.data()||{}),keys=new Set(docs.map(d=>d.followingKey));if(Array.isArray(window.peopleData)){window.peopleData.forEach(p=>{const key=p.firebaseUid||("demo_"+p.id),wasFollowing=keys.has(key);p.isFollowing=wasFollowing;const baseFollowers=Number(p.__baseFollowersCount ?? p.followersCount ?? 0);p.__baseFollowersCount=baseFollowers;p.followersCount=baseFollowers+(wasFollowing?1:0);});const mainUser=window.peopleData.find(p=>p.id===0);if(mainUser){mainUser.followingCount=docs.length;}window.updateFollowView?.();window.renderPeopleList?.();window.renderSuggestedPeople?.();}},e=>console.error("Follow listener",e)));
-   unsub.push(onSnapshot(query(collection(db,"helpRequests")),s=>{const box=document.getElementById("helpContainer");if(!box)return;s.docs.sort((a,b)=>(b.data().createdAtMs||0)-(a.data().createdAtMs||0)).forEach(d=>{const x=d.data(),id=x.clientId||("help-"+d.id);let el=document.getElementById(id);if(!el){document.getElementById("noHelp")?.remove();el=document.createElement("article");el.className="helpRequest";el.id=id;box.prepend(el);}el.dataset.firestoreId=d.id;el.dataset.uid=String(x.uid||"");el.replaceChildren();const title=document.createElement("h3");title.className="helpTitle";title.textContent=(clean(x.displayName,60)||"Indian User")+" — "+clean(x.category||"General",50);el.appendChild(title);const body=document.createElement("p");body.textContent=clean(x.text,3000)||"Media help request";el.appendChild(body);const meta=document.createElement("p");meta.className="helpTime";meta.textContent="Help request shared with Indian users.";el.appendChild(meta);if(x.uid && x.uid!==currentUser?.uid){const offer=document.createElement("button");offer.type="button";offer.className="action";offer.textContent="Offer Help in Messages";offer.setAttribute("aria-label","Offer help to "+(clean(x.displayName,60)||"this user")+" by message");offer.addEventListener("click",()=>window.startHelpConversation&&window.startHelpConversation(String(x.uid),String(x.displayName||"Indian User")));el.appendChild(offer);} });},e=>console.error("Help listener",e)));
+   unsub.push(onSnapshot(query(collection(db,"helpRequests")),s=>{
+     const box=document.getElementById("helpContainer");if(!box)return;
+     const filter=document.getElementById("helpStatusFilter")?.value||"all";
+     const docs=[...s.docs].sort((a,b)=>(Number(b.data().createdAtMs)||0)-(Number(a.data().createdAtMs)||0));
+     if(!docs.length){if(!document.getElementById("noHelp")){const empty=document.createElement("p");empty.id="noHelp";empty.textContent="No help requests yet.";box.appendChild(empty);}return;}
+     document.getElementById("noHelp")?.remove();
+     docs.forEach(d=>{
+       const x=d.data()||{},id=x.clientId||("help-"+d.id),status=["Open","In Progress","Resolved"].includes(String(x.status))?String(x.status):"Open";
+       let el=document.getElementById(id);
+       if(!el){el=document.createElement("article");el.className="helpRequest";el.id=id;box.appendChild(el);}
+       el.dataset.firestoreId=d.id;el.dataset.uid=String(x.uid||"");el.dataset.helpStatus=status;el.hidden=filter!=="all"&&filter!==status;el.replaceChildren();
+       const title=document.createElement("h3");title.className="helpTitle";title.textContent=(clean(x.displayName,60)||"Indian User")+" — "+clean(x.category||"General",50);el.appendChild(title);
+       const body=document.createElement("p");body.textContent=clean(x.text,3000)||"Media help request";el.appendChild(body);
+       const badge=document.createElement("p");badge.className="help-status-badge";badge.textContent="Status: "+status;badge.setAttribute("aria-label","Help request status: "+status);el.appendChild(badge);
+       const meta=document.createElement("p");meta.className="helpTime";meta.textContent="Help request shared with Indian users.";el.appendChild(meta);
+       if(x.uid && x.uid===currentUser?.uid){
+         const actions=document.createElement("div");actions.className="help-status-actions";actions.setAttribute("aria-label","Update status of your help request");
+         [["Open","Mark as Open"],["In Progress","Mark In Progress"],["Resolved","Mark Resolved"]].forEach(([value,label])=>{
+           const b=document.createElement("button");b.type="button";b.className="action";b.textContent=label;b.disabled=value===status;b.setAttribute("aria-pressed",String(value===status));
+           b.addEventListener("click",async()=>{
+             const state=document.getElementById("helpActionStatus");if(state)state.textContent="Updating help request status…";
+             try{await setDoc(doc(db,"helpRequests",d.id),{status:value,statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()},{merge:true});if(state)state.textContent="Your help request is now marked "+value+".";}
+             catch(error){if(state)state.textContent="Status could not be updated. Firebase Rules may need to allow the request owner to update status. Details: "+clean(error?.message||error,180);}
+           });actions.appendChild(b);
+         });el.appendChild(actions);
+       }else if(x.uid){
+         const offer=document.createElement("button");offer.type="button";offer.className="action";offer.textContent="Offer Help in Messages";offer.setAttribute("aria-label","Offer help to "+(clean(x.displayName,60)||"this user")+" by message");offer.addEventListener("click",()=>window.startHelpConversation&&window.startHelpConversation(String(x.uid),String(x.displayName||"Indian User"),"Hello, I would like to help with your "+clean(x.category||"General",50)+" request."));el.appendChild(offer);
+       }
+     });
+   },e=>console.error("Help listener",e)));
  }
  function wrap(){
    if(window.__indianFirestoreWrapped)return;window.__indianFirestoreWrapped=true;
@@ -6784,6 +6850,14 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
       viewer.replaceChildren();var h=document.createElement('h3');h.id='onlineStoryViewerTitle';h.textContent='Story by '+storyOwnerLabel(profile);viewer.appendChild(h);
       var img=document.createElement('img');img.src=story.imageData;img.alt='Photo story shared by '+storyOwnerLabel(profile);viewer.appendChild(img);
       var cap=document.createElement('p');cap.textContent=String(story.caption||'No caption');viewer.appendChild(cap);
+      if(story.audioData && String(story.audioData).startsWith('data:audio/')){
+        var audioLabel=document.createElement('p');audioLabel.textContent='Story music';viewer.appendChild(audioLabel);
+        var audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.src=story.audioData;audio.setAttribute('aria-label','Play story music selected by '+storyOwnerLabel(profile));audio.style.cssText='display:block;width:100%;margin:8px 0;';viewer.appendChild(audio);
+      }else if(story.musicChoice && story.musicChoice!=='none'){
+        var tune=document.createElement('button');tune.type='button';tune.className='action';tune.textContent='Play website tune';tune.setAttribute('aria-label','Play the website demo tune for this story');tune.addEventListener('click',function(){try{if(window.playStoryDemoTone)window.playStoryDemoTone(story.musicChoice);var st=byId('storiesStatus');if(st)st.textContent='Playing the short website demo tune. It is a generated tone, not a song.';}catch(e){announce('Audio playback is not available in this browser.');}});viewer.appendChild(tune);
+      }else{
+        var silent=document.createElement('p');silent.textContent='No shared music was added to this story.';viewer.appendChild(silent);
+      }
       var expire=document.createElement('p');expire.textContent='This story expires after 24 hours.';viewer.appendChild(expire);
       var reply=document.createElement('button');reply.type='button';reply.className='action';reply.textContent='Reply to Story in Messages';reply.setAttribute('aria-label','Reply to story by '+storyOwnerLabel(profile));reply.addEventListener('click',function(){window.startHelpConversation&&window.startHelpConversation(profile.uid,storyOwnerLabel(profile),'Replying to your story: '+String(story.caption||'Photo story'));});viewer.appendChild(reply);
       var close=document.createElement('button');close.type='button';close.className='action';close.textContent='Close story preview';close.addEventListener('click',function(){viewer.hidden=true;var trigger=document.querySelector('[data-online-story-id="'+CSS.escape(String(story.id))+'"]');if(trigger)trigger.focus();});viewer.appendChild(close);viewer.hidden=false;viewer.focus();
@@ -6819,7 +6893,7 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
       var h=document.createElement('h4');h.textContent=owner;card.appendChild(h);
       var cap=document.createElement('p');cap.textContent=String(story.caption||'No caption');card.appendChild(cap);
       var img=document.createElement('img');img.src=story.imageData;img.alt='Photo story by '+owner;img.loading='lazy';card.appendChild(img);
-      var meta=document.createElement('p');meta.textContent='Shared story. Expires after 24 hours.';card.appendChild(meta);
+      var meta=document.createElement('p');meta.textContent='Shared photo story. '+(story.audioData?'Music file available.':(story.musicChoice&&story.musicChoice!=='none'?'Website demo tune available; press Play after opening.':'No shared music.'))+' Expires after 24 hours.';card.appendChild(meta);
       var button=document.createElement('button');button.type='button';button.className='action';button.textContent='Open and reply';button.addEventListener('click',function(){showOnlineStory(item.profile,story);});card.appendChild(button);
       list.appendChild(card);
     });
@@ -6849,10 +6923,13 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
   }
   var originalToggleLive=window.toggleLive;
   window.toggleLive=function(){
+    var titleInput=byId('liveTitleInput'),title=titleInput?String(titleInput.value||'').trim().slice(0,100):'';
     if(typeof originalToggleLive==='function')originalToggleLive();
     var nowLive=!!isLive;var buttons=[byId('goLiveButton'),byId('liveZoneToggleButton')].filter(Boolean);buttons.forEach(function(b){b.textContent=nowLive?'End Live':'Go Live';b.setAttribute('aria-label',nowLive?'End your live status':'Start your live status');});
-    var status=byId('liveStatus');if(status&&nowLive)status.textContent='Your live status is active. Real-time camera video is not connected in this version.';
-    if(typeof window.setIndianLiveStatus==='function')window.setIndianLiveStatus(nowLive,liveStartTime?liveStartTime.getTime():Date.now()).then(function(){if(status)status.textContent=nowLive?'Your live status is shared with Indian users. Camera video streaming is not connected yet.':'Your live status has ended.';}).catch(function(error){if(status)status.textContent='Live status changed on this device, but it could not sync online: '+cleanText(error.message,180);});
+    var status=byId('liveStatus'),liveAction=byId('liveActionStatus');
+    if(status&&nowLive)status.textContent='Your live status is active'+(title?'. Topic: '+title:'')+'. Real-time camera video is not connected in this version.';
+    if(liveAction)liveAction.textContent=nowLive?'Starting your live status and sharing it with Indian users…':'Ending your live status…';
+    if(typeof window.setIndianLiveStatus==='function')window.setIndianLiveStatus(nowLive,liveStartTime?liveStartTime.getTime():Date.now(),title).then(function(){if(status)status.textContent=nowLive?'Your live status is shared with Indian users'+(title?'. Topic: '+title:'')+'. Camera video streaming is not connected yet.':'Your live status has ended.';if(liveAction)liveAction.textContent=nowLive?'Live status shared. Other users can message you about this session.':'Live status ended and updated.';}).catch(function(error){if(status)status.textContent='Live status changed on this device, but it could not sync online: '+cleanText(error.message,180);if(liveAction)liveAction.textContent='Could not sync the live status. Check your connection and Firebase permissions.';});
     if(typeof window.renderIndianLivePeople==='function')window.renderIndianLivePeople();
     announce(nowLive?'Your live status has started.':'Your live status has ended.');
   };
@@ -6861,7 +6938,16 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
     var active=(window.indianFirebaseAllProfiles||[]).filter(function(p){var l=p&&p.liveSession;return l&&l.isLive&&Date.now()-Number(l.startedAtMs||0)<12*60*60*1000;});
     if(!active.length){var empty=document.createElement('p');empty.textContent='No other registered users are currently marked live.';box.appendChild(empty);return;}
     var h=document.createElement('h3');h.textContent='Users marked live';box.appendChild(h);
-    active.forEach(function(p){var card=document.createElement('article');card.className='live-person-card';var name=document.createElement('h4');name.textContent=storyOwnerLabel(p);card.appendChild(name);var note=document.createElement('p');note.textContent='Live status is active. Camera video streaming is not available in this version.';card.appendChild(note);box.appendChild(card);});
+    active.forEach(function(p){
+      var card=document.createElement('article');card.className='live-person-card';
+      var name=document.createElement('h4');name.textContent=storyOwnerLabel(p);card.appendChild(name);
+      var session=p.liveSession||{},topic=String(session.title||'').trim();
+      if(topic){var top=document.createElement('p');top.className='live-topic';top.textContent='Live topic: '+topic;card.appendChild(top);}
+      var note=document.createElement('p');note.textContent='Live status is active. Camera video streaming is not available in this version.';card.appendChild(note);
+      var meta=document.createElement('p');meta.className='live-meta';meta.textContent='Started '+new Date(Number(session.startedAtMs)||Date.now()).toLocaleString();card.appendChild(meta);
+      var msg=document.createElement('button');msg.type='button';msg.className='action';msg.textContent='Message this user';msg.setAttribute('aria-label','Message '+storyOwnerLabel(p)+' about their live session');msg.addEventListener('click',function(){if(typeof window.startHelpConversation==='function')window.startHelpConversation(String(p.uid||''),storyOwnerLabel(p),'Hello, I saw your live status'+(topic?' about '+topic:'')+'.');});card.appendChild(msg);
+      box.appendChild(card);
+    });
   };
 
   // Help requests can start a message to the registered requester, using the existing Messages system.
@@ -6888,6 +6974,118 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
   });
   // DOM can already be ready if scripts are loaded through a cache or browser extension.
   if(document.readyState!=='loading'){ensureLivePageControls();window.renderIndianOnlineStories();window.renderIndianLivePeople();}
+})();
+</script>
+
+
+<script id="indianVoiceHelpLiveFinalEnhancements">
+(function(){
+  'use strict';
+  var byId=function(id){return document.getElementById(id);};
+  var notify=function(id,msg){var el=byId(id);if(el)el.textContent=msg;var announcer=byId('indianRouteAnnouncer');if(announcer)announcer.textContent=msg;};
+  var localAudioUrls=new Map();
+  var activeRecognition=null;
+  var activeButton=null;
+  var activeField=null;
+  function appendAtCaret(field,text){
+    if(!field||!text)return;
+    var start=typeof field.selectionStart==='number'?field.selectionStart:field.value.length;
+    var end=typeof field.selectionEnd==='number'?field.selectionEnd:field.value.length;
+    var prefix=field.value.slice(0,start),suffix=field.value.slice(end);
+    var spacer=prefix && !/\s$/.test(prefix) ? ' ' : '';
+    field.value=prefix+spacer+text+suffix;
+    var pos=(prefix+spacer+text).length;
+    try{field.setSelectionRange(pos,pos);}catch(e){}
+    field.dispatchEvent(new Event('input',{bubbles:true}));
+    field.focus();
+  }
+  function addVoiceControl(id,language){
+    var field=byId(id);if(!field||field.dataset.voiceControlAdded==='yes')return;
+    field.dataset.voiceControlAdded='yes';
+    var row=document.createElement('div');row.className='voice-entry-tools';
+    var button=document.createElement('button');button.type='button';button.textContent='🎤 Start voice typing (Hindi)';button.setAttribute('aria-label','Start voice typing in Hindi for '+(field.getAttribute('aria-label')||id));button.setAttribute('aria-pressed','false');
+    var status=document.createElement('p');status.className='voice-entry-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.textContent='Voice typing uses browser speech recognition and may require microphone permission.';
+    var lang=document.createElement('select');lang.setAttribute('aria-label','Voice typing language for '+(field.getAttribute('aria-label')||id));lang.innerHTML='<option value="hi-IN">Hindi</option><option value="en-IN">English (India)</option><option value="ur-IN">Urdu</option>';
+    if(language)lang.value=language;
+    button.addEventListener('click',function(){
+      var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+      if(!SR){status.textContent='Voice typing is not supported by this browser. Use Microsoft Edge or Chrome and try again.';return;}
+      if(activeRecognition && activeField===field){try{activeRecognition.stop();}catch(e){}return;}
+      if(activeRecognition){try{activeRecognition.stop();}catch(e){}}
+      var recognition=new SR();activeRecognition=recognition;activeButton=button;activeField=field;recognition.lang=lang.value||'hi-IN';recognition.continuous=true;recognition.interimResults=true;
+      var finalText='';button.textContent='■ Stop voice typing';button.setAttribute('aria-label','Stop voice typing for '+(field.getAttribute('aria-label')||id));button.setAttribute('aria-pressed','true');status.textContent='Listening. Speak now.';
+      recognition.onresult=function(event){var interim='';for(var i=event.resultIndex;i<event.results.length;i++){var chunk=event.results[i][0]&&event.results[i][0].transcript||'';if(event.results[i].isFinal)finalText+=chunk+' ';else interim+=chunk;}if(finalText.trim()){appendAtCaret(field,finalText.trim());finalText='';}if(interim)status.textContent='Hearing: '+interim;else status.textContent='Voice text added. Continue speaking or press Stop voice typing.';};
+      recognition.onerror=function(event){status.textContent='Voice typing error: '+String(event.error||'unknown')+'. Check microphone permission and language.';};
+      recognition.onend=function(){if(activeRecognition===recognition){activeRecognition=null;activeField=null;}button.textContent='🎤 Start voice typing ('+(lang.options[lang.selectedIndex]?.text||'Hindi')+')';button.setAttribute('aria-label','Start voice typing in '+(lang.options[lang.selectedIndex]?.text||'Hindi')+' for '+(field.getAttribute('aria-label')||id));button.setAttribute('aria-pressed','false');if(!/error:/.test(status.textContent))status.textContent='Voice typing stopped.';};
+      try{recognition.start();}catch(error){status.textContent='Could not start voice typing. Click again and allow microphone access.';activeRecognition=null;activeField=null;button.textContent='🎤 Start voice typing';button.setAttribute('aria-pressed','false');}
+    });
+    lang.addEventListener('change',function(){if(activeRecognition&&activeField===field){try{activeRecognition.stop();}catch(e){}}button.textContent='🎤 Start voice typing ('+lang.options[lang.selectedIndex].text+')';});
+    row.append(button,lang);field.insertAdjacentElement('afterend',row);row.appendChild(status);
+  }
+  function setupVoiceTyping(){addVoiceControl('postBox','hi-IN');addVoiceControl('helpBox','hi-IN');addVoiceControl('messageText','hi-IN');addVoiceControl('searchBox','hi-IN');}
+
+  // Save the request owner status only through the existing Firebase helpRequests document.
+  function applyHelpFilter(){var filter=byId('helpStatusFilter');if(!filter)return;document.querySelectorAll('#helpContainer .helpRequest').forEach(function(card){var status=card.dataset.helpStatus||'Open';card.hidden=filter.value!=='all'&&filter.value!==status;});}
+
+  // Compact the story authoring page and attach an audio player to this-session local stories.
+  function enrichLocalStoryCards(){
+    document.querySelectorAll('#storiesList .local-story-card[data-story-id]').forEach(function(card){
+      var id=card.dataset.storyId;if(card.dataset.audioEnhanced==='yes')return;card.dataset.audioEnhanced='yes';
+      var local=localAudioUrls.get(id);
+      if(local){var audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.src=local;audio.setAttribute('aria-label','Play selected music for your local story');audio.style.cssText='display:block;width:100%;margin:8px 0;';card.appendChild(audio);}
+      else {var items=[];try{items=JSON.parse(localStorage.getItem('indian_local_stories_v1')||'[]');}catch(e){}var item=items.find(function(x){return x.id===id;});if(item&&item.musicChoice&&item.musicChoice!=='none'){var play=document.createElement('button');play.type='button';play.className='action';play.textContent='Play website tune';play.addEventListener('click',function(){if(window.playStoryDemoTone)window.playStoryDemoTone(item.musicChoice);});card.appendChild(play);}}
+    });
+  }
+  function installStorySaveWrapper(){
+    if(window.__indianStorySaveWrapperInstalled || typeof window.saveIndianStoryToFirestore!=='function')return;
+    var baseSaveStory=window.saveIndianStoryToFirestore;
+    window.saveIndianStoryToFirestore=async function(story){
+      var meta=window.__indianStoryPublishMeta||{};
+      var merged=Object.assign({},story||{}, {musicChoice:meta.musicChoice||((byId('storyMusicChoice')||{}).value)||'none',audioData:meta.audioData||''});
+      return baseSaveStory(merged);
+    };
+    window.__indianStorySaveWrapperInstalled=true;
+  }
+  var basePublishStory=window.publishLocalStory;
+  if(typeof basePublishStory==='function'){
+    window.publishLocalStory=async function(){
+      var input=byId('storyMediaInput'),audioInput=byId('storyAudioInput'),file=input&&input.files&&input.files[0],audio=audioInput&&audioInput.files&&audioInput.files[0];
+      var musicChoice=byId('storyMusicChoice')?byId('storyMusicChoice').value:'none';
+      var audioData='';var audioTooLarge=false;
+      if(audio){
+        if(audio.size<=16000){try{audioData=await new Promise(function(resolve,reject){var reader=new FileReader();reader.onload=function(){resolve(String(reader.result||''));};reader.onerror=function(){reject(new Error('Could not read audio file'));};reader.readAsDataURL(audio);});if(audioData.length>24000)audioData='';}catch(e){audioData='';}}
+        if(!audioData)audioTooLarge=true;
+      }
+      var before=[];try{before=JSON.parse(localStorage.getItem('indian_local_stories_v1')||'[]');}catch(e){}
+      window.__indianStoryPublishMeta={musicChoice:musicChoice,audioData:audioData};
+      try{await basePublishStory();}finally{window.__indianStoryPublishMeta=null;}
+      if(file&&String(file.type||'').startsWith('image/')){
+        var after=[];try{after=JSON.parse(localStorage.getItem('indian_local_stories_v1')||'[]');}catch(e){}
+        var created=after.find(function(item){return !before.some(function(old){return old.id===item.id;});})||after[after.length-1];
+        if(created){created.musicChoice=musicChoice;try{localStorage.setItem('indian_local_stories_v1',JSON.stringify(after));}catch(e){}if(audio){localAudioUrls.set(created.id,URL.createObjectURL(audio));}setupStoryCardDataset();if(typeof window.renderLocalStories==='function')window.renderLocalStories();enrichLocalStoryCards();}
+      }
+      var status=byId('storiesStatus');
+      if(audioTooLarge&&status){status.textContent='Story photo was shared if the upload succeeded, but this audio file is larger than the free cross-device limit. Try an audio file of 16 KB or less. The selected music preview remains local only.';}
+      else if(audioData&&status){status.textContent='Photo story and small audio file sent for online sharing. Open the story on another account to test playback.';}
+    };
+  }
+  function setupStoryCardDataset(){
+    // The local story renderer is patched below to attach a stable story id.
+    document.querySelectorAll('#storiesList .local-story-card').forEach(function(card){if(!card.dataset.storyId){var h=card.querySelector('h4');var items=[];try{items=JSON.parse(localStorage.getItem('indian_local_stories_v1')||'[]');}catch(e){}var text=h?h.textContent:'';var match=items.slice().reverse().find(function(it){return text.indexOf(String(it.owner||'Your story'))===0;});if(match)card.dataset.storyId=match.id;}});
+  }
+
+  // Online live sessions share status and topic, but do not pretend to be video streams.
+  function refreshLiveSection(){if(typeof window.renderIndianLivePeople==='function')window.renderIndianLivePeople();}
+  document.addEventListener('DOMContentLoaded',function(){
+    installStorySaveWrapper();
+    setupVoiceTyping();
+    var filter=byId('helpStatusFilter');if(filter)filter.addEventListener('change',applyHelpFilter);
+    var helpBox=byId('helpContainer');if(helpBox){new MutationObserver(function(){applyHelpFilter();}).observe(helpBox,{childList:true,subtree:true});}
+    var storyList=byId('storiesList');if(storyList){new MutationObserver(function(){setupStoryCardDataset();enrichLocalStoryCards();}).observe(storyList,{childList:true,subtree:true});}
+    setupStoryCardDataset();enrichLocalStoryCards();refreshLiveSection();
+    window.setInterval(refreshLiveSection,30000);
+  });
+  if(document.readyState!=='loading'){installStorySaveWrapper();setupVoiceTyping();var filter=byId('helpStatusFilter');if(filter)filter.addEventListener('change',applyHelpFilter);setupStoryCardDataset();enrichLocalStoryCards();refreshLiveSection();}
 })();
 </script>
 

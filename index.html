@@ -1239,6 +1239,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
 </style>
+<style id="indianAccessibilityAndLiveEnhancements">
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.personAvatar{overflow:hidden}
+.personAvatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.live-streaming-limit{padding:12px;border-left:4px solid #ff9933;background:#fff8ef;border-radius:8px;line-height:1.6}
+.online-story-card,.live-person-card{border:1px solid #dfe6ed;border-radius:12px;padding:12px;margin:10px 0;background:#fff;overflow-wrap:anywhere}
+.online-story-card img{display:block;max-width:100%;max-height:420px;object-fit:contain;border-radius:10px;margin-top:8px}
+.online-story-preview-image{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.short-local-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.short-local-actions button{min-height:44px}
+#onlineStoryViewer{border:2px solid #173e69;border-radius:14px;padding:14px;margin:14px 0;background:#f8fafc}
+#onlineStoryViewer img{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:8px auto;border-radius:10px}
+@media(prefers-contrast:more){button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline-width:4px!important}}
+</style>
 </head>
 
 <body class="auth-required">
@@ -1265,6 +1279,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   <button type="button" class="indian-nav-button" data-route="posts" onclick="createPost()" aria-label="Create a post"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg><span>Post</span></button>
   <button type="button" class="indian-nav-button" id="navMessagesBtn" data-route="messages" onclick="openMessages()" aria-label="Messages"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.9 8.9 0 0 1-3.7-.8L4 20l1.3-3.4A7.2 7.2 0 0 1 4 12c0-4.2 3.6-7.5 8-7.5s8 2.8 8 7Z"></path></svg><span>Messages</span><span class="nav-badge" id="navMessageBadge" style="display:none;">0</span></button>
 </nav>
+<div id="indianRouteAnnouncer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <main id="mainContent" tabindex="-1">
 <div id="indianRouteBackBar" class="indian-route-backbar" hidden><button id="indianBackButton" type="button" onclick="indianGoBack()" aria-label="Go back to the previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path><path d="M9 12h12"></path></svg><span>Back</span></button></div>
@@ -1683,11 +1698,14 @@ Cancel
 
 
 <!-- LIVE ZONE -->
-<section id="liveZoneSection" tabindex="-1">
+<section id="liveZoneSection" tabindex="-1" aria-labelledby="liveZoneHeading">
 
-<h2>Live Zone</h2>
+<h2 id="liveZoneHeading">Live Zone</h2>
+<p class="live-streaming-limit" role="note">Starting a session shares your live status with Indian users. Real-time camera video streaming is not connected in this version.</p>
+<button class="action" id="liveZoneToggleButton" type="button" onclick="toggleLive()" aria-label="Start or end your live status">Go Live</button>
+<div id="livePeopleFeed" aria-live="polite" aria-label="Indian users with live status"><p>No users are live right now.</p></div>
 
-<p id="liveStatus">
+<p id="liveStatus" role="status" aria-live="polite">
 Live Zone active — waiting for update...
 </p>
 
@@ -1703,9 +1721,9 @@ Live viewers: 0
 
 
 <!-- HELP -->
-<section id="helpSection" tabindex="-1">
+<section id="helpSection" tabindex="-1" aria-labelledby="helpSectionHeading">
 
-<h2>Help</h2>
+<h2 id="helpSectionHeading">Help</h2>
 
 <p>
 Ask for help or offer help to other people.
@@ -1713,6 +1731,15 @@ Ask for help or offer help to other people.
 
 <div id="helpForm" style="display:none;">
 
+<label for="helpCategory">Help category:</label>
+<select id="helpCategory" aria-label="Choose a help category" style="display:block;width:100%;padding:10px;margin:8px 0 14px;border:1px solid #b9c9d6;border-radius:11px;background:#fff;color:#172b3a;">
+  <option value="General">General help</option>
+  <option value="Education">Education</option>
+  <option value="Technology">Technology</option>
+  <option value="Documents">Documents and government services</option>
+  <option value="Accessibility">Accessibility and assistive technology</option>
+  <option value="Daily needs">Daily needs</option>
+</select>
 <label for="helpBox">
 What help do you need?
 </label>
@@ -2496,6 +2523,7 @@ function renderConversationList(){
 
         const card = document.createElement("div");
         card.className = "conversationCard";
+        card.dataset.personId = String(person.id);
 
         const header = document.createElement("div");
         header.className = "conversationHeader";
@@ -2503,7 +2531,15 @@ function renderConversationList(){
         const avatar = document.createElement("div");
         avatar.className = "personAvatar";
         avatar.setAttribute("aria-hidden", "true");
-        avatar.textContent = "👤";
+        if(person.photoURL){
+            const avatarImage = document.createElement("img");
+            avatarImage.src = person.photoURL;
+            avatarImage.alt = "";
+            avatarImage.loading = "lazy";
+            avatar.appendChild(avatarImage);
+        }else{
+            avatar.textContent = "👤";
+        }
 
         const info = document.createElement("div");
         info.className = "conversationInfo";
@@ -2543,7 +2579,7 @@ function renderConversationList(){
                 preview.textContent = "Message";
             }
         } else {
-            preview.textContent = "No messages yet.";
+            preview.textContent = person.latestMessageText || "No messages yet.";
         }
 
         const presence = document.createElement("div");
@@ -3901,6 +3937,10 @@ async function saveProfile(){
     const form = document.getElementById("profileForm");
     if(form) form.style.display = "none";
 
+    if(typeof window.syncIndianAuthDisplayName === "function"){
+        try{ await window.syncIndianAuthDisplayName(profileName); }
+        catch(error){ console.warn("Firebase Auth display name sync failed", error); }
+    }
     if(typeof window.saveIndianProfileToFirestore === "function"){
         try{
             await window.saveIndianProfileToFirestore(profileName, profileBio, photoURL);
@@ -4782,9 +4822,9 @@ function updateLiveZone(){
 
     if(viewersText){
 
-        viewersText.textContent =
-            "Live viewers: " +
-            liveViewers;
+        viewersText.textContent = isLive
+            ? "Live viewers: count unavailable in status-only mode."
+            : "Live viewers: 0";
     }
 }
 
@@ -5387,6 +5427,7 @@ async function signUpFirebase(){
         setFirebaseAuthStatus("Creating account...", false);
         const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
         await updateProfile(credential.user, {displayName});
+        if(typeof window.applyIndianIdentity === "function") window.applyIndianIdentity(displayName, "", "");
         if(firebaseDb){
             await setDoc(doc(firebaseDb, "users", credential.user.uid), {
                 uid: credential.user.uid,
@@ -5487,10 +5528,22 @@ async function logoutFirebase(){
     }
 }
 
+window.syncIndianAuthDisplayName = async function(displayName){
+    if(!firebaseAuth || !firebaseCurrentUser) return false;
+    const safeName=sanitizePlainText(displayName,60);
+    if(safeName.length<2) throw new Error("Display name must contain at least 2 characters.");
+    await updateProfile(firebaseCurrentUser,{displayName:safeName});
+    if(firebaseDb){
+      await setDoc(doc(firebaseDb,"publicProfiles",firebaseCurrentUser.uid),{uid:firebaseCurrentUser.uid,displayName:safeName,updatedAt:serverTimestamp()},{merge:true});
+      try{await setDoc(doc(firebaseDb,"users",firebaseCurrentUser.uid),{uid:firebaseCurrentUser.uid,displayName:safeName,updatedAt:serverTimestamp()},{merge:true});}catch(e){console.warn("Private display name sync failed",e);}
+    }
+    return true;
+};
+
 function firebaseAuthErrorMessage(error){
     const code = error && error.code ? error.code : "";
     const messages = {
-        "auth/email-already-in-use":"That email address is already registered.",
+        "auth/email-already-in-use":"This email already has an Indian account. Choose Sign In instead of creating another account with the same email.",
         "auth/invalid-email":"The email address is invalid.",
         "auth/weak-password":"The password is too weak. Use a stronger password.",
         "auth/invalid-credential":"Email or password is incorrect.",
@@ -5777,15 +5830,58 @@ async function deleteFirestoreMessage(message){
     return true;
 }
 
+async function saveFirestoreMessageReaction(messageId, emoji){
+    if(!firebaseDb || !firebaseCurrentUser || !messageId) throw new Error("Sign in to save message reactions.");
+    const ref = doc(firebaseDb, "publicProfiles", firebaseCurrentUser.uid);
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? (snap.data() || {}) : {};
+    const reactions = Object.assign({}, data.messageReactions || {});
+    reactions[String(messageId)] = {emoji:String(emoji).slice(0,8),createdAtMs:Date.now()};
+    const entries = Object.entries(reactions).sort((a,b)=>Number((a[1]||{}).createdAtMs||0)-Number((b[1]||{}).createdAtMs||0));
+    const limited = Object.fromEntries(entries.slice(-80));
+    if(snap.exists()) await updateDoc(ref,{messageReactions:limited,updatedAt:serverTimestamp()});
+    else await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||"Indian User",60),messageReactions:limited,updatedAt:serverTimestamp()},{merge:true});
+    return true;
+}
+
+async function saveIndianStoryRecord(story){
+    if(!firebaseDb || !firebaseCurrentUser) throw new Error("Sign in to share a story with Indian users.");
+    if(!story || typeof story.imageData !== "string" || !story.imageData.startsWith("data:image/")) throw new Error("Only compressed photo stories can be shared on the current free setup.");
+    if(story.imageData.length > 70000) throw new Error("The compressed story photo is still too large. Choose a smaller photo.");
+    const ref=doc(firebaseDb,"publicProfiles",firebaseCurrentUser.uid);
+    const snap=await getDoc(ref);
+    const data=snap.exists()?(snap.data()||{}):{};
+    const nowMs=Date.now();
+    const active=(Array.isArray(data.activeStories)?data.activeStories:[]).filter(item=>item && Number(item.expiresAt)>nowMs);
+    active.push({id:String(story.id||("story-"+nowMs)),owner:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),ownerUid:firebaseCurrentUser.uid,caption:sanitizePlainText(story.caption||"",300),imageData:story.imageData,createdAtMs:nowMs,expiresAt:nowMs+24*60*60*1000});
+    await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),activeStories:active.slice(-3),lastStoryAtMs:nowMs,updatedAt:serverTimestamp()},{merge:true});
+    return true;
+}
+
+async function setIndianFirestoreLiveStatus(isLiveNow, startedAtMs){
+    if(!firebaseDb || !firebaseCurrentUser) throw new Error("Sign in to share your live status.");
+    await setDoc(doc(firebaseDb,"publicProfiles",firebaseCurrentUser.uid),{
+      uid:firebaseCurrentUser.uid,
+      displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),
+      liveSession:{isLive:!!isLiveNow,startedAtMs:isLiveNow?(Number(startedAtMs)||Date.now()):0,updatedAtMs:Date.now()},
+      updatedAt:serverTimestamp()
+    },{merge:true});
+    return true;
+}
+
 window.firebaseIndianMessages = {
     subscribe: subscribeFirestoreMessages,
     save: saveFirestoreMessage,
     update: updateFirestoreMessage,
     remove: deleteFirestoreMessage,
+    react: saveFirestoreMessageReaction,
+    refreshRecent: startRecentFirebaseMessages,
     isAvailable: function(personId){
         return !!(firebaseDb && firebaseCurrentUser && getFirestoreMessagePersonUid(personId));
     }
 };
+window.saveIndianStoryToFirestore = saveIndianStoryRecord;
+window.setIndianLiveStatus = setIndianFirestoreLiveStatus;
 
 async function ensureCurrentUserPublicProfile(){
     if(!firebaseDb || !firebaseCurrentUser) return false;
@@ -5805,26 +5901,94 @@ async function ensureCurrentUserPublicProfile(){
     }
 }
 
+let publicProfilesUnsubscribe = null;
+let recentFirebaseMessageUnsubs = [];
+let recentFirebaseMessageUid = "";
+const recentFirebaseMessagesById = new Map();
+
+function startRecentFirebaseMessages(){
+    if(!firebaseDb || !firebaseCurrentUser) return;
+    const uid=firebaseCurrentUser.uid;
+    if(recentFirebaseMessageUid===uid && recentFirebaseMessageUnsubs.length) return;
+    recentFirebaseMessageUnsubs.forEach(fn=>{try{fn();}catch(e){}});
+    recentFirebaseMessageUnsubs=[];
+    recentFirebaseMessageUid=uid;
+    recentFirebaseMessagesById.clear();
+    const outgoing=query(collection(firebaseDb,"messages"),where("senderId","==",uid));
+    const incoming=query(collection(firebaseDb,"messages"),where("receiverId","==",uid));
+    function refresh(){
+      (window.indianFirebaseAllProfiles||[]).forEach(profile=>{
+        if(!profile||!profile.uid||profile.uid===uid)return;
+        const person=(window.getIndianPersonByFirebaseUid?window.getIndianPersonByFirebaseUid(profile.uid):null);
+        if(person){person.latestMessageAtMs=0;person.latestMessageText="";person.latestMessageId="";}
+      });
+      const records=Array.from(recentFirebaseMessagesById.values());
+      records.forEach(data=>{
+        const peerUid=data.senderId===uid?data.receiverId:data.senderId;
+        if(!peerUid || peerUid===uid)return;
+        const person=window.getIndianPersonByFirebaseUid?window.getIndianPersonByFirebaseUid(peerUid):null;
+        if(!person)return;
+        const stamp=Number(data.createdAtMs)||((data.createdAt&&typeof data.createdAt.toMillis==="function")?data.createdAt.toMillis():0);
+        if(stamp>=Number(person.latestMessageAtMs||0)){
+          person.latestMessageAtMs=stamp;
+          person.latestMessageText=String(data.text|| (data.attachment?"Attachment":"Message")).slice(0,180);
+          person.latestMessageId=data.id||"";
+        }
+      });
+      if(typeof window.renderConversationList==="function")window.renderConversationList();
+    }
+    function watch(q){
+      const unsub=onSnapshot(q,snapshot=>{
+        // Replace records from this query's known side; deleted message docs are removed on that side.
+        const sideIds=new Set(snapshot.docs.map(d=>d.id));
+        snapshot.docs.forEach(d=>recentFirebaseMessagesById.set(d.id,Object.assign({id:d.id},d.data()||{})));
+        refresh();
+      },error=>setFirebaseMessageStatus("Recent chat list could not refresh: "+sanitizePlainText(error.message,220)));
+      recentFirebaseMessageUnsubs.push(unsub);
+    }
+    watch(outgoing);watch(incoming);
+}
+
 async function loadFirebasePublicProfiles(){
     if(!firebaseDb || !firebaseCurrentUser) return;
     try{
         await ensureCurrentUserPublicProfile();
-        const snapshot = await getDocs(collection(firebaseDb, "publicProfiles"));
-        const profiles = snapshot.docs.map(function(d){ return d.data() || {}; }).filter(function(profile){
-            return profile.uid && profile.uid !== firebaseCurrentUser.uid && profile.displayName;
+        if(publicProfilesUnsubscribe){try{publicProfilesUnsubscribe();}catch(e){}}
+        publicProfilesUnsubscribe=onSnapshot(collection(firebaseDb,"publicProfiles"),function(snapshot){
+            const allProfiles=snapshot.docs.map(function(d){return Object.assign({uid:d.id},d.data()||{});}).filter(function(profile){return profile.uid && profile.displayName;});
+            window.indianFirebaseAllProfiles=allProfiles;
+            const profiles=allProfiles.filter(function(profile){return profile.uid!==firebaseCurrentUser.uid;});
+            window.indianFirebasePublicProfiles=profiles;
+            if(typeof window.addFirebasePeopleToIndian === "function") window.addFirebasePeopleToIndian(profiles);
+            const own=allProfiles.find(profile=>profile.uid===firebaseCurrentUser.uid);
+            if(own && own.displayName && typeof window.applyIndianIdentity==="function"){
+                window.applyIndianIdentity(own.displayName,own.bio||window.profileBio||"",own.photoURL||window.profilePhotoURL||"",{preserveActiveEdit:true});
+            }
+            const shared={};
+            allProfiles.forEach(profile=>{
+                const reactions=profile.messageReactions&&typeof profile.messageReactions==="object"?profile.messageReactions:{};
+                Object.keys(reactions).forEach(messageId=>{
+                    const value=reactions[messageId];const emoji=typeof value==="string"?value:String(value&&value.emoji||"");
+                    if(!emoji)return;
+                    if(!shared[messageId])shared[messageId]={};
+                    shared[messageId][emoji]=(Number(shared[messageId][emoji])||0)+1;
+                });
+            });
+            if(typeof window.applyIndianSharedMessageReactions==="function")window.applyIndianSharedMessageReactions(shared);
+            if(typeof window.renderIndianOnlineStories==="function")window.renderIndianOnlineStories();
+            if(typeof window.renderIndianLivePeople==="function")window.renderIndianLivePeople();
+            startRecentFirebaseMessages();
+            if(profiles.length===0)setFirebaseMessageStatus("Firebase is connected. No other Firebase users are available yet.");
+        },function(error){
+            setFirebaseMessageStatus("Firebase user discovery / online story updates need the publicProfiles Firestore Rule: "+sanitizePlainText(error.message,250));
         });
-        window.indianFirebasePublicProfiles = profiles;
-        if(typeof window.addFirebasePeopleToIndian === "function") {
-            window.addFirebasePeopleToIndian(profiles);
-        }
-        if(profiles.length === 0){
-            setFirebaseMessageStatus("Firebase is connected. No other Firebase users are available yet.");
-        }
     }
     catch(error){
         setFirebaseMessageStatus("Firebase user discovery needs the publicProfiles Firestore Rule: " + sanitizePlainText(error.message, 250));
     }
 }
+
+window.refreshIndianPublicProfiles = loadFirebasePublicProfiles;
 
 if(!firebaseConfigReady){
     setFirebaseSetupStatus("Firebase setup pending. Replace the six placeholder Firebase Web App config values in the FIREBASE CONFIG block inside this index.html.");
@@ -5849,10 +6013,14 @@ else{
             window.firebaseCurrentUid = user ? user.uid : "";
             updateFirebaseAuthUI();
             if(user){
-                ensureCurrentUserPublicProfile().then(function(){
-                    return loadFirebasePublicProfiles();
-                });
-                setFirebaseAuthStatus("Signed in as " + (user.displayName || user.email || user.uid) + ". UID: " + user.uid);
+                const authName=sanitizePlainText(user.displayName || (user.email ? user.email.split("@")[0] : "Indian User"),60)||"Indian User";
+                if(typeof window.applyIndianIdentity==="function")window.applyIndianIdentity(authName,window.profileBio||"",window.profilePhotoURL||"",{preserveActiveEdit:true});
+                ensureCurrentUserPublicProfile().then(function(){return loadFirebasePublicProfiles();});
+                setFirebaseAuthStatus("Signed in as " + authName + ". UID: " + user.uid);
+            }else{
+                if(publicProfilesUnsubscribe){try{publicProfilesUnsubscribe();}catch(e){} publicProfilesUnsubscribe=null;}
+                recentFirebaseMessageUnsubs.forEach(fn=>{try{fn();}catch(e){}});recentFirebaseMessageUnsubs=[];recentFirebaseMessageUid="";recentFirebaseMessagesById.clear();
+                window.indianFirebaseAllProfiles=[];window.indianFirebasePublicProfiles=[];
             }
         });
     }
@@ -5899,7 +6067,7 @@ import { getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   getFirestore, collection, addDoc, deleteDoc, doc, query, where,
-  onSnapshot, serverTimestamp, getDocs, getDoc, setDoc
+  onSnapshot, serverTimestamp, getDocs, getDoc, setDoc, updateDoc
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
@@ -5961,7 +6129,8 @@ else{
      const data=snap.data()||{};
      const savedName=clean(data.displayName,60);
      const savedBio=clean(data.bio,500);
-     if(savedName)window.profileName=savedName;
+     if(savedName && typeof window.applyIndianIdentity === "function") window.applyIndianIdentity(savedName, savedBio, typeof data.photoURL === "string" ? data.photoURL : "");
+     else if(savedName)window.profileName=savedName;
      if(typeof data.bio === "string")window.profileBio=savedBio;
      if(typeof data.photoURL === "string" && data.photoURL) window.profilePhotoURL=data.photoURL;
      if(typeof window.updateIndianProfileImageUI === "function") window.updateIndianProfileImageUI(window.profilePhotoURL || "");
@@ -6049,7 +6218,10 @@ else{
  }
  async function saveHelp(text,count,id){
    if(!currentUser)return;
-   try{await addDoc(collection(db,"helpRequests"),{uid:currentUser.uid,displayName:name(),text:clean(text,3000),mediaCount:Math.min(Number(count)||0,10),clientId:id,createdAt:serverTimestamp(),createdAtMs:now()});}
+   try{
+     const category=clean(document.getElementById("helpCategory")?.value||"General",50);
+     await addDoc(collection(db,"helpRequests"),{uid:currentUser.uid,displayName:name(),category:category,text:clean(text,3000),mediaCount:Math.min(Number(count)||0,10),clientId:id,createdAt:serverTimestamp(),createdAtMs:now()});
+   }
    catch(e){alertSave("Help request",e);}
  }
  async function saveRemoteNotification(recipientId,message,type,targetId){
@@ -6132,7 +6304,7 @@ else{
    unsub.push(onSnapshot(query(collection(db,"posts")),s=>[...s.docs].sort((a,b)=>(b.data().createdAtMs||0)-(a.data().createdAtMs||0)).forEach(renderStoredPost),e=>console.error("Posts listener",e)));
    unsub.push(onSnapshot(query(collection(db,"notifications"),where("recipientId","==",uid)),s=>{if(Array.isArray(window.notifications)){window.notifications.splice(0,window.notifications.length,...s.docs.map(d=>({id:d.id,firestoreId:d.id,...d.data(),time:new Date(d.data().createdAtMs||Date.now()).toLocaleTimeString()})).sort((a,b)=>(b.createdAtMs||0)-(a.createdAtMs||0)));window.renderNotifications();}},e=>console.error("Notifications listener",e)));
    unsub.push(onSnapshot(query(collection(db,"follows"),where("followerId","==",uid)),s=>{const docs=s.docs.map(d=>d.data()||{}),keys=new Set(docs.map(d=>d.followingKey));if(Array.isArray(window.peopleData)){window.peopleData.forEach(p=>{const key=p.firebaseUid||("demo_"+p.id),wasFollowing=keys.has(key);p.isFollowing=wasFollowing;const baseFollowers=Number(p.__baseFollowersCount ?? p.followersCount ?? 0);p.__baseFollowersCount=baseFollowers;p.followersCount=baseFollowers+(wasFollowing?1:0);});const mainUser=window.peopleData.find(p=>p.id===0);if(mainUser){mainUser.followingCount=docs.length;}window.updateFollowView?.();window.renderPeopleList?.();window.renderSuggestedPeople?.();}},e=>console.error("Follow listener",e)));
-   unsub.push(onSnapshot(query(collection(db,"helpRequests")),s=>{const box=document.getElementById("helpContainer");if(!box)return;s.docs.sort((a,b)=>(b.data().createdAtMs||0)-(a.data().createdAtMs||0)).forEach(d=>{const x=d.data(),id=x.clientId||("help-"+d.id);if(document.getElementById(id))return;document.getElementById("noHelp")?.remove();const el=document.createElement("div");el.className="helpRequest";el.id=id;el.dataset.firestoreId=d.id;el.textContent=(clean(x.displayName,60)||"Indian User")+": "+(clean(x.text,3000)||"Media help request")+" — Saved in Firestore";box.appendChild(el);});},e=>console.error("Help listener",e)));
+   unsub.push(onSnapshot(query(collection(db,"helpRequests")),s=>{const box=document.getElementById("helpContainer");if(!box)return;s.docs.sort((a,b)=>(b.data().createdAtMs||0)-(a.data().createdAtMs||0)).forEach(d=>{const x=d.data(),id=x.clientId||("help-"+d.id);let el=document.getElementById(id);if(!el){document.getElementById("noHelp")?.remove();el=document.createElement("article");el.className="helpRequest";el.id=id;box.prepend(el);}el.dataset.firestoreId=d.id;el.dataset.uid=String(x.uid||"");el.replaceChildren();const title=document.createElement("h3");title.className="helpTitle";title.textContent=(clean(x.displayName,60)||"Indian User")+" — "+clean(x.category||"General",50);el.appendChild(title);const body=document.createElement("p");body.textContent=clean(x.text,3000)||"Media help request";el.appendChild(body);const meta=document.createElement("p");meta.className="helpTime";meta.textContent="Help request shared with Indian users.";el.appendChild(meta);if(x.uid && x.uid!==currentUser?.uid){const offer=document.createElement("button");offer.type="button";offer.className="action";offer.textContent="Offer Help in Messages";offer.setAttribute("aria-label","Offer help to "+(clean(x.displayName,60)||"this user")+" by message");offer.addEventListener("click",()=>window.startHelpConversation&&window.startHelpConversation(String(x.uid),String(x.displayName||"Indian User")));el.appendChild(offer);} });},e=>console.error("Help listener",e)));
  }
  function wrap(){
    if(window.__indianFirestoreWrapped)return;window.__indianFirestoreWrapped=true;
@@ -6494,5 +6666,230 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
   else applyRoute('home',false,false);
 })();
 </script>
+
+<script id="indianCompleteFeatureAndTalkBackEnhancements">
+(function(){
+  'use strict';
+  function byId(id){return document.getElementById(id);}
+  function cleanText(v,max){return String(v==null?'':v).normalize('NFKC').replace(/[\u0000-\u001F\u007F]/g,'').trim().slice(0,max||500);}
+  function announce(text){var el=byId('indianRouteAnnouncer');if(el){el.textContent='';window.setTimeout(function(){el.textContent=String(text||'');},30);}}
+  function activeProfileEdit(){var f=byId('profileForm');return !!(f&&f.style.display!=='none'&&(f.contains(document.activeElement)));}
+
+  // One identity source keeps the new account name, edited name, header, and local post/message labels aligned.
+  window.applyIndianIdentity=function(name,bio,photo,options){
+    var safeName=cleanText(name,60)||'Indian User';
+    var safeBio=(bio===undefined||bio===null)?(window.profileBio||''):cleanText(bio,500);
+    window.profileName=safeName;window.profileBio=safeBio;
+    try{profileName=safeName;profileBio=safeBio;}catch(e){}
+    if(typeof photo==='string'&&photo)window.profilePhotoURL=photo;
+    if(typeof window.updateIndianProfileImageUI==='function')window.updateIndianProfileImageUI(window.profilePhotoURL||'');
+    var nameView=byId('profileNameView'),bioView=byId('profileBioView'),nameInput=byId('profileNameInput'),bioInput=byId('profileBioInput');
+    if(nameView)nameView.textContent=safeName;if(bioView)bioView.textContent=safeBio;
+    if(!activeProfileEdit()){if(nameInput)nameInput.value=safeName;if(bioInput)bioInput.value=safeBio;}
+    var title=byId('topProfileButton');if(title)title.setAttribute('aria-label','Open profile for '+safeName+' and edit profile');
+    if(typeof window.renderConversationList==='function')window.setTimeout(window.renderConversationList,0);
+    return safeName;
+  };
+
+  // Keep chat rows ordered by the most recent local or Firebase message and show real profile photos.
+  var originalRenderConversationList=window.renderConversationList;
+  if(typeof originalRenderConversationList==='function'){
+    window.renderConversationList=function(){
+      originalRenderConversationList();
+      var box=byId('conversationList');if(!box)return;
+      var cards=Array.from(box.querySelectorAll('.conversationCard'));
+      cards.sort(function(a,b){
+        var pa=window.getIndianPersonById?window.getIndianPersonById(Number(a.dataset.personId)):null;
+        var pb=window.getIndianPersonById?window.getIndianPersonById(Number(b.dataset.personId)):null;
+        var ma=pa&&window.getMessageMeta?window.getMessageMeta(pa.id):{};var mb=pb&&window.getMessageMeta?window.getMessageMeta(pb.id):{};
+        if(!!ma.pinned!==!!mb.pinned)return ma.pinned?-1:1;
+        var la=pa&&window.getMessagesForPerson?window.getMessagesForPerson(pa.id):[];var lb=pb&&window.getMessagesForPerson?window.getMessagesForPerson(pb.id):[];
+        var ta=Math.max(Number(pa&&pa.latestMessageAtMs)||0,la.length?Number(la[la.length-1].timestampValue)||0:0);
+        var tb=Math.max(Number(pb&&pb.latestMessageAtMs)||0,lb.length?Number(lb[lb.length-1].timestampValue)||0:0);
+        return tb-ta;
+      });
+      cards.forEach(function(card){
+        var person=window.getIndianPersonById?window.getIndianPersonById(Number(card.dataset.personId)):null;if(!person)return;
+        var preview=card.querySelector('.conversationPreview');var msgs=window.getMessagesForPerson?window.getMessagesForPerson(person.id):[];var localLatest=msgs.length?Number(msgs[msgs.length-1].timestampValue)||0:0;
+        if(preview && Number(person.latestMessageAtMs||0)>localLatest && person.latestMessageText)preview.textContent=person.latestMessageText;
+        var avatar=card.querySelector('.personAvatar');
+        if(avatar&&person.photoURL){avatar.replaceChildren();var img=document.createElement('img');img.src=person.photoURL;img.alt='';img.loading='lazy';avatar.appendChild(img);avatar.setAttribute('aria-hidden','true');}
+        box.appendChild(card);
+      });
+    };
+  }
+
+  // Add UID lookup used by recent-message summaries and help requests.
+  window.getIndianPersonByFirebaseUid=function(uid){
+    try{return (window.peopleData||[]).find(function(p){return p.firebaseUid===uid;})||null;}catch(e){return null;}
+  };
+
+  // Apply realtime reaction totals received through publicProfiles and rerender the active chat.
+  window.applyIndianSharedMessageReactions=function(shared){
+    try{
+      (messageData||[]).forEach(function(chat){(chat.messages||[]).forEach(function(message){if(message.firestoreId)message.reactions=(shared&&shared[message.firestoreId])?shared[message.firestoreId]:{};});});
+      if(typeof selectedConversationPersonId!=='undefined'&&selectedConversationPersonId!==null&&typeof window.renderChat==='function')window.renderChat(selectedConversationPersonId);
+    }catch(e){console.warn('Message reaction refresh failed',e);}
+  };
+  var originalAddMessageReaction=window.addMessageReaction;
+  window.addMessageReaction=function(personId,index,emoji){
+    var messages=window.getMessagesForPerson?window.getMessagesForPerson(personId):[];var msg=messages[index];
+    if(msg&&msg.firestoreId&&window.firebaseIndianMessages&&typeof window.firebaseIndianMessages.react==='function'){
+      window.firebaseIndianMessages.react(msg.firestoreId,emoji).then(function(){
+        var status=byId('chatTypingStatus');if(status)status.textContent='Reaction '+emoji+' saved and syncing with the other account.';
+      }).catch(function(error){
+        var status=byId('chatTypingStatus');if(status)status.textContent='Reaction was not synced. Firestore publicProfiles update may be blocked by Security Rules.';
+        console.warn('Message reaction sync failed',error);
+      });
+      return;
+    }
+    if(typeof originalAddMessageReaction==='function')originalAddMessageReaction(personId,index,emoji);
+  };
+
+  // Online photo stories use the current user's publicProfiles document, avoiding a new Storage dependency.
+  function readBlobDataUrl(blob){return new Promise(function(resolve,reject){var r=new FileReader();r.onload=function(){resolve(String(r.result||''));};r.onerror=function(){reject(new Error('The browser could not read the compressed story photo.'));};r.readAsDataURL(blob);});}
+  var originalPublishLocalStory=window.publishLocalStory;
+  window.publishLocalStory=async function(){
+    var input=byId('storyMediaInput');var file=input&&input.files&&input.files[0];var caption=byId('storyCaption')?byId('storyCaption').value:'';var status=byId('storiesStatus');
+    if(typeof originalPublishLocalStory==='function')originalPublishLocalStory();
+    if(!file)return;
+    if(!String(file.type||'').startsWith('image/')){
+      if(status)status.textContent='Video story is saved as a local preview only. Cross-device video stories need video hosting; small photo stories can sync through Firestore.';
+      return;
+    }
+    if(!window.firebaseCurrentUid || typeof window.saveIndianStoryToFirestore!=='function'){
+      if(status)status.textContent='Story preview saved on this device. Sign in and refresh if online sharing is not available.';
+      return;
+    }
+    try{
+      if(typeof window.imageCompression!=='function')throw new Error('Photo compression tool did not load. Refresh and try again.');
+      var compressed=await window.imageCompression(file,{maxSizeMB:0.045,maxWidthOrHeight:480,useWebWorker:true,fileType:'image/webp',initialQuality:0.48});
+      var imageData=await readBlobDataUrl(compressed);
+      if(imageData.length>70000)throw new Error('The photo remains too large for free Firestore story sharing. Please choose a smaller or simpler photo.');
+      await window.saveIndianStoryToFirestore({id:'story-'+Date.now(),caption:caption,imageData:imageData});
+      if(status)status.textContent='Photo story shared with Indian users. It will expire after 24 hours.';
+      if(typeof window.renderIndianOnlineStories==='function')window.renderIndianOnlineStories();
+      if(typeof window.renderIndianHomeStories==='function')window.renderIndianHomeStories();
+    }catch(error){
+      if(status)status.textContent='This story is saved as a local preview, but online sharing did not work: '+cleanText(error.message,220);
+    }
+  };
+
+  function storyOwnerLabel(profile){return cleanText(profile.displayName||'Indian User',60)||'Indian User';}
+  function showOnlineStory(profile,story){
+    if(typeof window.openStories==='function')window.openStories();
+    window.setTimeout(function(){
+      var section=byId('storiesSection'),list=byId('storiesList');if(!section||!list)return;
+      var viewer=byId('onlineStoryViewer');if(!viewer){viewer=document.createElement('section');viewer.id='onlineStoryViewer';viewer.tabIndex=-1;viewer.setAttribute('aria-labelledby','onlineStoryViewerTitle');list.parentNode.insertBefore(viewer,list);}
+      viewer.replaceChildren();var h=document.createElement('h3');h.id='onlineStoryViewerTitle';h.textContent='Story by '+storyOwnerLabel(profile);viewer.appendChild(h);
+      var img=document.createElement('img');img.src=story.imageData;img.alt='Photo story shared by '+storyOwnerLabel(profile);viewer.appendChild(img);
+      var cap=document.createElement('p');cap.textContent=String(story.caption||'No caption');viewer.appendChild(cap);
+      var expire=document.createElement('p');expire.textContent='This story expires after 24 hours.';viewer.appendChild(expire);
+      var reply=document.createElement('button');reply.type='button';reply.className='action';reply.textContent='Reply to Story in Messages';reply.setAttribute('aria-label','Reply to story by '+storyOwnerLabel(profile));reply.addEventListener('click',function(){window.startHelpConversation&&window.startHelpConversation(profile.uid,storyOwnerLabel(profile),'Replying to your story: '+String(story.caption||'Photo story'));});viewer.appendChild(reply);
+      var close=document.createElement('button');close.type='button';close.className='action';close.textContent='Close story preview';close.addEventListener('click',function(){viewer.hidden=true;var trigger=document.querySelector('[data-online-story-id="'+CSS.escape(String(story.id))+'"]');if(trigger)trigger.focus();});viewer.appendChild(close);viewer.hidden=false;viewer.focus();
+      announce('Story by '+storyOwnerLabel(profile)+'. '+String(story.caption||'No caption')+'.');
+    },80);
+  }
+  function onlineStoryItems(){
+    var now=Date.now(),items=[];
+    (window.indianFirebaseAllProfiles||[]).forEach(function(profile){
+      (Array.isArray(profile.activeStories)?profile.activeStories:[]).forEach(function(story){if(story&&story.imageData&&Number(story.expiresAt)>now)items.push({profile:profile,story:story});});
+    });
+    return items.sort(function(a,b){return Number(b.story.createdAtMs||0)-Number(a.story.createdAtMs||0);});
+  }
+  function appendOnlineStoriesToHome(){
+    var strip=byId('homeStoriesStrip');if(!strip)return;
+    strip.querySelectorAll('[data-online-story-id]').forEach(function(el){el.remove();});
+    onlineStoryItems().forEach(function(item){
+      var owner=storyOwnerLabel(item.profile),story=item.story;var card=document.createElement('button');card.type='button';card.className='story-preview-card';card.dataset.onlineStoryId=story.id;card.setAttribute('role','listitem');card.setAttribute('aria-label','Open photo story by '+owner+(story.caption?': '+story.caption:''));
+      var av=document.createElement('span');av.className='story-preview-avatar';av.setAttribute('aria-hidden','true');var img=document.createElement('img');img.src=story.imageData;img.alt='';img.loading='lazy';av.appendChild(img);
+      var name=document.createElement('span');name.className='story-preview-name';name.textContent=owner;
+      var cap=document.createElement('span');cap.className='story-preview-caption';cap.textContent=String(story.caption||'Photo story');
+      card.append(av,name,cap);card.addEventListener('click',function(){showOnlineStory(item.profile,story);});strip.appendChild(card);
+    });
+  }
+  function appendOnlineStoriesToPage(){
+    var list=byId('storiesList');if(!list)return;
+    list.querySelectorAll('.online-story-card').forEach(function(el){el.remove();});
+    var items=onlineStoryItems();if(!items.length)return;
+    var heading=document.createElement('h3');heading.className='online-story-card-heading';heading.textContent='Photo stories from Indian users';
+    list.appendChild(heading);
+    items.forEach(function(item){
+      var owner=storyOwnerLabel(item.profile),story=item.story;var card=document.createElement('article');card.className='online-story-card';card.dataset.onlineStoryCard=story.id;
+      var h=document.createElement('h4');h.textContent=owner;card.appendChild(h);
+      var cap=document.createElement('p');cap.textContent=String(story.caption||'No caption');card.appendChild(cap);
+      var img=document.createElement('img');img.src=story.imageData;img.alt='Photo story by '+owner;img.loading='lazy';card.appendChild(img);
+      var meta=document.createElement('p');meta.textContent='Shared story. Expires after 24 hours.';card.appendChild(meta);
+      var button=document.createElement('button');button.type='button';button.className='action';button.textContent='Open and reply';button.addEventListener('click',function(){showOnlineStory(item.profile,story);});card.appendChild(button);
+      list.appendChild(card);
+    });
+  }
+  window.renderIndianOnlineStories=function(){appendOnlineStoriesToHome();if(byId('storiesSection')&&byId('storiesSection').style.display!=='none')appendOnlineStoriesToPage();};
+  var oldHomeStoryRender=window.renderIndianHomeStories;
+  if(typeof oldHomeStoryRender==='function')window.renderIndianHomeStories=function(){oldHomeStoryRender();appendOnlineStoriesToHome();};
+  var oldLocalStoryRender=window.renderLocalStories;
+  if(typeof oldLocalStoryRender==='function')window.renderLocalStories=function(){oldLocalStoryRender();appendOnlineStoriesToPage();};
+
+  // Improve local short-video previews with labelled keyboard-accessible actions.
+  var originalPreviewShort=window.previewLocalShort;
+  window.previewLocalShort=function(){
+    if(typeof originalPreviewShort==='function')originalPreviewShort();
+    var feed=byId('shortsFeed');var card=feed&&feed.firstElementChild;if(!card||card.dataset.indianShortActions==='yes')return;
+    var shortsStatus=byId('shortsStatus');card.dataset.indianShortActions='yes';var caption=card.querySelector('p');var captionText=caption?caption.textContent:'';var row=document.createElement('div');row.className='short-local-actions';row.setAttribute('aria-label','Short video actions');
+    var like=document.createElement('button');like.type='button';like.className='action';like.textContent='Like';like.setAttribute('aria-pressed','false');like.addEventListener('click',function(){var liked=like.getAttribute('aria-pressed')==='true';like.setAttribute('aria-pressed',String(!liked));like.textContent=liked?'Like':'Liked';if(shortsStatus)shortsStatus.textContent=liked?'Like removed from local preview.':'Liked this local preview. This like is not shared online.';});row.appendChild(like);
+    var share=document.createElement('button');share.type='button';share.className='action';share.textContent='Copy caption';share.addEventListener('click',async function(){try{await navigator.clipboard.writeText(captionText);if(shortsStatus)shortsStatus.textContent='Caption copied. The local preview itself is not a public video link.';}catch(e){if(shortsStatus)shortsStatus.textContent='To share this video online, video hosting must be configured. You can copy the caption manually: '+captionText;}});row.appendChild(share);
+    var commentLabel=document.createElement('label');commentLabel.textContent='Comment on this local preview';var comment=document.createElement('textarea');comment.rows=2;comment.maxLength=500;comment.setAttribute('aria-label','Comment on this local Shorts preview');comment.style.cssText='display:block;width:100%;margin-top:6px;';var add=document.createElement('button');add.type='button';add.className='action';add.textContent='Add local comment';var commentList=document.createElement('div');commentList.setAttribute('aria-live','polite');add.addEventListener('click',function(){var val=comment.value.trim();if(!val){comment.focus();return;}var p=document.createElement('p');p.textContent='Your comment: '+val;commentList.appendChild(p);comment.value='';comment.focus();});card.append(row,commentLabel,comment,add,commentList);
+  };
+
+  // Broadcast live status to registered Indian users while clearly stating that video streaming is not wired up.
+  function ensureLivePageControls(){
+    var section=byId('liveZoneSection');if(!section)return;
+    if(!byId('liveZoneToggleButton')){var button=document.createElement('button');button.type='button';button.id='liveZoneToggleButton';button.className='action';button.textContent='Go Live';button.setAttribute('aria-label','Start or end your live status');button.addEventListener('click',function(){window.toggleLive&&window.toggleLive();});section.insertBefore(button,byId('liveStatus')||section.firstChild);}
+    if(!byId('livePeopleFeed')){var feed=document.createElement('div');feed.id='livePeopleFeed';feed.setAttribute('aria-live','polite');feed.setAttribute('aria-label','Indian users marked live');section.appendChild(feed);}
+  }
+  var originalToggleLive=window.toggleLive;
+  window.toggleLive=function(){
+    if(typeof originalToggleLive==='function')originalToggleLive();
+    var nowLive=!!isLive;var buttons=[byId('goLiveButton'),byId('liveZoneToggleButton')].filter(Boolean);buttons.forEach(function(b){b.textContent=nowLive?'End Live':'Go Live';b.setAttribute('aria-label',nowLive?'End your live status':'Start your live status');});
+    var status=byId('liveStatus');if(status&&nowLive)status.textContent='Your live status is active. Real-time camera video is not connected in this version.';
+    if(typeof window.setIndianLiveStatus==='function')window.setIndianLiveStatus(nowLive,liveStartTime?liveStartTime.getTime():Date.now()).then(function(){if(status)status.textContent=nowLive?'Your live status is shared with Indian users. Camera video streaming is not connected yet.':'Your live status has ended.';}).catch(function(error){if(status)status.textContent='Live status changed on this device, but it could not sync online: '+cleanText(error.message,180);});
+    if(typeof window.renderIndianLivePeople==='function')window.renderIndianLivePeople();
+    announce(nowLive?'Your live status has started.':'Your live status has ended.');
+  };
+  window.renderIndianLivePeople=function(){
+    var box=byId('livePeopleFeed');if(!box)return;box.replaceChildren();
+    var active=(window.indianFirebaseAllProfiles||[]).filter(function(p){var l=p&&p.liveSession;return l&&l.isLive&&Date.now()-Number(l.startedAtMs||0)<12*60*60*1000;});
+    if(!active.length){var empty=document.createElement('p');empty.textContent='No other registered users are currently marked live.';box.appendChild(empty);return;}
+    var h=document.createElement('h3');h.textContent='Users marked live';box.appendChild(h);
+    active.forEach(function(p){var card=document.createElement('article');card.className='live-person-card';var name=document.createElement('h4');name.textContent=storyOwnerLabel(p);card.appendChild(name);var note=document.createElement('p');note.textContent='Live status is active. Camera video streaming is not available in this version.';card.appendChild(note);box.appendChild(card);});
+  };
+
+  // Help requests can start a message to the registered requester, using the existing Messages system.
+  window.startHelpConversation=function(uid,displayName,prefill){
+    var person=window.getIndianPersonByFirebaseUid?window.getIndianPersonByFirebaseUid(uid):null;
+    if(!person){if(typeof window.refreshIndianPublicProfiles==='function')window.refreshIndianPublicProfiles();announce('The requester profile is still loading. Try again shortly.');return;}
+    if(typeof window.openMessages==='function')window.openMessages();
+    window.setTimeout(function(){
+      if(typeof window.openConversation==='function')window.openConversation(person.id);
+      if(prefill&&byId('messageText')){byId('messageText').value=prefill;byId('messageText').focus();if(typeof window.updateMessageComposerStatus==='function')window.updateMessageComposerStatus();}
+    },140);
+  };
+
+  // Every in-app route announces itself and keeps keyboard focus in the destination.
+  var routeObserver=new MutationObserver(function(){
+    var current=document.querySelector('[data-route][aria-current="page"]');if(current)announce((current.getAttribute('aria-label')||current.textContent||'Page')+' page opened.');
+  });
+  document.addEventListener('DOMContentLoaded',function(){
+    ensureLivePageControls();window.renderIndianOnlineStories();window.renderIndianLivePeople();
+    document.querySelectorAll('section[tabindex="-1"]').forEach(function(section){if(!section.hasAttribute('aria-label')&&!section.hasAttribute('aria-labelledby')){var heading=section.querySelector('h2');if(heading){if(!heading.id)heading.id='sectionHeading-'+Math.random().toString(36).slice(2,8);section.setAttribute('aria-labelledby',heading.id);}}});
+    var nav=document.querySelector('[aria-label="Main navigation"]');if(nav)routeObserver.observe(nav,{subtree:true,attributes:true,attributeFilter:['aria-current']});
+    window.setTimeout(function(){window.renderIndianOnlineStories();window.renderIndianLivePeople();},500);
+    window.setInterval(function(){window.renderIndianOnlineStories&&window.renderIndianOnlineStories();},60000);
+  });
+  // DOM can already be ready if scripts are loaded through a cache or browser extension.
+  if(document.readyState!=='loading'){ensureLivePageControls();window.renderIndianOnlineStories();window.renderIndianLivePeople();}
+})();
+</script>
+
 </body>
 </html>

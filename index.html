@@ -1321,12 +1321,12 @@ Welcome to Indian. Here people can connect, share, help each other and participa
   <div class="home-section-heading">
     <div>
       <h2 id="homeStoriesTitle">Stories</h2>
-      <p class="home-section-subtitle">Naye updates dekhein. Mobile par story cards ko side mein swipe karein.</p>
+      
     </div>
     <button type="button" class="story-add-button" onclick="openStoriesFromHome()" aria-label="Create a new story">＋ Add Story</button>
   </div>
-  <div id="homeStoriesStrip" class="home-stories-strip" tabindex="0" role="list" aria-label="Active stories">
-    <p class="story-empty-note">Your active stories will appear here.</p>
+  <div id="homeStoriesStrip" class="home-stories-strip" tabindex="0" role="list" aria-label="Stories">
+    <p class="story-empty-note">No stories yet.</p>
   </div>
 </section>
 
@@ -1480,15 +1480,14 @@ Search registered users, places, posts or help requests:
 <!-- STORIES SECTION: local prototype; online sync is a later storage step -->
 <section id="storiesSection" style="display:none;" tabindex="-1">
 <h2>Stories</h2>
-<p>Stories created here are saved on this device for this prototype. They expire after 24 hours. Cross-account online sharing will be enabled after media storage is configured.</p>
+
 <form id="storyForm">
-<label for="storyCaption">Story caption (optional):</label>
+<label for="storyCaption">Caption (optional):</label>
 <textarea id="storyCaption" rows="3" maxlength="300" style="width:100%;margin:8px 0;" placeholder="Write something about your story..."></textarea>
-<label for="storyMediaInput">Choose a photo or video for your story:</label>
+<label for="storyMediaInput">Choose a photo or video:</label>
 <input id="storyMediaInput" type="file" accept="image/*,video/mp4,video/webm" aria-label="Choose photo or video for story" style="display:block;margin:8px 0;">
 <details id="storyAudioOptions" class="story-audio-options">
-  <summary>Optional music and audio settings</summary>
-  <p>Built-in sounds are short generated demo tones, not songs. Other users must press Play in the story viewer because browsers usually block automatic audio.</p>
+  <summary>Add music (optional)</summary>
   <label for="storyMusicChoice">Choose a website demo tune:</label>
   <select id="storyMusicChoice" style="display:block;margin:8px 0;padding:10px;width:100%;">
     <option value="none">No music</option>
@@ -1496,13 +1495,13 @@ Search registered users, places, posts or help requests:
     <option value="bright">Bright instrumental demo tone</option>
     <option value="calm">Calm instrumental demo tone</option>
   </select>
-  <label for="storyAudioInput">Or choose your own short audio file (up to 16 KB to share online):</label>
+  <label for="storyAudioInput">Choose a small audio file (optional):</label>
   <input id="storyAudioInput" type="file" accept="audio/*" aria-label="Choose your own music audio file" style="display:block;margin:8px 0;">
 </details>
 <button class="action" type="button" onclick="publishLocalStory()">Add Story</button>
 </form>
 <div id="storiesStatus" role="status" aria-live="polite" style="margin-top:12px;"></div>
-<h3>Active stories</h3>
+<h3>Your stories</h3>
 <div id="storiesList" aria-live="polite"><p>No stories yet.</p></div>
 </section>
 
@@ -4955,13 +4954,13 @@ function renderLocalStories(){
     if(!list) return;
     const items = readLocalStories();
     list.replaceChildren();
-    if(!items.length){ list.textContent = "No active stories yet. Add a photo or video above."; return; }
+    if(!items.length){ list.textContent = "No stories yet."; return; }
     items.slice().reverse().forEach(item => {
         const card = document.createElement("article");
         card.className = "local-story-card";
         card.dataset.storyId = item.id;
         card.style.cssText = "border:1px solid #ddd;border-radius:8px;padding:12px;margin:12px 0;";
-        const heading = document.createElement("h4"); heading.textContent = (item.owner || "Your story") + " — expires " + new Date(item.expiresAt).toLocaleString(); card.appendChild(heading);
+        const heading = document.createElement("h4"); heading.textContent = item.owner || "Your story"; card.appendChild(heading);
         const caption = document.createElement("p"); caption.textContent = item.caption || "(No caption)"; card.appendChild(caption);
         const url = localStoryUrls.get(item.id);
         if(url){
@@ -4969,7 +4968,7 @@ function renderLocalStories(){
             media.src = url; media.controls = item.kind === "video"; media.alt = item.kind === "image" ? "Story photo" : "Story video";
             media.style.cssText = "display:block;max-width:100%;max-height:480px;border-radius:6px;margin:8px 0;"; card.appendChild(media);
         } else {
-            const note = document.createElement("p"); note.textContent = "This story's media is only available in the current page session. Re-add it after refreshing."; card.appendChild(note);
+            const note = document.createElement("p"); note.textContent = "Media unavailable. Add this story again."; card.appendChild(note);
         }
         if(item.musicLabel){ const m=document.createElement("p"); m.textContent="Music: "+item.musicLabel; card.appendChild(m); }
         const remove = document.createElement("button"); remove.className="action"; remove.type="button"; remove.textContent="Delete my story";
@@ -5012,8 +5011,8 @@ function publishLocalStory(){
     items.push({id,owner:typeof profileName==="string"?profileName:"Indian user",caption:(document.getElementById("storyCaption").value||"").slice(0,300),kind,createdAt:Date.now(),expiresAt:Date.now()+24*60*60*1000,musicLabel});
     try{localStorage.setItem(INDIAN_STORY_KEY,JSON.stringify(items));}catch(error){status.textContent="Browser storage is full or unavailable. Remove older stories and try again.";return;}
     localStoryUrls.set(id,URL.createObjectURL(file));
-    if(audio){ const audioUrl=URL.createObjectURL(audio); const player=document.createElement("audio"); player.controls=true; player.src=audioUrl; player.setAttribute("aria-label","Your selected story music preview"); status.replaceChildren(document.createTextNode("Story added on this device. Preview your selected audio: "),player); }
-    else {status.textContent="Story added on this device. It will expire after 24 hours."; if(musicChoice!=="none") playStoryDemoTone(musicChoice);}
+    if(audio){ const audioUrl=URL.createObjectURL(audio); const player=document.createElement("audio"); player.controls=true; player.src=audioUrl; player.setAttribute("aria-label","Preview story music"); status.replaceChildren(document.createTextNode("Story added. Preview music: "),player); }
+    else {status.textContent="Story added."; if(musicChoice!=="none") playStoryDemoTone(musicChoice);}
     renderLocalStories(); mediaInput.value=""; if(audioInput)audioInput.value=""; document.getElementById("storyCaption").value="";
 }
 function previewLocalShort(){
@@ -6820,11 +6819,11 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
     if(typeof originalPublishLocalStory==='function')originalPublishLocalStory();
     if(!file)return;
     if(!String(file.type||'').startsWith('image/')){
-      if(status)status.textContent='Video story is saved as a local preview only. Cross-device video stories need video hosting; small photo stories can sync through Firestore.';
+      if(status)status.textContent='Video story preview saved on this device.';
       return;
     }
     if(!window.firebaseCurrentUid || typeof window.saveIndianStoryToFirestore!=='function'){
-      if(status)status.textContent='Story preview saved on this device. Sign in and refresh if online sharing is not available.';
+      if(status)status.textContent='Story preview saved on this device.';
       return;
     }
     try{
@@ -6833,7 +6832,7 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
       var imageData=await readBlobDataUrl(compressed);
       if(imageData.length>70000)throw new Error('The photo remains too large for free Firestore story sharing. Please choose a smaller or simpler photo.');
       await window.saveIndianStoryToFirestore({id:'story-'+Date.now(),caption:caption,imageData:imageData});
-      if(status)status.textContent='Photo story shared with Indian users. It will expire after 24 hours.';
+      if(status)status.textContent='Your photo story is shared with Indian users.';
       if(typeof window.renderIndianOnlineStories==='function')window.renderIndianOnlineStories();
       if(typeof window.renderIndianHomeStories==='function')window.renderIndianHomeStories();
     }catch(error){
@@ -6858,7 +6857,7 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
       }else{
         var silent=document.createElement('p');silent.textContent='No shared music was added to this story.';viewer.appendChild(silent);
       }
-      var expire=document.createElement('p');expire.textContent='This story expires after 24 hours.';viewer.appendChild(expire);
+      
       var reply=document.createElement('button');reply.type='button';reply.className='action';reply.textContent='Reply to Story in Messages';reply.setAttribute('aria-label','Reply to story by '+storyOwnerLabel(profile));reply.addEventListener('click',function(){window.startHelpConversation&&window.startHelpConversation(profile.uid,storyOwnerLabel(profile),'Replying to your story: '+String(story.caption||'Photo story'));});viewer.appendChild(reply);
       var close=document.createElement('button');close.type='button';close.className='action';close.textContent='Close story preview';close.addEventListener('click',function(){viewer.hidden=true;var trigger=document.querySelector('[data-online-story-id="'+CSS.escape(String(story.id))+'"]');if(trigger)trigger.focus();});viewer.appendChild(close);viewer.hidden=false;viewer.focus();
       announce('Story by '+storyOwnerLabel(profile)+'. '+String(story.caption||'No caption')+'.');
@@ -6886,14 +6885,14 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
     var list=byId('storiesList');if(!list)return;
     list.querySelectorAll('.online-story-card').forEach(function(el){el.remove();});
     var items=onlineStoryItems();if(!items.length)return;
-    var heading=document.createElement('h3');heading.className='online-story-card-heading';heading.textContent='Photo stories from Indian users';
+    var heading=document.createElement('h3');heading.className='online-story-card-heading';heading.textContent='';
     list.appendChild(heading);
     items.forEach(function(item){
       var owner=storyOwnerLabel(item.profile),story=item.story;var card=document.createElement('article');card.className='online-story-card';card.dataset.onlineStoryCard=story.id;
       var h=document.createElement('h4');h.textContent=owner;card.appendChild(h);
       var cap=document.createElement('p');cap.textContent=String(story.caption||'No caption');card.appendChild(cap);
       var img=document.createElement('img');img.src=story.imageData;img.alt='Photo story by '+owner;img.loading='lazy';card.appendChild(img);
-      var meta=document.createElement('p');meta.textContent='Shared photo story. '+(story.audioData?'Music file available.':(story.musicChoice&&story.musicChoice!=='none'?'Website demo tune available; press Play after opening.':'No shared music.'))+' Expires after 24 hours.';card.appendChild(meta);
+      var meta=document.createElement('p');meta.textContent='';
       var button=document.createElement('button');button.type='button';button.className='action';button.textContent='Open and reply';button.addEventListener('click',function(){showOnlineStory(item.profile,story);});card.appendChild(button);
       list.appendChild(card);
     });
@@ -6983,7 +6982,7 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
   'use strict';
   var byId=function(id){return document.getElementById(id);};
   var notify=function(id,msg){var el=byId(id);if(el)el.textContent=msg;var announcer=byId('indianRouteAnnouncer');if(announcer)announcer.textContent=msg;};
-  var localAudioUrls=new Map();
+  var localAudioUrls=new Map();window.indianLocalAudioUrls=localAudioUrls;
   var activeRecognition=null;
   var activeButton=null;
   var activeField=null;
@@ -7086,6 +7085,161 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
     window.setInterval(refreshLiveSection,30000);
   });
   if(document.readyState!=='loading'){installStorySaveWrapper();setupVoiceTyping();var filter=byId('helpStatusFilter');if(filter)filter.addEventListener('change',applyHelpFilter);setupStoryCardDataset();enrichLocalStoryCards();refreshLiveSection();}
+})();
+</script>
+
+
+<style id="indianFacebookStyleStories">
+/* Facebook-style story view: uncluttered strip and one full-screen story at a time. */
+#homeStoriesSection .home-section-heading>div p{display:none!important}
+#storiesSection>p:first-of-type{display:none!important}
+#storiesSection>h3{margin-top:16px}
+#storiesList{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+.local-story-card,.online-story-card{display:flex!important;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;width:112px;min-width:100px;margin:4px 0!important;padding:8px!important;border:0!important;background:transparent!important;box-shadow:none!important;text-align:center}
+.local-story-card h4,.local-story-card p,.online-story-card h4,.online-story-card p{display:none!important}
+.local-story-card img,.local-story-card video,.online-story-card img{width:72px!important;height:72px!important;max-width:72px!important;max-height:72px!important;object-fit:cover!important;border-radius:50%!important;border:3px solid #ff9933!important;margin:0!important}
+.local-story-card button,.online-story-card button{min-height:36px!important;padding:6px 10px!important;font-size:.8rem!important}
+.story-preview-card{min-height:0!important;min-width:94px!important;flex:0 0 94px!important;padding:7px 5px!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.story-preview-avatar{width:70px!important;height:70px!important;flex-basis:70px!important;border:3px solid #ff9933!important;box-shadow:0 0 0 2px #fff,0 0 0 4px #138808!important}
+.story-preview-name{font-size:.82rem!important;max-width:88px!important}
+.story-preview-caption{display:none!important}
+#homeStoriesStrip{min-height:0!important;padding:8px 2px 12px!important;gap:9px!important}
+.indian-story-fullscreen[hidden]{display:none!important}
+.indian-story-fullscreen{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;background:#08090c;color:#fff;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom);box-sizing:border-box}
+.indian-story-fullscreen button{font:inherit;cursor:pointer}
+.indian-story-fullscreen button:focus-visible{outline:3px solid #ff9933!important;outline-offset:3px!important}
+.indian-story-top{display:flex;align-items:center;gap:10px;padding:10px 2px;min-height:54px;flex:0 0 auto}
+.indian-story-owner{font-weight:750;font-size:1rem;overflow-wrap:anywhere;flex:1}
+.indian-story-close{width:44px;height:44px;border:1px solid #71717a;border-radius:50%;background:#222;color:#fff;font-size:1.5rem;display:flex;align-items:center;justify-content:center}
+.indian-story-stage{position:relative;display:flex;align-items:center;justify-content:center;flex:1 1 auto;min-height:0;overflow:hidden;touch-action:pan-y}
+.indian-story-stage img,.indian-story-stage video{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:6px}
+.indian-story-stage video{width:100%;max-height:100%}
+.indian-story-stage audio{display:none}
+.indian-story-bottom{flex:0 0 auto;max-height:25vh;overflow-y:auto;padding:12px 2px 10px}
+.indian-story-caption{margin:0 0 9px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:1rem;line-height:1.45}
+.indian-story-audio{width:100%;max-width:540px;min-height:42px}
+.indian-story-controls{display:flex;justify-content:space-between;gap:10px;padding:7px 0 3px;flex:0 0 auto}
+.indian-story-controls button{min-height:44px;padding:8px 15px;border:1px solid #68707b;border-radius:12px;background:#1d2733;color:#fff;font-weight:700}
+.indian-story-count{font-size:.82rem;color:#cbd5e1;align-self:center}
+.indian-story-audio-button{min-height:42px;padding:7px 12px;border:1px solid #68707b;border-radius:10px;background:#1d2733;color:white}
+@media(min-width:720px){.indian-story-fullscreen{align-items:center;padding-left:24px;padding-right:24px}.indian-story-top,.indian-story-stage,.indian-story-bottom,.indian-story-controls{width:min(760px,100%)}.indian-story-stage img,.indian-story-stage video{max-height:calc(100vh - 190px)}}
+@media(prefers-reduced-motion:reduce){.indian-story-fullscreen *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script id="indianFacebookStoryViewerController">
+(function(){
+  'use strict';
+  var byId=function(id){return document.getElementById(id);};
+  var overlay=null,stage=null,ownerLabel=null,captionBox=null,audioBox=null,countLabel=null,returnFocus=null;
+  var deck=[],currentIndex=0,swipeStartX=0,swipeStartY=0;
+  function safeText(v,max){return String(v==null?'':v).replace(/[\u0000-\u001F\u007F]/g,'').trim().slice(0,max||500);}
+  function localItems(){try{return typeof window.readLocalStories==='function'?window.readLocalStories():[];}catch(e){return [];}}
+  function localUrl(id){try{var urls=window.localStoryUrls||(typeof localStoryUrls!=='undefined'?localStoryUrls:null);return urls&&typeof urls.get==='function'?urls.get(id):null;}catch(e){return null;}}
+  function localAudioUrl(id){try{var urls=window.indianLocalAudioUrls||window.localAudioUrls||(typeof localAudioUrls!=='undefined'?localAudioUrls:null);return urls&&typeof urls.get==='function'?urls.get(id):null;}catch(e){return null;}}
+  function onlineItems(){
+    var out=[],now=Date.now();
+    (window.indianFirebaseAllProfiles||[]).forEach(function(profile){
+      (Array.isArray(profile.activeStories)?profile.activeStories:[]).forEach(function(story){
+        if(story&&story.imageData&&(!story.expiresAt||Number(story.expiresAt)>now))out.push({key:'online:'+String(profile.uid||'')+':'+String(story.id||''),kind:'online',owner:safeText(profile.displayName||story.owner||'Indian User',60)||'Indian User',profile:profile,story:story,createdAt:Number(story.createdAtMs||0),mediaUrl:story.imageData});
+      });
+    });
+    return out;
+  }
+  function allStories(){
+    var remotes=onlineItems(),locals=[];
+    localItems().forEach(function(item){
+      var url=localUrl(item.id);if(!url)return; // A local object URL exists only for media still loaded in this page.
+      var owner=safeText(item.owner||'Indian User',60),caption=safeText(item.caption||'',300),created=Number(item.createdAt||0);
+      var dupe=remotes.some(function(r){return r.owner.toLowerCase()===owner.toLowerCase()&&safeText(r.story.caption||'',300)===caption&&Math.abs((r.createdAt||0)-created)<5*60*1000;});
+      if(dupe)return;
+      locals.push({key:'local:'+String(item.id),kind:'local',owner:owner,story:item,createdAt:created,mediaUrl:url,audioUrl:localAudioUrl(item.id)});
+    });
+    return remotes.concat(locals).sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
+  }
+  function ensureOverlay(){
+    if(overlay)return;
+    overlay=document.createElement('div');overlay.className='indian-story-fullscreen';overlay.id='indianStoryFullscreen';overlay.hidden=true;overlay.tabIndex=-1;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Story viewer');
+    var top=document.createElement('div');top.className='indian-story-top';
+    ownerLabel=document.createElement('div');ownerLabel.className='indian-story-owner';ownerLabel.id='indianStoryOwner';
+    var close=document.createElement('button');close.type='button';close.className='indian-story-close';close.textContent='×';close.setAttribute('aria-label','Close story');close.addEventListener('click',closeViewer);
+    top.append(ownerLabel,close);
+    stage=document.createElement('div');stage.className='indian-story-stage';stage.setAttribute('aria-label','Story media. Swipe left or right to change story.');
+    stage.addEventListener('touchstart',function(e){if(!e.touches||!e.touches.length)return;swipeStartX=e.touches[0].clientX;swipeStartY=e.touches[0].clientY;},{passive:true});
+    stage.addEventListener('touchend',function(e){if(!e.changedTouches||!e.changedTouches.length)return;var dx=e.changedTouches[0].clientX-swipeStartX,dy=e.changedTouches[0].clientY-swipeStartY;if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.25){dx<0?nextStory(1):nextStory(-1);}},{passive:true});
+    var bottom=document.createElement('div');bottom.className='indian-story-bottom';captionBox=document.createElement('p');captionBox.className='indian-story-caption';audioBox=document.createElement('div');bottom.append(captionBox,audioBox);
+    var controls=document.createElement('div');controls.className='indian-story-controls';
+    var prev=document.createElement('button');prev.type='button';prev.textContent='Previous';prev.setAttribute('aria-label','Previous story');prev.addEventListener('click',function(){nextStory(-1);});
+    countLabel=document.createElement('span');countLabel.className='indian-story-count';countLabel.setAttribute('aria-live','polite');
+    var next=document.createElement('button');next.type='button';next.textContent='Next';next.setAttribute('aria-label','Next story');next.addEventListener('click',function(){nextStory(1);});
+    controls.append(prev,countLabel,next);overlay.append(top,stage,bottom,controls);document.body.appendChild(overlay);
+  }
+  function playSelectedSound(item){
+    if(item.kind==='online'){
+      var story=item.story||{};
+      if(story.audioData&&String(story.audioData).indexOf('data:audio/')===0){var audio=document.createElement('audio');audio.className='indian-story-audio';audio.controls=true;audio.preload='auto';audio.src=story.audioData;audio.setAttribute('aria-label','Story music');audioBox.appendChild(audio);var p=audio.play();if(p&&p.catch)p.catch(function(){});return;}
+      if(story.musicChoice&&story.musicChoice!=='none'&&typeof window.playStoryDemoTone==='function'){
+        var b=document.createElement('button');b.type='button';b.className='indian-story-audio-button';b.textContent='Play music';b.setAttribute('aria-label','Play story music');b.addEventListener('click',function(){window.playStoryDemoTone(story.musicChoice);});audioBox.appendChild(b);return;
+      }
+    }else{
+      if(item.audioUrl){var a=document.createElement('audio');a.className='indian-story-audio';a.controls=true;a.preload='none';a.src=item.audioUrl;a.setAttribute('aria-label','Story music');audioBox.appendChild(a);var p2=a.play();if(p2&&p2.catch)p2.catch(function(){});return;}
+      var localStory=item.story||{};var choice=localStory.musicChoice||'none';
+      if(choice!=='none'&&typeof window.playStoryDemoTone==='function'){
+        var b2=document.createElement('button');b2.type='button';b2.className='indian-story-audio-button';b2.textContent='Play music';b2.setAttribute('aria-label','Play story music');b2.addEventListener('click',function(){window.playStoryDemoTone(choice);});audioBox.appendChild(b2);
+      }
+    }
+  }
+  function renderCurrentStory(){
+    if(!deck.length){closeViewer();return;}
+    var item=deck[currentIndex];if(!item)return;
+    if(typeof window.stopStoryDemoTone==='function')window.stopStoryDemoTone();
+    stage.replaceChildren();audioBox.replaceChildren();
+    ownerLabel.textContent=item.owner||'Indian User';
+    captionBox.textContent=safeText((item.story||{}).caption||'',300);captionBox.hidden=!captionBox.textContent;
+    countLabel.textContent=(currentIndex+1)+' of '+deck.length;
+    var story=item.story||{};var media;
+    if(item.kind==='local'&&story.kind==='video'){
+      media=document.createElement('video');media.controls=true;media.playsInline=true;media.preload='metadata';media.src=item.mediaUrl;media.setAttribute('aria-label','Story video by '+item.owner);
+    }else{
+      media=document.createElement('img');media.src=item.mediaUrl;media.alt='Story photo by '+item.owner;media.draggable=false;
+    }
+    stage.appendChild(media);playSelectedSound(item);
+    overlay.setAttribute('aria-label','Story by '+item.owner+', '+(currentIndex+1)+' of '+deck.length);
+    if(typeof window.announce==='function')window.announce('Story by '+item.owner+'. '+(captionBox.textContent||'No caption')+'.');
+  }
+  function openStory(key,trigger){
+    deck=allStories();currentIndex=deck.findIndex(function(x){return x.key===key;});if(currentIndex<0)return;
+    ensureOverlay();returnFocus=trigger||document.activeElement;overlay.hidden=false;document.body.style.overflow='hidden';renderCurrentStory();overlay.focus();
+  }
+  function closeViewer(){if(!overlay||overlay.hidden)return;if(typeof window.stopStoryDemoTone==='function')window.stopStoryDemoTone();overlay.querySelectorAll('audio,video').forEach(function(m){try{m.pause();}catch(e){}});overlay.hidden=true;document.body.style.overflow='';var target=returnFocus&&document.contains(returnFocus)?returnFocus:byId('homeStoriesStrip');if(target&&target.focus)target.focus();}
+  function nextStory(delta){if(!deck.length)return;var next=currentIndex+delta;if(next<0||next>=deck.length){closeViewer();return;}overlay.querySelectorAll('audio,video').forEach(function(m){try{m.pause();}catch(e){}});currentIndex=next;renderCurrentStory();}
+  function addStoryCard(strip,item){
+    var card=document.createElement('button');card.type='button';card.className='story-preview-card';card.dataset.storyKey=item.key;card.setAttribute('role','listitem');card.setAttribute('aria-label','Open story by '+item.owner+(item.story.caption?': '+safeText(item.story.caption,160):''));
+    var av=document.createElement('span');av.className='story-preview-avatar';av.setAttribute('aria-hidden','true');var img=document.createElement('img');img.src=item.mediaUrl;img.alt='';img.loading='lazy';av.appendChild(img);
+    var name=document.createElement('span');name.className='story-preview-name';name.textContent=item.owner;card.append(av,name);card.addEventListener('click',function(){openStory(item.key,card);});strip.appendChild(card);
+  }
+  function renderStoryStrip(){
+    var strip=byId('homeStoriesStrip');if(!strip)return;strip.replaceChildren();
+    var add=document.createElement('button');add.type='button';add.className='story-preview-card';add.setAttribute('role','listitem');add.setAttribute('aria-label','Add a story');
+    var av=document.createElement('span');av.className='story-preview-avatar';av.textContent='+';av.setAttribute('aria-hidden','true');
+    var label=document.createElement('span');label.className='story-preview-name';label.textContent='Add Story';add.append(av,label);add.addEventListener('click',function(){if(typeof window.openStoriesFromHome==='function')window.openStoriesFromHome();else if(typeof window.openStories==='function')window.openStories();});strip.appendChild(add);
+    allStories().forEach(function(item){addStoryCard(strip,item);});
+  }
+  function renderCompactStoryList(){
+    var list=byId('storiesList');if(!list)return;list.replaceChildren();
+    var items=allStories();if(!items.length){list.textContent='No stories yet.';return;}
+    items.forEach(function(item){
+      var wrap=document.createElement('div');wrap.className='local-story-card';wrap.dataset.storyKey=item.key;
+      var open=document.createElement('button');open.type='button';open.className='story-preview-card';open.setAttribute('aria-label','Open story by '+item.owner);var av=document.createElement('span');av.className='story-preview-avatar';av.setAttribute('aria-hidden','true');var img=document.createElement('img');img.src=item.mediaUrl;img.alt='';av.appendChild(img);var nm=document.createElement('span');nm.className='story-preview-name';nm.textContent=item.owner;open.append(av,nm);open.addEventListener('click',function(){openStory(item.key,open);});wrap.appendChild(open);
+      if(item.kind==='local'){var del=document.createElement('button');del.type='button';del.className='action';del.textContent='Delete';del.setAttribute('aria-label','Delete your story by '+item.owner);del.addEventListener('click',function(){var id=String(item.story.id);try{localStorage.setItem('indian_local_stories_v1',JSON.stringify(localItems().filter(function(x){return String(x.id)!==id;})));}catch(e){}try{var url=localUrl(id);if(url)URL.revokeObjectURL(url);var urls=window.localStoryUrls||(typeof localStoryUrls!=='undefined'?localStoryUrls:null);if(urls&&urls.delete)urls.delete(id);}catch(e){}renderCompactStoryList();renderStoryStrip();});wrap.appendChild(del);}
+      list.appendChild(wrap);
+    });
+  }
+  window.renderIndianHomeStories=renderStoryStrip;
+  window.renderIndianOnlineStories=function(){renderStoryStrip();renderCompactStoryList();};
+  window.renderLocalStories=renderCompactStoryList;
+  window.openIndianFullscreenStory=function(key){openStory(key,document.activeElement);};
+  document.addEventListener('keydown',function(e){if(!overlay||overlay.hidden)return;if(e.key==='Escape'){e.preventDefault();closeViewer();}else if(e.key==='ArrowLeft'){e.preventDefault();nextStory(-1);}else if(e.key==='ArrowRight'){e.preventDefault();nextStory(1);}});
+  document.addEventListener('DOMContentLoaded',function(){renderStoryStrip();renderCompactStoryList();});
+  if(document.readyState!=='loading'){renderStoryStrip();renderCompactStoryList();}
 })();
 </script>
 

@@ -1209,6 +1209,8 @@ body{margin:0;color:var(--indian-ink);background:linear-gradient(180deg,#ff9933 
 #shortsFeed{max-height:58vh;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-type:y proximity;touch-action:pan-y;-webkit-overflow-scrolling:touch;border-radius:12px}
 #shortsFeed>article{scroll-snap-align:start;margin-left:auto!important;margin-right:auto!important}
 #shortsFeed video{max-width:100%;max-height:52vh!important;object-fit:contain}
+#shortsFeed iframe{display:block}
+#uranAddForm input:focus-visible,#uranAddForm textarea:focus-visible{outline:3px solid #ff9800!important;outline-offset:2px!important}
 .postMedia img,.postMedia video{display:block;max-width:100%;max-height:600px;object-fit:contain;border-radius:12px;margin:8px auto}
 .post{overflow-wrap:anywhere}
 .indian-route-backbar{width:min(960px,100%);margin:8px auto 0;padding:0 14px;box-sizing:border-box}
@@ -1331,14 +1333,16 @@ Welcome to Indian. Here people can connect, share, help each other and participa
 </section>
 
 <!-- POSTS -->
-<section id="shortsSection" style="display:none;" tabindex="-1">
-<h2>Reels / Shorts</h2>
-<p>Choose a vertical short video to preview it here. In this first stage, the video is local to this browser; online publishing and shared likes/comments require media storage.</p>
-<label for="shortVideoInput">Choose a video file (MP4 or WebM):</label>
-<input id="shortVideoInput" type="file" accept="video/mp4,video/webm" aria-label="Choose a video for Shorts" style="display:block;margin:8px 0;">
-<label for="shortCaption">Video caption:</label>
-<textarea id="shortCaption" rows="2" maxlength="300" style="width:100%;margin:8px 0;" placeholder="Write a caption..."></textarea>
-<button class="action" type="button" onclick="previewLocalShort()">Preview Short</button>
+<section id="shortsSection" style="display:none;" tabindex="-1" aria-labelledby="uranTitle">
+<h2 id="uranTitle">Uran 🎬</h2>
+<p>Yahan YouTube Shorts ke links add karke official YouTube player mein dekhein. Kuch videos creator ki settings ki wajah se embed nahi ho sakte.</p>
+<form id="uranAddForm" style="display:grid;gap:8px;max-width:620px;">
+<label for="uranShortUrl">YouTube Short ka link:</label>
+<input id="uranShortUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://www.youtube.com/shorts/VIDEO_ID" required style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;">
+<label for="uranShortCaption">Caption (optional):</label>
+<textarea id="uranShortCaption" rows="2" maxlength="300" placeholder="Is Short ke baare mein likhein..." style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;"></textarea>
+<button class="action" type="submit">Add Short</button>
+</form>
 <div id="shortsStatus" role="status" aria-live="polite" style="margin-top:12px;"></div>
 <div id="shortsFeed" style="margin-top:16px;"></div>
 </section>
@@ -1872,6 +1876,7 @@ Explore places and their local communities.
   <button type="button" class="indian-nav-button" data-route="home" onclick="openIndianHome()" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7"></path><path d="M5.5 9v11h13V9M9.5 20v-6h5v6"></path></svg><span>Home</span></button>
   <button type="button" class="indian-nav-button" data-route="live" onclick="openLiveZone()" aria-label="Live Zone"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3z"></path><path d="M7 3v2M12 3v2"></path></svg><span>Live Zone</span></button>
   <button type="button" class="indian-nav-button" data-route="help" onclick="openHelp()" aria-label="Help"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-4.5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.5-8 11-8 11Z"></path><path d="M8 12h2l1.2-2.2L13 15l1.2-3H16"></path></svg><span>Help</span></button>
+  <button type="button" class="indian-nav-button" id="navGamesBtn" onclick="openIndianGames()" aria-label="Games Zone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12a4 4 0 0 1 3.8 5l-1 3.2a2.5 2.5 0 0 1-4.1 1.1L14.5 15h-5l-2.2 2.3a2.5 2.5 0 0 1-4.1-1.1l-1-3.2A4 4 0 0 1 6 8Z"></path><path d="M7 10v4M5 12h4M16 11h.01M18 13h.01"></path></svg><span>Games</span></button>
   <button type="button" class="indian-nav-button" id="navNotifBtn" data-route="notifications" onclick="openNotifications()" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span>Notifications</span><span class="nav-badge" id="navUnreadBadge" style="display:none;">0</span></button>
 </nav>
 <footer>
@@ -6609,6 +6614,52 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
 })();
 </script>
 
+<script id="indianUranController">
+(function(){
+  'use strict';
+  var KEY='indian_uran_youtube_links_v1';
+  function el(id){return document.getElementById(id);}
+  function getVideoId(raw){
+    try{
+      var u=new URL(String(raw||'').trim());
+      var host=u.hostname.toLowerCase().replace(/^www\./,'');
+      if(host==='youtu.be') return u.pathname.split('/').filter(Boolean)[0]||'';
+      if(host!=='youtube.com' && host!=='m.youtube.com' && host!=='youtube-nocookie.com') return '';
+      if(u.pathname==='/watch') return u.searchParams.get('v')||'';
+      var parts=u.pathname.split('/').filter(Boolean);
+      if(parts.length>=2 && ['shorts','embed','live'].includes(parts[0])) return parts[1];
+      return '';
+    }catch(e){return '';}
+  }
+  function read(){try{var v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v.filter(function(x){return x&&/^[\w-]{6,20}$/.test(x.id);}):[];}catch(e){return [];}}
+  function save(list){try{localStorage.setItem(KEY,JSON.stringify(list.slice(0,100)));return true;}catch(e){return false;}}
+  function render(){
+    var feed=el('shortsFeed'); if(!feed)return;
+    var items=read(); feed.replaceChildren();
+    if(!items.length){var empty=document.createElement('p');empty.textContent='Abhi Uran mein koi Short add nahi hai. Upar YouTube Shorts ka link paste karein.';feed.appendChild(empty);return;}
+    items.forEach(function(item,index){
+      var card=document.createElement('article');card.style.cssText='max-width:460px;margin:16px auto;padding:12px;background:#121212;color:#fff;border-radius:16px;border:1px solid #333;';
+      var heading=document.createElement('h3');heading.textContent='Uran Short '+(index+1);heading.style.cssText='margin:0 0 10px;color:#ff9800';card.appendChild(heading);
+      var frameWrap=document.createElement('div');frameWrap.style.cssText='position:relative;width:100%;aspect-ratio:9/16;max-height:72vh;background:#000;border-radius:12px;overflow:hidden;';
+      var frame=document.createElement('iframe');frame.src='https://www.youtube-nocookie.com/embed/'+encodeURIComponent(item.id)+'?playsinline=1&rel=0';frame.title='YouTube Short '+(index+1);frame.loading='lazy';frame.referrerPolicy='strict-origin-when-cross-origin';frame.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';frame.allowFullscreen=true;frame.style.cssText='position:absolute;inset:0;width:100%;height:100%;border:0;';frameWrap.appendChild(frame);card.appendChild(frameWrap);
+      if(item.caption){var cap=document.createElement('p');cap.textContent=item.caption;card.appendChild(cap);}
+      var actions=document.createElement('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;';
+      var share=document.createElement('button');share.type='button';share.textContent='Share link';share.className='action';share.addEventListener('click',function(){var url='https://www.youtube.com/shorts/'+item.id;if(navigator.share){navigator.share({title:'Uran Short',url:url}).catch(function(){});}else if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){status('Short link copied.');}).catch(function(){status(url);});}else status(url);});actions.appendChild(share);
+      var like=document.createElement('button');like.type='button';like.className='action';var liked=!!item.liked;like.textContent=liked?'♥ Liked':'♡ Like';like.setAttribute('aria-pressed',String(liked));like.addEventListener('click',function(){var all=read();var found=all.find(function(x){return x.id===item.id;});if(found){found.liked=!found.liked;save(all);render();if(found.cloud&&typeof window.indianUranToggleLike==='function')window.indianUranToggleLike(found.id,found.liked).catch(function(){});}});actions.appendChild(like);
+      var remove=document.createElement('button');remove.type='button';remove.className='action';remove.textContent='Remove from my Uran';remove.addEventListener('click',function(){if(item.cloud&&typeof window.indianUranCloudRemove==='function'){window.indianUranCloudRemove(item.id).then(function(){status('Short removed from Uran.');}).catch(function(e){status('Remove nahi hua: '+e.message);});return;}save(read().filter(function(x){return x.id!==item.id;}));render();status('Short link removed from this browser.');});actions.appendChild(remove);card.appendChild(actions);feed.appendChild(card);
+    });
+  }
+  function status(message){var node=el('shortsStatus');if(node)node.textContent=message;}
+  var form=el('uranAddForm');if(form)form.addEventListener('submit',function(event){event.preventDefault();var url=el('uranShortUrl').value.trim();var id=getVideoId(url);if(!id){status('Valid YouTube Shorts, YouTube video, ya youtu.be link paste karein.');return;}var caption=(el('uranShortCaption').value||'').trim().slice(0,300);var items=read();if(items.some(function(x){return x.id===id;})){status('Yeh Short pehle se Uran mein hai.');return;}if(typeof window.indianUranCloudAdd==='function'){window.indianUranCloudAdd(id,caption).then(function(){el('uranShortUrl').value='';el('uranShortCaption').value='';status('Short Indian Uran mein share ho gaya.');}).catch(function(e){status('Online save nahi hua: '+e.message+'. Firebase Uran rules publish karein.');});return;}items.unshift({id:id,caption:caption,liked:false,addedAt:Date.now()});if(!save(items)){status('Browser storage available nahi hai.');return;}el('uranShortUrl').value='';el('uranShortCaption').value='';status('Short add ho gaya. Filhaal isi browser/device par save hua.');render();});
+  window.renderIndianUran=render;
+  window.previewLocalShort=function(){status('Uran ab YouTube Shorts links use karta hai. Upar YouTube Short ka link paste karein.');};
+  render();
+})();
+</script>
+<script id="indianGamesLinkController">
+window.openIndianGames=function(){window.location.href='games.html';};
+</script>
+
 <script id="indianPageNavigationController">
 (function(){
   'use strict';
@@ -7245,5 +7296,17 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
 })();
 </script>
 
+<script type="module" id="indianUranCloudSync">
+import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy, limit, serverTimestamp, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const config={apiKey:'AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs',authDomain:'indian-84a86.firebaseapp.com',projectId:'indian-84a86',storageBucket:'indian-84a86.firebasestorage.app',messagingSenderId:'333987809341',appId:'1:333987809341:web:27a351f770aa7b4e808254'};
+let auth,db,currentUser=null,stop=null;
+try{const app=getApps().length?getApp():initializeApp(config);auth=getAuth(app);db=getFirestore(app);onAuthStateChanged(auth,user=>{currentUser=user;if(stop){stop();stop=null;}if(!user)return;const q=query(collection(db,'uranShorts'),orderBy('createdAt','desc'),limit(100));stop=onSnapshot(q,snapshot=>{const items=snapshot.docs.map(d=>{const v=d.data();return{id:v.videoId||d.id,caption:String(v.caption||''),liked:Array.isArray(v.likedBy)&&v.likedBy.includes(user.uid),likedBy:Array.isArray(v.likedBy)?v.likedBy:[],addedAt:v.createdAt&&v.createdAt.toMillis?v.createdAt.toMillis():Date.now(),cloud:true,addedBy:v.addedBy||'',addedByName:v.addedByName||'Indian user'};});try{localStorage.setItem('indian_uran_youtube_links_v1',JSON.stringify(items));}catch(e){}if(typeof window.renderIndianUran==='function')window.renderIndianUran();},error=>{const status=document.getElementById('shortsStatus');if(status)status.textContent='Online Uran load nahi hua: '+error.message+' Firebase rules check karein.';});});
+window.indianUranCloudAdd=async function(id,caption){if(!currentUser)throw Error('Pehle Indian account mein sign in karein.');await setDoc(doc(db,'uranShorts',id),{videoId:id,caption:String(caption||'').slice(0,300),addedBy:currentUser.uid,addedByName:currentUser.displayName||currentUser.email||'Indian user',createdAt:serverTimestamp(),likedBy:[]});};
+window.indianUranToggleLike=async function(id,liked){if(!currentUser)throw Error('Sign in required');await updateDoc(doc(db,'uranShorts',id),{likedBy:liked?arrayUnion(currentUser.uid):arrayRemove(currentUser.uid)});};
+window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sign in required');const found=JSON.parse(localStorage.getItem('indian_uran_youtube_links_v1')||'[]').find(x=>x.id===id);if(!found||found.addedBy!==currentUser.uid)throw Error('Sirf Short add karne wala user ise remove kar sakta hai.');await deleteDoc(doc(db,'uranShorts',id));};
+}catch(error){const status=document.getElementById('shortsStatus');if(status)status.textContent='Uran cloud setup error: '+error.message;}
+</script>
 </body>
 </html>

@@ -3174,7 +3174,22 @@ async function uploadIndianMessageAttachment(file, type){
     return {type:isVideo ? "video" : "image", name:file.name, url:result.secure_url, publicId:result.public_id || ""};
 }
 
+// Prevent duplicate sends when the Send button or Enter key fires twice.
+let indianMessageSendInProgress = false;
 async function sendMessage(){
+    if(indianMessageSendInProgress) return;
+    indianMessageSendInProgress = true;
+    const sendButton = document.getElementById("sendMessageButton");
+    if(sendButton) sendButton.disabled = true;
+    try {
+        await sendMessageCore();
+    } finally {
+        indianMessageSendInProgress = false;
+        if(sendButton) sendButton.disabled = false;
+    }
+}
+
+async function sendMessageCore(){
     if(selectedConversationPersonId === null) return;
 
     const textBox = document.getElementById("messageText");

@@ -1593,7 +1593,7 @@ Search registered users, places, posts or help requests:
     <button type="button" id="removeMessageVideoButton" class="action messageAttachmentRemove" onclick="removeSelectedMessageVideo()" style="display:none;">Remove Video</button>
 </div>
 
-<button id="sendMessageButton" class="action" onclick="sendMessage()">Send Message</button>
+<button type="button" id="sendMessageButton" class="action" onclick="sendMessage()">Send Message</button>
 <button class="action" onclick="clearMessageDraft()">Clear</button>
 <div class="messageConversationTools">
     <button type="button" class="action" onclick="toggleMessageSearch()" aria-label="Search messages in this chat">Search Chat</button>
@@ -3198,6 +3198,14 @@ async function sendMessageCore(){
 
     const text = textBox.value.trim();
 
+    // A duplicate click/event can arrive after the first send has already cleared the composer.
+    // In that brief window, ignore the empty follow-up call instead of showing a false alert.
+    if(!text && !selectedMessagePhoto && !selectedMessageVideo &&
+       window.__indianMessageLastSuccessfulSendAt &&
+       Date.now() - window.__indianMessageLastSuccessfulSendAt < 2500){
+        return;
+    }
+
     if(editingMessageIndex !== null){
         const messages = getMessagesForPerson(selectedConversationPersonId);
         const target = messages[editingMessageIndex];
@@ -3285,7 +3293,12 @@ async function sendMessageCore(){
         }
     }
 
-    messages.push(newMessage);
+    // Firebase-linked chats are rendered from the Firestore snapshot. Do not also
+    // append the same message locally, or it appears twice on the sender's screen.
+    // Demo/local-only conversations still append locally as before.
+    if(!firebaseMessageAvailable){
+        messages.push(newMessage);
+    }
 
     const recipient = getPersonNameById(selectedConversationPersonId);
     addNotification("Message sent to " + recipient + ".", "messages", selectedConversationPersonId);
@@ -3300,6 +3313,7 @@ async function sendMessageCore(){
     }, 800);
 
     textBox.value = "";
+    window.__indianMessageLastSuccessfulSendAt = Date.now();
     try { sessionStorage.removeItem("indian_chat_draft_" + selectedConversationPersonId); } catch(e) {}
     updateMessageComposerStatus();
     selectedMessagePhoto = null;

@@ -3174,18 +3174,19 @@ async function uploadIndianMessageAttachment(file, type){
     return {type:isVideo ? "video" : "image", name:file.name, url:result.secure_url, publicId:result.public_id || ""};
 }
 
-// Prevent duplicate sends when the Send button or Enter key fires twice.
-let indianMessageSendInProgress = false;
 async function sendMessage(){
-    if(indianMessageSendInProgress) return;
-    indianMessageSendInProgress = true;
-    const sendButton = document.getElementById("sendMessageButton");
-    if(sendButton) sendButton.disabled = true;
+    // Prevent rapid double-click / Enter+click duplicate sends without changing the existing send flow.
+    if(window.__indianMessageSendInProgress) return;
+    if(selectedConversationPersonId === null) return;
+    window.__indianMessageSendInProgress = true;
+    const sendButtonLock = document.getElementById("sendMessageButton");
+    if(sendButtonLock) sendButtonLock.disabled = true;
     try {
         await sendMessageCore();
     } finally {
-        indianMessageSendInProgress = false;
-        if(sendButton) sendButton.disabled = false;
+        window.__indianMessageSendInProgress = false;
+        const button = document.getElementById("sendMessageButton");
+        if(button) button.disabled = false;
     }
 }
 
@@ -5956,6 +5957,26 @@ async function saveFirestoreMessageReaction(messageId, emoji){
     return true;
 }
 
+async function cleanupExpiredIndianStories(){
+    try {
+        if(!firebaseDb || !firebaseCurrentUser) return false;
+        const ref = doc(firebaseDb, "publicProfiles", firebaseCurrentUser.uid);
+        const snap = await getDoc(ref);
+        if(!snap.exists()) return false;
+        const data = snap.data() || {};
+        const nowMs = Date.now();
+        const oldStories = Array.isArray(data.activeStories) ? data.activeStories : [];
+        const activeStories = oldStories.filter(item => item && Number(item.expiresAt) > nowMs);
+        if(activeStories.length !== oldStories.length){
+            await setDoc(ref, {activeStories: activeStories, updatedAt: serverTimestamp()}, {merge:true});
+        }
+        return true;
+    } catch(error) {
+        console.warn("Expired story cleanup was skipped:", error);
+        return false;
+    }
+}
+
 async function saveIndianStoryRecord(story){
     if(!firebaseDb || !firebaseCurrentUser) throw new Error("Sign in to share a story with Indian users.");
     if(!story || typeof story.imageData !== "string" || !story.imageData.startsWith("data:image/")) throw new Error("Only compressed photo stories can be shared on the current free setup.");
@@ -5966,7 +5987,7 @@ async function saveIndianStoryRecord(story){
     const nowMs=Date.now();
     const active=(Array.isArray(data.activeStories)?data.activeStories:[]).filter(item=>item && Number(item.expiresAt)>nowMs);
     const musicChoice=["none","gentle","bright","calm"].includes(String(story.musicChoice||"none"))?String(story.musicChoice||"none"):"none";
-    const audioData=typeof story.audioData==="string" && story.audioData.startsWith("data:audio/") && story.audioData.length<=24000 ? story.audioData : "";
+    const audioData=typeof story.audioData==="string" && story.audioData.startsWith("data:audio/") && story.audioData.length<=100000 ? story.audioData : "";
     active.push({id:String(story.id||("story-"+nowMs)),owner:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),ownerUid:firebaseCurrentUser.uid,caption:sanitizePlainText(story.caption||"",300),imageData:story.imageData,musicChoice:musicChoice,audioData:audioData,createdAtMs:nowMs,expiresAt:nowMs+24*60*60*1000});
     await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),activeStories:active.slice(-3),lastStoryAtMs:nowMs,updatedAt:serverTimestamp()},{merge:true});
     return true;
@@ -6127,6 +6148,7 @@ else{
             window.firebaseCurrentUid = user ? user.uid : "";
             updateFirebaseAuthUI();
             if(user){
+                setTimeout(function(){ cleanupExpiredIndianStories(); }, 900);
                 const authName=sanitizePlainText(user.displayName || (user.email ? user.email.split("@")[0] : "Indian User"),60)||"Indian User";
                 if(typeof window.applyIndianIdentity==="function")window.applyIndianIdentity(authName,window.profileBio||"",window.profilePhotoURL||"",{preserveActiveEdit:true});
                 ensureCurrentUserPublicProfile().then(function(){return loadFirebasePublicProfiles();});

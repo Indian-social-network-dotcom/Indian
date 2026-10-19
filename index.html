@@ -7237,12 +7237,19 @@ window.openIndianGames=function(){window.location.href='games.html';};
     }finally{try{await ctx.close();}catch(e){}}
   }
   async function uploadStoryAudio15s(file){
-    var clip=await trimAudioTo15Seconds(file);
-    var form=new FormData();form.append('file',clip,'indian-story-music-15s.wav');form.append('upload_preset','indian_social_upload');form.append('folder','indian_social/story_music');
+    // Upload the original audio file instead of converting it to WAV. The preset
+    // previously rejected WAV; Cloudinary applies a 15-second delivery trim.
+    var form=new FormData();
+    var safeName=String(file.name||'story-song.mp3').replace(/[^a-zA-Z0-9._-]/g,'_');
+    form.append('file',file,safeName);
+    form.append('upload_preset','indian_social_upload');
+    form.append('folder','indian_social/story_music');
     var response=await fetch('https://api.cloudinary.com/v1_1/k4cyxxet/video/upload',{method:'POST',body:form});
     var result={};try{result=await response.json();}catch(e){}
-    if(!response.ok||!result.secure_url)throw new Error((result.error&&result.error.message)||'Cloudinary ne audio upload ko reject kar diya. Upload preset mein WAV/audio formats allow karne honge.');
-    return String(result.secure_url);
+    if(!response.ok||!result.secure_url)throw new Error((result.error&&result.error.message)||'Cloudinary ne audio file reject kar di. Upload preset mein original audio format allow hona chahiye.');
+    var url=String(result.secure_url);
+    // Cloudinary video/audio delivery transformation: start at 0, deliver 15 seconds.
+    return url.replace('/upload/','/upload/so_0,du_15/');
   }
   var basePublishStory=window.publishLocalStory;
   if(typeof basePublishStory==='function'){
@@ -7252,7 +7259,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
       var audioUrl='',audioData='',audioError='';
       var status=byId('storiesStatus');
       if(audio){
-        if(status)status.textContent='Your song is being trimmed to 15 seconds and uploaded for other phones. Please wait.';
+        if(status)status.textContent='Your song is uploading. The online story link will play the first 15 seconds. Please wait.';
         try{audioUrl=await uploadStoryAudio15s(audio);}catch(e){audioError=String(e&&e.message||e);}
       }
       var before=[];try{before=JSON.parse(localStorage.getItem('indian_local_stories_v1')||'[]');}catch(e){}
@@ -7264,8 +7271,8 @@ window.openIndianGames=function(){window.location.href='games.html';};
         if(created){created.musicChoice=musicChoice;created.audioUrl=audioUrl;try{localStorage.setItem('indian_local_stories_v1',JSON.stringify(after));}catch(e){}if(audio){localAudioUrls.set(created.id,URL.createObjectURL(audio));}setupStoryCardDataset();if(typeof window.renderLocalStories==='function')window.renderLocalStories();enrichLocalStoryCards();}
       }
       if(status){
-        if(audioError)status.textContent='Story publish was attempted, but the song could not be shared online: '+audioError+'. In Cloudinary upload preset indian_social_upload, allow WAV/audio formats (or remove the allowed-format restriction). The story may still have been shared without music.';
-        else if(audioUrl)status.textContent='Story and 15-second song clip uploaded. On another phone, open the story and check sound. Browser autoplay rules may require one tap.';
+        if(audioError)status.textContent='Story may be published, but its music was not uploaded: '+audioError+'. Cloudinary upload preset indian_social_upload must allow the original audio format (for example MP3). Do not add a Cloudinary API secret or Firebase service-account private key to this file.';
+        else if(audioUrl)status.textContent='Story song uploaded. The online audio link is trimmed to the first 15 seconds. On another phone, open the story and check sound; browser autoplay may require one tap.';
         else if(audio)status.textContent='Story publish was attempted. No online song link was created, so the story may not have music on other phones.';
       }
     };

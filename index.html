@@ -1507,6 +1507,7 @@ Search registered users, places, posts or help requests:
   </select>
   <label for="storyAudioInput">Choose a small audio file (optional):</label>
   <input id="storyAudioInput" type="file" accept="audio/*" aria-label="Choose your own music audio file" style="display:block;margin:8px 0;">
+  <div id="storyAudioPreview" aria-live="polite" style="margin:8px 0;"></div>
 </details>
 <button class="action" type="button" onclick="publishLocalStory()">Add Story</button>
 </form>
@@ -7219,6 +7220,28 @@ window.openIndianGames=function(){window.location.href='games.html';};
     };
     window.__indianStorySaveWrapperInstalled=true;
   }
+  // Play the selected song immediately in a visible, screen-reader-friendly preview player.
+  (function setupSelectedStoryAudioPreview(){
+    var input=byId('storyAudioInput'),box=byId('storyAudioPreview');
+    if(!input||!box||input.dataset.previewReady==='yes')return;
+    input.dataset.previewReady='yes';
+    var previewUrl='';
+    input.addEventListener('change',function(){
+      box.replaceChildren();
+      if(previewUrl){try{URL.revokeObjectURL(previewUrl);}catch(e){}previewUrl='';}
+      var file=input.files&&input.files[0];
+      if(!file)return;
+      if(!String(file.type||'').startsWith('audio/')){box.textContent='Please choose an audio file such as MP3 or WAV.';return;}
+      previewUrl=URL.createObjectURL(file);
+      var label=document.createElement('p');label.textContent='Selected song preview: '+String(file.name||'audio file');
+      var player=document.createElement('audio');player.controls=true;player.preload='auto';player.src=previewUrl;player.setAttribute('aria-label','Preview selected song before publishing');player.style.cssText='display:block;width:100%;max-width:540px;min-height:42px;margin:8px 0;';
+      var note=document.createElement('p');note.textContent='If it does not start automatically, press Play on the audio player.';
+      box.append(label,player,note);
+      var playResult;try{playResult=player.play();}catch(e){}
+      if(playResult&&typeof playResult.catch==='function')playResult.catch(function(){note.textContent='Song selected. Press Play on the audio player to listen.';});
+    });
+  })();
+
   async function trimAudioTo15Seconds(file){
     var AudioCtx=window.AudioContext||window.webkitAudioContext;
     if(!AudioCtx)throw new Error('This browser cannot trim audio automatically. Please try Chrome or Edge.');
@@ -7265,7 +7288,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
       var before=[];try{before=JSON.parse(localStorage.getItem('indian_local_stories_v1')||'[]');}catch(e){}
       window.__indianStoryPublishMeta={musicChoice:musicChoice,audioData:audioData,audioUrl:audioUrl};
       try{await basePublishStory();}finally{window.__indianStoryPublishMeta=null;}
-      if(file&&String(file.type||'').startsWith('image/')){
+      if(file&&(String(file.type||'').startsWith('image/')||String(file.type||'').startsWith('video/'))){
         var after=[];try{after=JSON.parse(localStorage.getItem('indian_local_stories_v1')||'[]');}catch(e){}
         var created=after.find(function(item){return !before.some(function(old){return old.id===item.id;});})||after[after.length-1];
         if(created){created.musicChoice=musicChoice;created.audioUrl=audioUrl;try{localStorage.setItem('indian_local_stories_v1',JSON.stringify(after));}catch(e){}if(audio){localAudioUrls.set(created.id,URL.createObjectURL(audio));}setupStoryCardDataset();if(typeof window.renderLocalStories==='function')window.renderLocalStories();enrichLocalStoryCards();}

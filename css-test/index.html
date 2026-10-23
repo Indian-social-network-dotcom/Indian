@@ -121,6 +121,7 @@ You can select one or more photos and videos.
 <button class="action" onclick="publishPost()">
 Post
 </button>
+<p id="postMediaStatus" role="status" aria-live="polite"></p>
 
 <button class="action" onclick="cancelPost()">
 Cancel
@@ -1564,7 +1565,10 @@ function renderChat(personId){
                     video.className = "messageAttachmentVideo";
                     video.src = message.attachment.url;
                     video.controls = true;
-                    video.setAttribute("aria-label", "Attached video: " + message.attachment.name);
+                    video.playsInline = true;
+                    video.preload = "metadata";
+                    video.muted = false;
+                    video.setAttribute("aria-label", "Attached video with sound controls: " + message.attachment.name);
                     attachmentWrap.appendChild(video);
                 }
 
@@ -4733,8 +4737,11 @@ async function cleanupExpiredIndianStories(){
 
 async function saveIndianStoryRecord(story){
     if(!firebaseDb || !firebaseCurrentUser) throw new Error("Sign in to share a story with Indian users.");
-    if(!story || typeof story.imageData !== "string" || !story.imageData.startsWith("data:image/")) throw new Error("Only compressed photo stories can be shared on the current free setup.");
-    if(story.imageData.length > 70000) throw new Error("The compressed story photo is still too large. Choose a smaller photo.");
+    const mediaType=story && story.mediaType==="video"?"video":"image";
+    const mediaUrl=story && typeof story.mediaUrl==="string" && story.mediaUrl.startsWith("https://res.cloudinary.com/")?story.mediaUrl:"";
+    const imageData=story && typeof story.imageData==="string" && story.imageData.startsWith("data:image/") && story.imageData.length<=70000?story.imageData:"";
+    if(mediaType==="video" && !mediaUrl) throw new Error("Story video upload link is missing. Please upload the video again.");
+    if(mediaType!=="video" && !imageData) throw new Error("The compressed story photo is missing or too large. Choose a smaller photo.");
     const ref=doc(firebaseDb,"publicProfiles",firebaseCurrentUser.uid);
     const snap=await getDoc(ref);
     const data=snap.exists()?(snap.data()||{}):{};
@@ -4743,7 +4750,10 @@ async function saveIndianStoryRecord(story){
     const musicChoice=["none","gentle","bright","calm"].includes(String(story.musicChoice||"none"))?String(story.musicChoice||"none"):"none";
     const audioData=typeof story.audioData==="string" && story.audioData.startsWith("data:audio/") && story.audioData.length<=100000 ? story.audioData : "";
     const audioUrl=typeof story.audioUrl==="string" && story.audioUrl.startsWith("https://res.cloudinary.com/") ? story.audioUrl : "";
-    active.push({id:String(story.id||("story-"+nowMs)),owner:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),ownerUid:firebaseCurrentUser.uid,caption:sanitizePlainText(story.caption||"",300),imageData:story.imageData,musicChoice:musicChoice,audioData:audioData,audioUrl:audioUrl,createdAtMs:nowMs,expiresAt:nowMs+24*60*60*1000});
+    const record={id:String(story.id||("story-"+nowMs)),owner:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),ownerUid:firebaseCurrentUser.uid,caption:sanitizePlainText(story.caption||"",300),mediaType:mediaType,musicChoice:musicChoice,audioData:audioData,audioUrl:audioUrl,createdAtMs:nowMs,expiresAt:nowMs+24*60*60*1000};
+    if(imageData)record.imageData=imageData;
+    if(mediaUrl)record.mediaUrl=mediaUrl;
+    active.push(record);
     await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),activeStories:active.slice(-3),lastStoryAtMs:nowMs,updatedAt:serverTimestamp()},{merge:true});
     return true;
 }
@@ -5064,15 +5074,34 @@ else{
    const safe=String(file.name||"photo").replace(/[^A-Za-z0-9._-]/g,"_").slice(-100);
    return {url:url,type:"image",name:safe||"photo.webp"};
  }
+ async function uploadIndianPostVideoToCloudinary(file){
+   if(!file) throw new Error("Choose a video first.");
+   if(file.size>50*1024*1024) throw new Error("Post video maximum 50 MB ka ho sakta hai.");
+   if(!["video/mp4","video/webm"].includes(String(file.type||""))) throw new Error("Post video ke liye MP4 ya WebM file choose karein.");
+   const form=new FormData();
+   form.append("file",file,String(file.name||"post-video.mp4").replace(/[^A-Za-z0-9._-]/g,"_"));
+   form.append("upload_preset","indian_social_upload");
+   form.append("folder","indian_social/posts");
+   const response=await fetch("https://api.cloudinary.com/v1_1/k4cyxxet/video/upload",{method:"POST",body:form});
+   let result={};try{result=await response.json();}catch(e){}
+   if(!response.ok||!result.secure_url) throw new Error((result.error&&result.error.message)||"Post video Cloudinary par upload nahi ho saka.");
+   const safe=String(file.name||"post-video.mp4").replace(/[^A-Za-z0-9._-]/g,"_").slice(-100);
+   return {url:String(result.secure_url),type:"video",name:safe||"post-video.mp4"};
+ }
  async function savePost(text,files,el){
    if(!currentUser||!el)return;
    try{
      const chosen=Array.from(files||[]);
      const photos=chosen.filter(f=>String(f.type||"").startsWith("image/"));
      const videos=chosen.filter(f=>String(f.type||"").startsWith("video/"));
-     if(photos.length>2) throw new Error("Free photo mode allows up to 2 photos per post. Please select one or two photos.");
+     const unsupported=chosen.filter(f=>!String(f.type||"").startsWith("image/")&&!String(f.type||"").startsWith("video/"));
+     if(unsupported.length) throw new Error("Choose only photos or MP4/WebM videos.");
+     if(photos.length>2) throw new Error("A post can contain up to 2 photos. Please select one or two photos.");
+     if(videos.length>2) throw new Error("A post can contain up to 2 videos.");
+     if(photos.length+videos.length>4) throw new Error("A post can contain up to 4 media files in total.");
      const media=[];
      for(const file of photos){ media.push(await makeFirestorePhoto(file)); }
+     for(const file of videos){ media.push(await uploadIndianPostVideoToCloudinary(file)); }
      const postData={
        uid:currentUser.uid,
        displayName:name(),
@@ -5087,7 +5116,8 @@ else{
      el.dataset.firestoreId=postDocRef.id;
      el.dataset.clientId=el.id;
      if(videos.length){
-       alert("Photo/text post saved. Video files are not shared in free photo mode; video sharing needs Cloud Storage.");
+       const status=document.getElementById("postMediaStatus");
+       if(status) status.textContent="Video uploaded. On another phone, press Play and turn the player volume on if sound does not start automatically.";
      }
    }catch(e){alertSave("Post",e);}
  }
@@ -5168,7 +5198,7 @@ else{
      const mediaBox=document.createElement("div"); mediaBox.className="postMedia";
      x.media.slice(0,10).forEach(function(m){
        if(!m || !m.url) return;
-       if(m.type === "video"){ const v=document.createElement("video"); v.src=m.url; v.controls=true; v.preload="metadata"; v.setAttribute("aria-label","Saved post video"); mediaBox.appendChild(v); }
+       if(m.type === "video"){ const v=document.createElement("video"); v.src=m.url; v.controls=true; v.playsInline=true; v.preload="metadata"; v.muted=false; v.setAttribute("aria-label","Saved post video with sound controls"); mediaBox.appendChild(v); }
        else { const img=document.createElement("img"); img.src=m.url; img.alt="Saved post image"; mediaBox.appendChild(img); }
      });
      if(mediaBox.children.length) post.appendChild(mediaBox);
@@ -5478,7 +5508,7 @@ import { getFirestore, collection, getDocs, query, where } from "https://www.gst
   items.forEach(function(item,index){
    var card=document.createElement('article');card.dataset.uranVideoId=String(item.id||'');card.style.cssText='max-width:460px;margin:16px auto;padding:12px;background:#121212;color:#fff;border-radius:16px;border:1px solid #333;';
    var heading=document.createElement('h3');heading.textContent='Uran Video '+(index+1);heading.style.color='#ff9800';card.appendChild(heading);
-   var video=document.createElement('video');video.controls=true;video.playsInline=true;video.preload='metadata';video.src=item.mediaUrl||item.videoUrl;video.setAttribute('aria-label','Uran uploaded video '+(index+1));video.style.cssText='display:block;width:100%;max-height:65vh;object-fit:contain;background:#000;border-radius:12px;';card.appendChild(video);
+   var video=document.createElement('video');video.controls=true;video.playsInline=true;video.preload='metadata';video.muted=false;video.src=item.mediaUrl||item.videoUrl;video.setAttribute('aria-label','Uran uploaded video '+(index+1));video.style.cssText='display:block;width:100%;max-height:65vh;object-fit:contain;background:#000;border-radius:12px;';card.appendChild(video);
    if(item.caption){var cap=document.createElement('p');cap.textContent=item.caption;card.appendChild(cap);}
    var actions=document.createElement('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;';
    var share=document.createElement('button');share.type='button';share.className='action';share.textContent='Share video link';share.addEventListener('click',function(){var url=item.mediaUrl||item.videoUrl;if(navigator.share)navigator.share({title:'Indian Uran Video',url:url}).catch(function(){});else if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){status('Video link copied.');}).catch(function(){status(url);});else status(url);});actions.appendChild(share);
@@ -5750,7 +5780,11 @@ window.openIndianGames=function(){window.location.href='../games.html';};
       var section=byId('storiesSection'),list=byId('storiesList');if(!section||!list)return;
       var viewer=byId('onlineStoryViewer');if(!viewer){viewer=document.createElement('section');viewer.id='onlineStoryViewer';viewer.tabIndex=-1;viewer.setAttribute('aria-labelledby','onlineStoryViewerTitle');list.parentNode.insertBefore(viewer,list);}
       viewer.replaceChildren();var h=document.createElement('h3');h.id='onlineStoryViewerTitle';h.textContent='Story by '+storyOwnerLabel(profile);viewer.appendChild(h);
-      var img=document.createElement('img');img.src=story.imageData;img.alt='Photo story shared by '+storyOwnerLabel(profile);viewer.appendChild(img);
+      var storyMediaUrl=story.mediaType==='video'&&story.mediaUrl?story.mediaUrl:(story.imageData||story.mediaUrl||'');
+      var storyMedia;
+      if(story.mediaType==='video'&&storyMediaUrl){storyMedia=document.createElement('video');storyMedia.controls=true;storyMedia.playsInline=true;storyMedia.preload='metadata';storyMedia.muted=false;storyMedia.src=storyMediaUrl;storyMedia.setAttribute('aria-label','Video story shared by '+storyOwnerLabel(profile));}
+      else{storyMedia=document.createElement('img');storyMedia.src=storyMediaUrl;storyMedia.alt='Photo story shared by '+storyOwnerLabel(profile);}
+      storyMedia.style.cssText='display:block;max-width:100%;max-height:65vh;object-fit:contain;';viewer.appendChild(storyMedia);
       var cap=document.createElement('p');cap.textContent=String(story.caption||'No caption');viewer.appendChild(cap);
       if(story.audioUrl && String(story.audioUrl).startsWith('https://res.cloudinary.com/')){
         var audioLabel=document.createElement('p');audioLabel.textContent='15-second story music';viewer.appendChild(audioLabel);
@@ -5772,7 +5806,7 @@ window.openIndianGames=function(){window.location.href='../games.html';};
   function onlineStoryItems(){
     var now=Date.now(),items=[];
     (window.indianFirebaseAllProfiles||[]).forEach(function(profile){
-      (Array.isArray(profile.activeStories)?profile.activeStories:[]).forEach(function(story){if(story&&story.imageData&&Number(story.expiresAt)>now)items.push({profile:profile,story:story});});
+      (Array.isArray(profile.activeStories)?profile.activeStories:[]).forEach(function(story){if(story&&(story.imageData||(story.mediaType==='video'&&story.mediaUrl))&&Number(story.expiresAt)>now)items.push({profile:profile,story:story});});
     });
     return items.sort(function(a,b){return Number(b.story.createdAtMs||0)-Number(a.story.createdAtMs||0);});
   }
@@ -5780,10 +5814,12 @@ window.openIndianGames=function(){window.location.href='../games.html';};
     var strip=byId('homeStoriesStrip');if(!strip)return;
     strip.querySelectorAll('[data-online-story-id]').forEach(function(el){el.remove();});
     onlineStoryItems().forEach(function(item){
-      var owner=storyOwnerLabel(item.profile),story=item.story;var card=document.createElement('button');card.type='button';card.className='story-preview-card';card.dataset.onlineStoryId=story.id;card.setAttribute('role','listitem');card.setAttribute('aria-label','Open photo story by '+owner+(story.caption?': '+story.caption:''));
-      var av=document.createElement('span');av.className='story-preview-avatar';av.setAttribute('aria-hidden','true');var img=document.createElement('img');img.src=story.imageData;img.alt='';img.loading='lazy';av.appendChild(img);
+      var owner=storyOwnerLabel(item.profile),story=item.story;var card=document.createElement('button');card.type='button';card.className='story-preview-card';card.dataset.onlineStoryId=story.id;card.setAttribute('role','listitem');card.setAttribute('aria-label','Open '+(story.mediaType==='video'?'video':'photo')+' story by '+owner+(story.caption?': '+story.caption:''));
+      var av=document.createElement('span');av.className='story-preview-avatar';av.setAttribute('aria-hidden','true');
+      if(story.mediaType==='video'){av.textContent='▶';av.setAttribute('aria-label','Video story');}
+      else{var img=document.createElement('img');img.src=story.imageData||story.mediaUrl||'';img.alt='';img.loading='lazy';av.appendChild(img);}
       var name=document.createElement('span');name.className='story-preview-name';name.textContent=owner;
-      var cap=document.createElement('span');cap.className='story-preview-caption';cap.textContent=String(story.caption||'Photo story');
+      var cap=document.createElement('span');cap.className='story-preview-caption';cap.textContent=String(story.caption||(story.mediaType==='video'?'Video story':'Photo story'));
       card.append(av,name,cap);card.addEventListener('click',function(){showOnlineStory(item.profile,story);});strip.appendChild(card);
     });
   }
@@ -5797,7 +5833,10 @@ window.openIndianGames=function(){window.location.href='../games.html';};
       var owner=storyOwnerLabel(item.profile),story=item.story;var card=document.createElement('article');card.className='online-story-card';card.dataset.onlineStoryCard=story.id;
       var h=document.createElement('h4');h.textContent=owner;card.appendChild(h);
       var cap=document.createElement('p');cap.textContent=String(story.caption||'No caption');card.appendChild(cap);
-      var img=document.createElement('img');img.src=story.imageData;img.alt='Photo story by '+owner;img.loading='lazy';card.appendChild(img);
+      var storyPageMedia;
+      if(story.mediaType==='video'&&story.mediaUrl){storyPageMedia=document.createElement('video');storyPageMedia.controls=true;storyPageMedia.playsInline=true;storyPageMedia.preload='metadata';storyPageMedia.src=story.mediaUrl;storyPageMedia.setAttribute('aria-label','Video story by '+owner);}
+      else{storyPageMedia=document.createElement('img');storyPageMedia.src=story.imageData||story.mediaUrl||'';storyPageMedia.alt='Photo story by '+owner;storyPageMedia.loading='lazy';}
+      storyPageMedia.style.cssText='display:block;max-width:100%;max-height:65vh;object-fit:contain;';card.appendChild(storyPageMedia);
       var meta=document.createElement('p');meta.textContent='';
       var button=document.createElement('button');button.type='button';button.className='action';button.textContent='Open and reply';button.addEventListener('click',function(){showOnlineStory(item.profile,story);});card.appendChild(button);
       list.appendChild(card);
@@ -6007,28 +6046,55 @@ window.openIndianGames=function(){window.location.href='../games.html';};
     // Cloudinary video/audio delivery transformation: start at 0, deliver 15 seconds.
     return url.replace('/upload/','/upload/so_0,du_15/');
   }
+  async function uploadStoryVideoToCloudinary(file){
+    if(!file)throw new Error('Please choose a video first.');
+    if(file.size>50*1024*1024)throw new Error('Story video maximum 50 MB ka ho sakta hai.');
+    if(!['video/mp4','video/webm'].includes(file.type))throw new Error('Story video ke liye MP4 ya WebM file choose karein.');
+    var form=new FormData();form.append('file',file);form.append('upload_preset','indian_social_upload');form.append('folder','indian_social/story_videos');
+    var response=await fetch('https://api.cloudinary.com/v1_1/k4cyxxet/video/upload',{method:'POST',body:form});
+    var result={};try{result=await response.json();}catch(e){}
+    if(!response.ok||!result.secure_url)throw new Error((result.error&&result.error.message)||'Cloudinary par story video upload nahi ho saka.');
+    return String(result.secure_url);
+  }
   var basePublishStory=window.publishLocalStory;
   if(typeof basePublishStory==='function'){
     window.publishLocalStory=async function(){
       var input=byId('storyMediaInput'),audioInput=byId('storyAudioInput'),file=input&&input.files&&input.files[0],audio=audioInput&&audioInput.files&&audioInput.files[0];
       var musicChoice=byId('storyMusicChoice')?byId('storyMusicChoice').value:'none';
-      var audioUrl='',audioData='',audioError='';
+      var audioUrl='',audioData='',audioError='',videoUrl='',videoError='';
       var status=byId('storiesStatus');
       if(audio){
         if(status)status.textContent='Your song is uploading. The online story link will play the first 15 seconds. Please wait.';
         try{audioUrl=await uploadStoryAudio15s(audio);}catch(e){audioError=String(e&&e.message||e);}
       }
+      if(file&&String(file.type||'').startsWith('video/')){
+        if(!window.firebaseCurrentUid||typeof window.saveIndianStoryToFirestore!=='function')videoError='Sign in to your Indian account to share a video story with other users.';
+        else{
+          if(status)status.textContent='Video story online upload ho raha hai. Please wait.';
+          try{videoUrl=await uploadStoryVideoToCloudinary(file);}catch(e){videoError=String(e&&e.message||e);}
+        }
+      }
       var before=[];try{before=JSON.parse(localStorage.getItem('indian_local_stories_v1')||'[]');}catch(e){}
       window.__indianStoryPublishMeta={musicChoice:musicChoice,audioData:audioData,audioUrl:audioUrl};
-      try{await basePublishStory();}finally{window.__indianStoryPublishMeta=null;}
+      try{
+        await basePublishStory();
+        if(videoUrl&&window.saveIndianStoryToFirestore){
+          await window.saveIndianStoryToFirestore({id:'story-'+Date.now(),caption:String(byId('storyCaption')&&byId('storyCaption').value||'').slice(0,300),mediaType:'video',mediaUrl:videoUrl});
+          if(typeof window.renderIndianOnlineStories==='function')window.renderIndianOnlineStories();
+          if(typeof window.renderIndianHomeStories==='function')window.renderIndianHomeStories();
+        }
+      }catch(e){if(videoUrl&&!videoError)videoError=String(e&&e.message||e);}
+      finally{window.__indianStoryPublishMeta=null;}
       if(file&&(String(file.type||'').startsWith('image/')||String(file.type||'').startsWith('video/'))){
         var after=[];try{after=JSON.parse(localStorage.getItem('indian_local_stories_v1')||'[]');}catch(e){}
         var created=after.find(function(item){return !before.some(function(old){return old.id===item.id;});})||after[after.length-1];
         if(created){created.musicChoice=musicChoice;created.audioUrl=audioUrl;try{localStorage.setItem('indian_local_stories_v1',JSON.stringify(after));}catch(e){}if(audio){localAudioUrls.set(created.id,URL.createObjectURL(audio));}setupStoryCardDataset();if(typeof window.renderLocalStories==='function')window.renderLocalStories();enrichLocalStoryCards();}
       }
       if(status){
-        if(audioError)status.textContent='Story may be published, but its music was not uploaded: '+audioError+'. Cloudinary upload preset indian_social_upload must allow the original audio format (for example MP3). Do not add a Cloudinary API secret or Firebase service-account private key to this file.';
-        else if(audioUrl)status.textContent='Story song uploaded. The online audio link is trimmed to the first 15 seconds. On another phone, open the story and check sound; browser autoplay may require one tap.';
+        if(videoError)status.textContent='Video story is saved on this device, but online sharing failed: '+videoError;
+        else if(file&&String(file.type||'').startsWith('video/'))status.textContent='Video story shared with Indian users. On another phone, tap Play on the video; mobile browsers may block automatic sound.'+(audioUrl?' The selected song is also attached for up to 15 seconds.':'');
+        else if(audioError)status.textContent='Story may be shared, but its music was not uploaded: '+audioError+'. The Cloudinary upload preset must allow the selected audio format.';
+        else if(audioUrl)status.textContent='Story song uploaded for up to 15 seconds. On another phone, open the story and press Play if sound does not start.';
         else if(audio)status.textContent='Story publish was attempted. No online song link was created, so the story may not have music on other phones.';
       }
     };
@@ -6070,7 +6136,9 @@ window.openIndianGames=function(){window.location.href='../games.html';};
     /* Expired remote stories are never displayed when expiry is missing or has passed. */
     (window.indianFirebaseAllProfiles||[]).forEach(function(profile){
       (Array.isArray(profile.activeStories)?profile.activeStories:[]).forEach(function(story){
-        if(story&&story.imageData&&Number(story.expiresAt)>now)out.push({key:'online:'+String(profile.uid||'')+':'+String(story.id||''),kind:'online',owner:safeText(profile.displayName||story.owner||'Indian User',60)||'Indian User',profile:profile,story:story,createdAt:Number(story.createdAtMs||0),mediaUrl:story.imageData});
+        var isVideo=story&&story.mediaType==='video'&&typeof story.mediaUrl==='string'&&story.mediaUrl.startsWith('https://res.cloudinary.com/');
+        var mediaUrl=story&&(story.imageData||story.mediaUrl)||'';
+        if(story&&(story.imageData||isVideo)&&Number(story.expiresAt)>now)out.push({key:'online:'+String(profile.uid||'')+':'+String(story.id||''),kind:'online',owner:safeText(profile.displayName||story.owner||'Indian User',60)||'Indian User',profile:profile,story:story,mediaType:isVideo?'video':'image',createdAt:Number(story.createdAtMs||0),mediaUrl:mediaUrl});
       });
     });
     return out;
@@ -6128,8 +6196,8 @@ window.openIndianGames=function(){window.location.href='../games.html';};
     captionBox.textContent=safeText((item.story||{}).caption||'',300);captionBox.hidden=!captionBox.textContent;
     countLabel.textContent=(currentIndex+1)+' of '+deck.length;
     var story=item.story||{};var media;
-    if(item.kind==='local'&&story.kind==='video'){
-      media=document.createElement('video');media.controls=true;media.playsInline=true;media.preload='metadata';media.src=item.mediaUrl;media.setAttribute('aria-label','Story video by '+item.owner);
+    if((item.kind==='local'&&story.kind==='video')||(item.kind==='online'&&(item.mediaType==='video'||story.mediaType==='video'))){
+      media=document.createElement('video');media.controls=true;media.playsInline=true;media.preload='metadata';media.muted=false;media.src=item.mediaUrl;media.setAttribute('aria-label','Story video by '+item.owner);
     }else{
       media=document.createElement('img');media.src=item.mediaUrl;media.alt='Story photo by '+item.owner;media.draggable=false;
     }
@@ -6145,7 +6213,7 @@ window.openIndianGames=function(){window.location.href='../games.html';};
   function nextStory(delta){if(!deck.length)return;var next=currentIndex+delta;if(next<0||next>=deck.length){closeViewer();return;}overlay.querySelectorAll('audio,video').forEach(function(m){try{m.pause();}catch(e){}});currentIndex=next;renderCurrentStory();}
   function addStoryCard(strip,item){
     var card=document.createElement('button');card.type='button';card.className='story-preview-card';card.dataset.storyKey=item.key;card.setAttribute('role','listitem');card.setAttribute('aria-label','Open story by '+item.owner+(item.story.caption?': '+safeText(item.story.caption,160):''));
-    var av=document.createElement('span');av.className='story-preview-avatar';av.setAttribute('aria-hidden','true');var img=document.createElement('img');img.src=item.mediaUrl;img.alt='';img.loading='lazy';av.appendChild(img);
+    var av=document.createElement('span');av.className='story-preview-avatar';av.setAttribute('aria-hidden','true');if(item.mediaType==='video'||(item.kind==='local'&&item.story&&item.story.kind==='video')){av.textContent='▶';}else{var img=document.createElement('img');img.src=item.mediaUrl;img.alt='';img.loading='lazy';av.appendChild(img);}
     var name=document.createElement('span');name.className='story-preview-name';name.textContent=item.owner;card.append(av,name);card.addEventListener('click',function(){openStory(item.key,card);});strip.appendChild(card);
   }
   function renderStoryStrip(){
@@ -6160,7 +6228,7 @@ window.openIndianGames=function(){window.location.href='../games.html';};
     var items=allStories();if(!items.length){list.textContent='No stories yet.';return;}
     items.forEach(function(item){
       var wrap=document.createElement('div');wrap.className='local-story-card';wrap.dataset.storyKey=item.key;
-      var open=document.createElement('button');open.type='button';open.className='story-preview-card';open.setAttribute('aria-label','Open story by '+item.owner);var av=document.createElement('span');av.className='story-preview-avatar';av.setAttribute('aria-hidden','true');var img=document.createElement('img');img.src=item.mediaUrl;img.alt='';av.appendChild(img);var nm=document.createElement('span');nm.className='story-preview-name';nm.textContent=item.owner;open.append(av,nm);open.addEventListener('click',function(){openStory(item.key,open);});wrap.appendChild(open);
+      var open=document.createElement('button');open.type='button';open.className='story-preview-card';open.setAttribute('aria-label','Open '+((item.mediaType==='video'||(item.kind==='local'&&item.story&&item.story.kind==='video'))?'video':'photo')+' story by '+item.owner);var av=document.createElement('span');av.className='story-preview-avatar';av.setAttribute('aria-hidden','true');if(item.mediaType==='video'||(item.kind==='local'&&item.story&&item.story.kind==='video')){av.textContent='▶';}else{var img=document.createElement('img');img.src=item.mediaUrl;img.alt='';av.appendChild(img);}var nm=document.createElement('span');nm.className='story-preview-name';nm.textContent=item.owner;open.append(av,nm);open.addEventListener('click',function(){openStory(item.key,open);});wrap.appendChild(open);
       if(item.kind==='local'){var del=document.createElement('button');del.type='button';del.className='action';del.textContent='Delete';del.setAttribute('aria-label','Delete your story by '+item.owner);del.addEventListener('click',function(){var id=String(item.story.id);try{localStorage.setItem('indian_local_stories_v1',JSON.stringify(localItems().filter(function(x){return String(x.id)!==id;})));}catch(e){}try{var url=localUrl(id);if(url)URL.revokeObjectURL(url);var urls=window.localStoryUrls||(typeof localStoryUrls!=='undefined'?localStoryUrls:null);if(urls&&urls.delete)urls.delete(id);}catch(e){}renderCompactStoryList();renderStoryStrip();});wrap.appendChild(del);}
       list.appendChild(wrap);
     });
@@ -6212,7 +6280,7 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
   var card=cards[index],frame=card.querySelector('iframe'),video=card.querySelector('video'),cap=card.querySelector('p');
   stage.replaceChildren();
   if(frame){var f=document.createElement('iframe');f.src=frame.getAttribute('src')||'';f.title='Indian Short '+(index+1);f.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';f.allowFullscreen=true;f.referrerPolicy='strict-origin-when-cross-origin';stage.appendChild(f);}
-  else if(video){var v=document.createElement('video');v.src=video.currentSrc||video.src;v.controls=true;v.playsInline=true;v.autoplay=true;stage.appendChild(v);v.play().catch(function(){});}
+  else if(video){var v=document.createElement('video');v.src=video.currentSrc||video.src;v.controls=true;v.playsInline=true;v.muted=false;v.autoplay=true;stage.appendChild(v);v.play().catch(function(){status.textContent='Automatic playback with sound was blocked. Press Play on the video to hear it.';});}
   else{stage.textContent='Video player is unavailable.';}
   caption.textContent=cap?cap.textContent:'';status.textContent='Short '+(index+1)+' of '+cards.length+'. Swipe up or down, or use Previous and Next.';
  }

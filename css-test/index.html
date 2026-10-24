@@ -6037,7 +6037,7 @@ window.openIndianGames=function(){window.location.href='../games.html';};
     var form=new FormData();
     var safeName=String(file.name||'story-song.mp3').replace(/[^a-zA-Z0-9._-]/g,'_');
     form.append('file',file,safeName);
-    form.append('upload_preset','indian_social_upload');
+    form.append('upload_preset','indian_story_audio');
     form.append('folder','indian_social/story_music');
     var response=await fetch('https://api.cloudinary.com/v1_1/k4cyxxet/video/upload',{method:'POST',body:form});
     var result={};try{result=await response.json();}catch(e){}

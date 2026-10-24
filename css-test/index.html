@@ -5137,13 +5137,34 @@ else{
      const el=document.getElementById(replyId); if(el)el.dataset.firestoreId=ref.id;
    }catch(e){alertSave("Reply",e);}
  }
- async function saveHelp(text,count,id){
+ async function uploadIndianHelpMediaToCloudinary(file){
+   const isVideo=String(file.type||"").startsWith("video/");
+   const allowedImage=["image/jpeg","image/png","image/webp","image/gif"];
+   const allowedVideo=["video/mp4","video/webm"];
+   if(isVideo && !allowedVideo.includes(file.type)) throw new Error("Help video ke liye MP4 ya WebM file choose karein.");
+   if(!isVideo && !allowedImage.includes(file.type)) throw new Error("Help photo ke liye JPG, PNG, WebP ya GIF file choose karein.");
+   if(isVideo && file.size>50*1024*1024) throw new Error("Help video 50 MB se chhota hona chahiye.");
+   if(!isVideo && file.size>10*1024*1024) throw new Error("Help photo 10 MB se chhoti honi chahiye.");
+   const form=new FormData();
+   form.append("file",file,String(file.name|| (isVideo?"help-video.mp4":"help-photo.jpg")).replace(/[^A-Za-z0-9._-]/g,"_"));
+   form.append("upload_preset","indian_social_upload");
+   form.append("folder","indian_social/help");
+   const endpoint="https://api.cloudinary.com/v1_1/k4cyxxet/"+(isVideo?"video":"image")+"/upload";
+   const response=await fetch(endpoint,{method:"POST",body:form});
+   let result={};try{result=await response.json();}catch(e){}
+   if(!response.ok || !result.secure_url || !String(result.secure_url).startsWith("https://res.cloudinary.com/")) throw new Error((result.error&&result.error.message)||"Cloudinary par Help media upload nahi ho saka.");
+   return {type:isVideo?"video":"image",name:clean(file.name|| (isVideo?"help-video":"help-photo"),180),url:result.secure_url,publicId:clean(result.public_id||"",240)};
+ }
+ async function saveHelp(text,count,id,media){
    if(!currentUser)return;
    try{
      const category=clean(document.getElementById("helpCategory")?.value||"General",50);
-     await addDoc(collection(db,"helpRequests"),{uid:currentUser.uid,displayName:name(),category:category,text:clean(text,3000),status:"Open",mediaCount:Math.min(Number(count)||0,10),clientId:id,createdAt:serverTimestamp(),createdAtMs:now()});
+     const safeMedia=(Array.isArray(media)?media:[]).slice(0,10).filter(m=>m&&typeof m.url==="string"&&m.url.startsWith("https://res.cloudinary.com/")).map(m=>({type:m.type==="video"?"video":"image",name:clean(m.name||"help-media",180),url:m.url,publicId:clean(m.publicId||"",240)}));
+     const payload={uid:currentUser.uid,displayName:name(),category:category,text:clean(text,3000),status:"Open",mediaCount:Math.min(Number(count)||0,10),clientId:id,createdAt:serverTimestamp(),createdAtMs:now()};
+     if(safeMedia.length) payload.media=safeMedia;
+     await addDoc(collection(db,"helpRequests"),payload);
    }
-   catch(e){alertSave("Help request",e);}
+   catch(e){alertSave("Help request",e);throw e;}
  }
  async function saveRemoteNotification(recipientId,message,type,targetId){
    if(!currentUser || !recipientId || recipientId===currentUser.uid) return;
@@ -5296,6 +5317,20 @@ else{
        const body=document.createElement("p");body.textContent=clean(x.text,3000)||"Media help request";el.appendChild(body);
        const badge=document.createElement("p");badge.className="help-status-badge";badge.textContent="Status: "+status;badge.setAttribute("aria-label","Help request status: "+status);el.appendChild(badge);
        const meta=document.createElement("p");meta.className="helpTime";meta.textContent="Help request shared with Indian users.";el.appendChild(meta);
+       // Shared Help media: render only permanent Cloudinary HTTPS URLs, never local blob URLs.
+       if(Array.isArray(x.media) && x.media.length){
+         const mediaBox=document.createElement("div");mediaBox.className="helpMedia";mediaBox.setAttribute("aria-label","Photos and videos attached to this help request");
+         x.media.slice(0,10).forEach(m=>{
+           if(!m || typeof m.url!=="string" || !m.url.startsWith("https://res.cloudinary.com/")) return;
+           const type=m.type==="video"?"video":"image";
+           if(type==="video"){
+             const video=document.createElement("video");video.controls=true;video.preload="metadata";video.playsInline=true;video.src=m.url;video.setAttribute("aria-label","Help request video");mediaBox.appendChild(video);
+           } else {
+             const image=document.createElement("img");image.src=m.url;image.alt="Photo attached to help request";image.loading="lazy";mediaBox.appendChild(image);
+           }
+         });
+         if(mediaBox.childElementCount) el.appendChild(mediaBox);
+       }
        if(x.uid && x.uid===currentUser?.uid){
          const actions=document.createElement("div");actions.className="help-status-actions";actions.setAttribute("aria-label","Update status of your help request");
          [["Open","Mark as Open"],["In Progress","Mark In Progress"],["Resolved","Mark Resolved"]].forEach(([value,label])=>{
@@ -5317,7 +5352,27 @@ else{
    const pub=window.publishPost;window.publishPost=async function(){const box=document.getElementById("postBox"),input=document.getElementById("mediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),before=new Set([...document.querySelectorAll("#postsContainer .post")].map(x=>x.id));pub?.();const created=[...document.querySelectorAll("#postsContainer .post")].find(x=>!before.has(x.id));if(created){/* Mark the local post before Firestore can echo it through onSnapshot. */created.dataset.clientId=created.id;await savePost(text,files,created);}};
    const ac=window.addComment;window.addComment=async function(a,b,c,d,e){const text=a?.value.trim()||"",before=new Set([...b.children].map(x=>x.id));ac?.(a,b,c,d,e);const created=[...b.children].find(x=>!before.has(x.id));if(created&&text)await saveComment(e,created.id,text);};
    const ar=window.addReply;window.addReply=async function(a,b,c,d,e){const text=a?.value.trim()||"",before=new Set([...b.children].map(x=>x.id));ar?.(a,b,c,d,e);const created=[...b.children].find(x=>!before.has(x.id));if(created&&text)await saveReply(e,created.id,text);};
-   const ah=window.submitHelp;window.submitHelp=async function(){const box=document.getElementById("helpBox"),input=document.getElementById("helpMediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),before=new Set([...document.querySelectorAll("#helpContainer .helpRequest")].map(x=>x.id));ah?.();const created=[...document.querySelectorAll("#helpContainer .helpRequest")].find(x=>!before.has(x.id));if(created)await saveHelp(text,files.length,created.id);};
+   const ah=window.submitHelp;window.submitHelp=async function(){
+     const box=document.getElementById("helpBox"),input=document.getElementById("helpMediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),form=document.getElementById("helpForm");
+     if(!text && !files.length){ah?.();return;}
+     if(files.length>10){alert("Ek Help Request mein zyada se zyada 10 photo/video choose karein.");return;}
+     if(!currentUser){alert("Help request share karne ke liye Indian account mein sign in karein.");return;}
+     const button=form?.querySelector('button[onclick="submitHelp()"]');
+     const originalLabel=button?.textContent||"Submit Help Request";
+     if(button){button.disabled=true;button.textContent="Uploading Help media…";}
+     try{
+       const media=[];
+       for(const file of files){media.push(await uploadIndianHelpMediaToCloudinary(file));}
+       const before=new Set([...document.querySelectorAll("#helpContainer .helpRequest")].map(x=>x.id));
+       ah?.();
+       const created=[...document.querySelectorAll("#helpContainer .helpRequest")].find(x=>!before.has(x.id));
+       if(!created) throw new Error("Help request ka local card nahi mila. Please dobara check karein.");
+       await saveHelp(text,files.length,created.id,media);
+       const status=document.getElementById("helpActionStatus");if(status)status.textContent="Help request and its media were shared with Indian users.";
+     }catch(e){
+       alert("Help request submit nahi hui: "+String(e?.message||e).slice(0,250)+". Files dobara check karke try karein.");
+     }finally{if(button){button.disabled=false;button.textContent=originalLabel;}}
+   };
    const an=window.addNotification;window.addNotification=async function(message,type,id){an?.(message,type,id);const n=window.notifications?.[0];if(n)await saveNotification(n);};
    const af=window.togglePersonFollow;window.togglePersonFollow=async function(id){af?.(id);const p=window.peopleData?.find(x=>x.id===id);if(p){ await saveFollow(p); if(p.isFollowing && p.firebaseUid) await saveRemoteNotification(p.firebaseUid, name()+" started following you.", "follow", p.id); }};
    const lb=window.createLikeButton;window.createLikeButton=function(type,id){const b=lb(type,id),old=b.onclick;b.onclick=async function(){old?.();await saveLike(type,id,b.classList.contains("liked"));};return b;};

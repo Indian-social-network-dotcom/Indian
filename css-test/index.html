@@ -1166,6 +1166,9 @@ window.replaceIndianConversationMessages = function(personId, messages){
     renderConversationList();
 };
 
+// Keep the signed-in user's persisted follow relationships available even when
+// Firebase profiles are loaded after the Firestore follows listener first fires.
+window.__indianPersistedFollowingKeys = window.__indianPersistedFollowingKeys || new Set();
 window.addFirebasePeopleToIndian = function(profiles){
     let nextId = 10000;
     profiles.forEach(function(profile){
@@ -1176,6 +1179,7 @@ window.addFirebasePeopleToIndian = function(profiles){
             existing.name = safeName;
             existing.bio = String(profile.bio || existing.bio || "Firebase user on Indian.").slice(0, 500);
             existing.photoURL = String(profile.photoURL || existing.photoURL || "");
+            existing.isFollowing = window.__indianPersistedFollowingKeys.has(profile.uid);
             return;
         }
         while(peopleData.some(function(p){ return p.id === nextId; })) nextId++;
@@ -1185,7 +1189,7 @@ window.addFirebasePeopleToIndian = function(profiles){
             bio: String(profile.bio || "Firebase user on Indian.").slice(0, 500),
             photoURL: String(profile.photoURL || ""),
             firebaseUid: profile.uid,
-            isFollowing:false,
+            isFollowing:window.__indianPersistedFollowingKeys.has(profile.uid),
             followersCount:0,
             followingCount:0,
             followersList:[],
@@ -1195,6 +1199,7 @@ window.addFirebasePeopleToIndian = function(profiles){
         suggestedPeople.push(person);
     });
     renderConversationList();
+    renderPeopleList();
     renderSuggestedPeople();
 };
 
@@ -5301,7 +5306,7 @@ else{
      docs.forEach(renderStoredPost);
    },e=>console.error("Posts listener",e)));
    unsub.push(onSnapshot(query(collection(db,"notifications"),where("recipientId","==",uid)),s=>{if(Array.isArray(window.notifications)){window.notifications.splice(0,window.notifications.length,...s.docs.map(d=>({id:d.id,firestoreId:d.id,...d.data(),time:new Date(d.data().createdAtMs||Date.now()).toLocaleTimeString()})).sort((a,b)=>(b.createdAtMs||0)-(a.createdAtMs||0)));window.renderNotifications();}},e=>console.error("Notifications listener",e)));
-   unsub.push(onSnapshot(query(collection(db,"follows"),where("followerId","==",uid)),s=>{const docs=s.docs.map(d=>d.data()||{}),keys=new Set(docs.map(d=>d.followingKey));if(Array.isArray(window.peopleData)){window.peopleData.forEach(p=>{const key=p.firebaseUid||("demo_"+p.id),wasFollowing=keys.has(key);p.isFollowing=wasFollowing;const baseFollowers=Number(p.__baseFollowersCount ?? p.followersCount ?? 0);p.__baseFollowersCount=baseFollowers;p.followersCount=baseFollowers+(wasFollowing?1:0);});const mainUser=window.peopleData.find(p=>p.id===0);if(mainUser){mainUser.followingCount=docs.length;}window.updateFollowView?.();window.renderPeopleList?.();window.renderSuggestedPeople?.();}},e=>console.error("Follow listener",e)));
+   unsub.push(onSnapshot(query(collection(db,"follows"),where("followerId","==",uid)),s=>{const docs=s.docs.map(d=>d.data()||{}),keys=new Set(docs.map(d=>d.followingKey));window.__indianPersistedFollowingKeys=new Set(docs.map(d=>String(d.followingUid||d.followingKey||"")).filter(Boolean));if(Array.isArray(window.peopleData)){window.peopleData.forEach(p=>{const key=p.firebaseUid||("demo_"+p.id),wasFollowing=keys.has(key);p.isFollowing=wasFollowing;const baseFollowers=Number(p.__baseFollowersCount ?? p.followersCount ?? 0);p.__baseFollowersCount=baseFollowers;p.followersCount=baseFollowers+(wasFollowing?1:0);});const mainUser=window.peopleData.find(p=>p.id===0);if(mainUser){mainUser.followingCount=docs.length;}window.updateFollowView?.();window.renderPeopleList?.();window.renderSuggestedPeople?.();}},e=>console.error("Follow listener",e)));
    unsub.push(onSnapshot(query(collection(db,"helpRequests")),s=>{
      const box=document.getElementById("helpContainer");if(!box)return;
      const filter=document.getElementById("helpStatusFilter")?.value||"all";

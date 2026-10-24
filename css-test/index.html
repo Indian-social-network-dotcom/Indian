@@ -5187,11 +5187,59 @@ else{
      if(!liked)await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));
    }catch(e){console.error("Like save failed",e);}
  }
+ function postDeleteStatus(message){
+   let status=document.getElementById("postDeleteStatus");
+   if(!status){
+     const section=document.getElementById("postsSection");
+     if(!section)return;
+     status=document.createElement("p");status.id="postDeleteStatus";status.setAttribute("role","status");status.setAttribute("aria-live","polite");
+     const box=document.getElementById("postsContainer");
+     if(box&&box.parentNode===section)section.insertBefore(status,box);else section.appendChild(status);
+   }
+   status.textContent=message;
+ }
+ async function deleteStoredPost(postId,postElement,button){
+   if(!currentUser||!postId||!postElement){postDeleteStatus("Please sign in to delete your post.");return;}
+   if(postElement.dataset.ownerUid!==currentUser.uid){postDeleteStatus("You can delete only your own post.");return;}
+   if(!window.confirm("Delete this post? It will be removed for everyone. This action cannot be undone."))return;
+   if(button)button.disabled=true;
+   postDeleteStatus("Deleting your post…");
+   try{
+     const ref=doc(db,"posts",postId);
+     const snap=await getDoc(ref);
+     if(!snap.exists()){
+       postElement.remove();postDeleteStatus("This post was already deleted.");return;
+     }
+     if((snap.data()||{}).uid!==currentUser.uid){
+       postDeleteStatus("You can delete only your own post.");
+       if(button)button.disabled=false;
+       return;
+     }
+     await deleteDoc(ref);
+     postElement.remove();
+     postDeleteStatus("Your post was deleted for everyone.");
+   }catch(error){
+     if(button)button.disabled=false;
+     postDeleteStatus("Post could not be deleted. Check Firestore rules for owner-only post deletion. "+clean(error&&error.message||"",160));
+   }
+ }
+ function addOwnPostDeleteButton(post,d){
+   const x=typeof d.data==="function"?d.data():(d||{});
+   const postId=d&&d.id?d.id:post.dataset.firestoreId;
+   if(!currentUser||!postId||!x||x.uid!==currentUser.uid)return;
+   if(post.querySelector(".deletePostButton"))return;
+   let actions=post.querySelector(".postActions");
+   if(!actions){actions=document.createElement("div");actions.className="postActions";post.appendChild(actions);}
+   const button=document.createElement("button");button.type="button";button.className="action deletePostButton";button.textContent="Delete Post";
+   button.setAttribute("aria-label","Delete your post: "+clean(x.text||"photo or video post",100));
+   button.addEventListener("click",function(){deleteStoredPost(postId,post,button);});
+   actions.appendChild(button);
+ }
  function renderStoredPost(d){
    const x=d.data(),cid=x.clientId||("firestore-post-"+d.id), old=document.querySelector('[data-firestore-id="'+CSS.escape(d.id)+'"]')||document.querySelector('[data-client-id="'+CSS.escape(cid)+'"]');
-   if(old){old.dataset.firestoreId=d.id;return;}
+   if(old){old.dataset.firestoreId=d.id;old.dataset.ownerUid=x.uid||"";addOwnPostDeleteButton(old,d);return;}
    const box=document.getElementById("postsContainer");if(!box)return;
-   const post=document.createElement("div");post.className="post";post.id=cid;post.dataset.firestoreId=d.id;post.dataset.clientId=cid;post.tabIndex=-1;
+   const post=document.createElement("div");post.className="post";post.id=cid;post.dataset.firestoreId=d.id;post.dataset.clientId=cid;post.dataset.ownerUid=x.uid||"";post.tabIndex=-1;
    const t=document.createElement("div");t.className="postTitle";t.textContent=clean(x.displayName,60)||"Indian User";post.appendChild(t);
    if(x.text){const c=document.createElement("div");c.textContent=clean(x.text,5000);post.appendChild(c);}
    if(Array.isArray(x.media)){
@@ -5205,7 +5253,7 @@ else{
    }
    const tm=document.createElement("div");tm.className="postTime";tm.textContent="Saved in Firestore";post.appendChild(tm);
    const a=document.createElement("div");a.className="postActions";a.appendChild(window.createLikeButton("post",cid));post.appendChild(a);
-   window.addCommentSystem(post,cid);box.prepend(post);loadLikes(post,"post",cid);loadComments(post,d.id);
+   window.addCommentSystem(post,cid);addOwnPostDeleteButton(post,d);box.prepend(post);loadLikes(post,"post",cid);loadComments(post,d.id);
  }
  async function loadLikes(el,type,id){try{const s=await getDocs(query(collection(db,"likes"),where("targetType","==",type),where("targetId","==",id))),b=el.querySelector(".likeButton");if(!b)return;const c=b.querySelector(".likeCount");if(c)c.textContent=String(s.size);if(s.docs.some(d=>d.data().uid===currentUser?.uid)){b.classList.add("liked");if(b.firstChild)b.firstChild.textContent="Unlike";}}catch(e){}}
  async function loadComments(post,postId){
@@ -5222,7 +5270,15 @@ else{
  window.markAllFirestoreNotificationsAsRead=markAllFirestoreNotificationsAsRead;
  function listeners(){
    clear();if(!currentUser)return;const uid=currentUser.uid;
-   unsub.push(onSnapshot(query(collection(db,"posts")),s=>[...s.docs].sort((a,b)=>(b.data().createdAtMs||0)-(a.data().createdAtMs||0)).forEach(renderStoredPost),e=>console.error("Posts listener",e)));
+   unsub.push(onSnapshot(query(collection(db,"posts")),s=>{
+     const docs=[...s.docs].sort((a,b)=>(b.data().createdAtMs||0)-(a.data().createdAtMs||0));
+     const liveIds=new Set(docs.map(d=>d.id));
+     document.querySelectorAll("#postsContainer .post[data-firestore-id]").forEach(el=>{
+       const id=el.dataset.firestoreId;
+       if(id&&!liveIds.has(id))el.remove();
+     });
+     docs.forEach(renderStoredPost);
+   },e=>console.error("Posts listener",e)));
    unsub.push(onSnapshot(query(collection(db,"notifications"),where("recipientId","==",uid)),s=>{if(Array.isArray(window.notifications)){window.notifications.splice(0,window.notifications.length,...s.docs.map(d=>({id:d.id,firestoreId:d.id,...d.data(),time:new Date(d.data().createdAtMs||Date.now()).toLocaleTimeString()})).sort((a,b)=>(b.createdAtMs||0)-(a.createdAtMs||0)));window.renderNotifications();}},e=>console.error("Notifications listener",e)));
    unsub.push(onSnapshot(query(collection(db,"follows"),where("followerId","==",uid)),s=>{const docs=s.docs.map(d=>d.data()||{}),keys=new Set(docs.map(d=>d.followingKey));if(Array.isArray(window.peopleData)){window.peopleData.forEach(p=>{const key=p.firebaseUid||("demo_"+p.id),wasFollowing=keys.has(key);p.isFollowing=wasFollowing;const baseFollowers=Number(p.__baseFollowersCount ?? p.followersCount ?? 0);p.__baseFollowersCount=baseFollowers;p.followersCount=baseFollowers+(wasFollowing?1:0);});const mainUser=window.peopleData.find(p=>p.id===0);if(mainUser){mainUser.followingCount=docs.length;}window.updateFollowView?.();window.renderPeopleList?.();window.renderSuggestedPeople?.();}},e=>console.error("Follow listener",e)));
    unsub.push(onSnapshot(query(collection(db,"helpRequests")),s=>{
@@ -5258,7 +5314,7 @@ else{
  }
  function wrap(){
    if(window.__indianFirestoreWrapped)return;window.__indianFirestoreWrapped=true;
-   const pub=window.publishPost;window.publishPost=async function(){const box=document.getElementById("postBox"),input=document.getElementById("mediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),before=new Set([...document.querySelectorAll("#postsContainer .post")].map(x=>x.id));pub?.();const created=[...document.querySelectorAll("#postsContainer .post")].find(x=>!before.has(x.id));if(created)await savePost(text,files,created);};
+   const pub=window.publishPost;window.publishPost=async function(){const box=document.getElementById("postBox"),input=document.getElementById("mediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),before=new Set([...document.querySelectorAll("#postsContainer .post")].map(x=>x.id));pub?.();const created=[...document.querySelectorAll("#postsContainer .post")].find(x=>!before.has(x.id));if(created){/* Mark the local post before Firestore can echo it through onSnapshot. */created.dataset.clientId=created.id;await savePost(text,files,created);}};
    const ac=window.addComment;window.addComment=async function(a,b,c,d,e){const text=a?.value.trim()||"",before=new Set([...b.children].map(x=>x.id));ac?.(a,b,c,d,e);const created=[...b.children].find(x=>!before.has(x.id));if(created&&text)await saveComment(e,created.id,text);};
    const ar=window.addReply;window.addReply=async function(a,b,c,d,e){const text=a?.value.trim()||"",before=new Set([...b.children].map(x=>x.id));ar?.(a,b,c,d,e);const created=[...b.children].find(x=>!before.has(x.id));if(created&&text)await saveReply(e,created.id,text);};
    const ah=window.submitHelp;window.submitHelp=async function(){const box=document.getElementById("helpBox"),input=document.getElementById("helpMediaInput"),text=box?.value.trim()||"",files=Array.from(input?.files||[]),before=new Set([...document.querySelectorAll("#helpContainer .helpRequest")].map(x=>x.id));ah?.();const created=[...document.querySelectorAll("#helpContainer .helpRequest")].find(x=>!before.has(x.id));if(created)await saveHelp(text,files.length,created.id);};

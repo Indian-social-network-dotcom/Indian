@@ -303,11 +303,6 @@ Search registered users, places, posts or help requests:
 <div class="chatPanel">
 <h3 id="chatTitle">Select a conversation</h3>
 <div id="chatPresence" class="messageConversationMeta" aria-live="polite">Select a person to open a chat.</div>
-<div id="indianCallActions" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;align-items:center;">
-    <button type="button" class="action" onclick="startIndianVoiceCall()" aria-label="Start voice call with selected user">Voice Call</button>
-    <button type="button" class="action" onclick="startIndianVideoCall()" aria-label="Start video call with selected user">Video Call</button>
-</div>
-<div id="indianCallStatus" role="status" aria-live="polite" style="margin:8px 0;padding:8px;border:1px solid #cbd5e1;border-radius:8px;">Choose a Firebase-connected chat to make a voice or video call.</div>
 <div id="chatTypingStatus" class="messageTypingStatus" aria-live="polite"></div>
 <div class="messageSearchBar" id="messageSearchBar" style="display:none;">
     <label for="messageSearchBox">Search messages in this chat:</label>
@@ -319,6 +314,13 @@ Search registered users, places, posts or help requests:
 </div>
 
 <div id="messageComposer" style="display:none;">
+<!-- Quick call controls are located at the bottom of the selected chat, next to the message composer. -->
+<div id="indianChatCallQuickActions" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;align-items:center;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;">
+    <strong style="flex-basis:100%;">Call this person</strong>
+    <button type="button" class="action" onclick="startIndianVoiceCall()" aria-label="Start voice call with selected user">Voice Call</button>
+    <button type="button" class="action" onclick="startIndianVideoCall()" aria-label="Start video call with selected user">Video Call</button>
+    <div id="indianCallStatus" role="status" aria-live="polite" style="flex-basis:100%;margin-top:4px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;">Choose a Firebase-connected chat to make a voice or video call.</div>
+</div>
 <div id="messageEditNotice" class="messageEditNotice" aria-live="polite" style="display:none;">
     <span id="messageEditText"></span>
     <button type="button" class="action" onclick="cancelMessageEdit()" aria-label="Cancel editing message">Cancel Edit</button>

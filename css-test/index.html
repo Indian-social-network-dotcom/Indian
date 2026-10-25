@@ -257,6 +257,16 @@ Search registered users, places, posts or help requests:
 <section id="notificationsSection" style="display:none;" tabindex="-1">
 <h2>Notifications</h2>
 
+<div id="indianWebPushPanel" style="margin:12px 0;padding:12px;border:1px solid #cbd5e1;border-radius:8px;max-width:760px;">
+  <h3>Browser Push Notifications</h3>
+  <p>Enable notifications on this device. Allow the browser permission when asked.</p>
+  <button class="action" type="button" id="enableIndianWebPushBtn">Enable Push Notifications</button>
+  <button class="action" type="button" id="copyIndianWebPushTokenBtn" disabled>Copy FCM Test Token</button>
+  <label for="indianWebPushTokenOutput" style="display:block;margin-top:10px;">FCM test token</label>
+  <textarea id="indianWebPushTokenOutput" rows="3" readonly style="display:block;width:100%;max-width:100%;box-sizing:border-box;" aria-label="FCM test token"></textarea>
+  <p id="indianWebPushStatus" role="status" aria-live="polite">Push notifications are not enabled on this device yet.</p>
+</div>
+
 <button class="action" onclick="markAllNotificationsAsRead()">Mark All as Read</button>
 
 <div id="notificationsContainer" aria-live="polite" style="margin-top:15px;">
@@ -3912,6 +3922,7 @@ import {
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
+import { getMessaging, getToken, onMessage, isSupported } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging.js";
 
 /* ==========================================================
    FIREBASE CONFIG
@@ -3954,6 +3965,11 @@ let firebaseCurrentUser = null;
 let firebasePreparedFile = null;
 let firebaseOriginalFile = null;
 let firebasePreparedKind = null;
+let indianWebPushMessaging = null;
+let indianWebPushServiceWorkerRegistration = null;
+let indianWebPushToken = "";
+let indianWebPushForegroundListenerAdded = false;
+const INDIAN_WEB_PUSH_VAPID_PUBLIC_KEY = "BCAbYUrZm9eh8ZG-EFBx9sk5unZBqF4PyyBbt1rlkC41yAKKyFfwgddXj2XeMH_egNZ7TxHWoJzupy7Ea8mmKT0";
 
 function $(id){
     return document.getElementById(id);
@@ -4938,6 +4954,81 @@ else{
         updateFirebaseAuthUI();
     }
 }
+
+function setIndianWebPushStatus(message){
+    const el = $("indianWebPushStatus");
+    if(el) el.textContent = String(message || "");
+}
+
+async function enableIndianWebPushForThisDevice(){
+    const tokenBox = $("indianWebPushTokenOutput");
+    const copyButton = $("copyIndianWebPushTokenBtn");
+    if(!firebaseApp || !firebaseCurrentUser){
+        setIndianWebPushStatus("Please sign in to your Indian account before enabling push notifications.");
+        return;
+    }
+    if(!window.isSecureContext || !("serviceWorker" in navigator) || !("Notification" in window)){
+        setIndianWebPushStatus("This browser does not support Web Push here. Open the HTTPS website in a supported browser.");
+        return;
+    }
+    try{
+        setIndianWebPushStatus("Checking whether this browser supports Firebase Messaging…");
+        const supported = await isSupported().catch(function(){return false;});
+        if(!supported){
+            setIndianWebPushStatus("Firebase Web Push is not supported by this browser or its current settings.");
+            return;
+        }
+        const permission = await Notification.requestPermission();
+        if(permission !== "granted"){
+            setIndianWebPushStatus(permission === "denied" ? "Notifications are blocked in this browser. Allow them in site settings, then try again." : "Notification permission was not granted. You can try again when ready.");
+            return;
+        }
+        const swUrl = new URL("./firebase-messaging-sw.js", window.location.href);
+        const swScope = new URL("./", window.location.href).pathname;
+        indianWebPushServiceWorkerRegistration = await navigator.serviceWorker.register(swUrl.href, {scope: swScope});
+        await navigator.serviceWorker.ready;
+        indianWebPushMessaging = getMessaging(firebaseApp);
+        const token = await getToken(indianWebPushMessaging, {
+            vapidKey: INDIAN_WEB_PUSH_VAPID_PUBLIC_KEY,
+            serviceWorkerRegistration: indianWebPushServiceWorkerRegistration
+        });
+        if(!token) throw new Error("Firebase did not return an FCM registration token.");
+        indianWebPushToken = token;
+        if(tokenBox) tokenBox.value = token;
+        if(copyButton) copyButton.disabled = false;
+        setIndianWebPushStatus("Push permission is granted and this device has an FCM test token. Next, use Firebase Console → Messaging → Send test message to test a notification. Automatic push for Indian activities will need a secure server sender in the next step.");
+        if(!indianWebPushForegroundListenerAdded){
+            onMessage(indianWebPushMessaging, async function(payload){
+                const notification = payload && payload.notification ? payload.notification : {};
+                const data = payload && payload.data ? payload.data : {};
+                const title = notification.title || data.title || "Indian";
+                const body = notification.body || data.body || "You have a new notification on Indian.";
+                setIndianWebPushStatus("Push message received while Indian was open: " + title);
+                try{
+                    const registration = indianWebPushServiceWorkerRegistration || await navigator.serviceWorker.ready;
+                    await registration.showNotification(title, {body: body, data: {url: data.url || new URL("./", window.location.href).href}});
+                }catch(displayError){console.warn("Could not display foreground push notification", displayError);}
+            });
+            indianWebPushForegroundListenerAdded = true;
+        }
+    }catch(error){
+        console.error("Indian Web Push setup failed", error);
+        setIndianWebPushStatus("Push setup failed: " + String(error && error.message || error).slice(0, 240) + ". Check that firebase-messaging-sw.js was uploaded into css-test and try again.");
+    }
+}
+
+$("enableIndianWebPushBtn")?.addEventListener("click", enableIndianWebPushForThisDevice);
+$("copyIndianWebPushTokenBtn")?.addEventListener("click", async function(){
+    const tokenBox = $("indianWebPushTokenOutput");
+    if(!indianWebPushToken || !tokenBox){setIndianWebPushStatus("Enable Push Notifications first to create a test token.");return;}
+    try{
+        await navigator.clipboard.writeText(indianWebPushToken);
+        setIndianWebPushStatus("FCM test token copied. Keep it private to your own test and paste it only in Firebase Console's test-message field.");
+    }catch(error){
+        tokenBox.focus();tokenBox.select();
+        setIndianWebPushStatus("Token selected. Press Ctrl+C to copy it, then paste it only into Firebase Console's test-message field.");
+    }
+});
 
 $("firebaseSignupButton")?.addEventListener("click", signUpFirebase);
 $("firebaseLoginButton")?.addEventListener("click", loginFirebase);

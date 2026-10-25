@@ -303,6 +303,11 @@ Search registered users, places, posts or help requests:
 <div class="chatPanel">
 <h3 id="chatTitle">Select a conversation</h3>
 <div id="chatPresence" class="messageConversationMeta" aria-live="polite">Select a person to open a chat.</div>
+<div id="indianCallActions" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;align-items:center;">
+    <button type="button" class="action" onclick="startIndianVoiceCall()" aria-label="Start voice call with selected user">Voice Call</button>
+    <button type="button" class="action" onclick="startIndianVideoCall()" aria-label="Start video call with selected user">Video Call</button>
+</div>
+<div id="indianCallStatus" role="status" aria-live="polite" style="margin:8px 0;padding:8px;border:1px solid #cbd5e1;border-radius:8px;">Choose a Firebase-connected chat to make a voice or video call.</div>
 <div id="chatTypingStatus" class="messageTypingStatus" aria-live="polite"></div>
 <div class="messageSearchBar" id="messageSearchBar" style="display:none;">
     <label for="messageSearchBox">Search messages in this chat:</label>
@@ -609,6 +614,20 @@ Explore places and their local communities.
 
 </section>
 
+<div id="indianIncomingCallPanel" role="alert" aria-live="assertive" aria-atomic="true" style="display:none;position:fixed;z-index:10020;right:16px;bottom:92px;width:min(360px,calc(100vw - 32px));box-sizing:border-box;background:#fff;color:#172b3a;border:2px solid #1d4f7c;border-radius:14px;padding:16px;box-shadow:0 12px 36px rgba(0,0,0,.25);">
+  <h2 style="margin:0 0 8px;font-size:1.2rem;">Incoming Indian Call</h2>
+  <p id="indianIncomingCallText">Someone is calling.</p>
+  <button type="button" class="action" onclick="acceptIndianIncomingCall()">Accept Call</button>
+  <button type="button" class="action" onclick="declineIndianIncomingCall()">Decline Call</button>
+</div>
+<div id="indianActiveCallPanel" role="region" aria-label="Active voice or video call" style="display:none;position:fixed;z-index:10010;right:16px;bottom:92px;width:min(420px,calc(100vw - 32px));max-height:75vh;overflow:auto;box-sizing:border-box;background:#fff;color:#172b3a;border:2px solid #1d4f7c;border-radius:14px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,.25);">
+  <h2 id="indianActiveCallTitle" style="margin:0 0 8px;font-size:1.2rem;">Indian Call</h2>
+  <p id="indianActiveCallStatus" role="status" aria-live="polite">Preparing call…</p>
+  <video id="indianLocalCallVideo" autoplay playsinline muted aria-label="Your camera preview" style="display:none;width:100%;max-height:180px;background:#111;border-radius:8px;margin:6px 0;"></video>
+  <video id="indianRemoteCallVideo" autoplay playsinline controls aria-label="Other participant's video" style="display:none;width:100%;max-height:280px;background:#111;border-radius:8px;margin:6px 0;"></video>
+  <audio id="indianRemoteCallAudio" autoplay controls aria-label="Other participant's voice" style="display:none;width:100%;margin:6px 0;"></audio>
+  <button type="button" class="action" onclick="endIndianCall()" aria-label="End voice or video call">End Call</button>
+</div>
 
 </main>
 
@@ -5055,6 +5074,309 @@ $("firebaseUploadButton")?.addEventListener("click", uploadPreparedFirebaseMedia
         }
     });
 });
+
+
+/* INDIAN VOICE / VIDEO CALL TEST (WebRTC + Firestore signaling)
+   Requires the matching least-privilege Firestore rules supplied in the test package.
+   STUN-only connectivity is best-effort; networks that require TURN relay may not connect.
+*/
+let indianCallInboxUnsubscribe = null;
+let indianIncomingCall = null;
+let indianActiveCall = null;
+const indianSeenIncomingCallIds = new Set();
+
+function setIndianCallStatus(message){
+  const el = $("indianCallStatus");
+  if(el) el.textContent = String(message || "");
+  const active = $("indianActiveCallStatus");
+  if(active && indianActiveCall) active.textContent = String(message || "");
+}
+function showIndianCallPanel(message, videoMode){
+  const panel = $("indianActiveCallPanel");
+  const title = $("indianActiveCallTitle");
+  const localVideo = $("indianLocalCallVideo");
+  const remoteVideo = $("indianRemoteCallVideo");
+  const remoteAudio = $("indianRemoteCallAudio");
+  if(panel) panel.style.display = "block";
+  if(title) title.textContent = videoMode ? "Indian Video Call" : "Indian Voice Call";
+  if(localVideo) localVideo.style.display = videoMode ? "block" : "none";
+  if(remoteVideo) remoteVideo.style.display = videoMode ? "block" : "none";
+  if(remoteAudio) remoteAudio.style.display = videoMode ? "none" : "block";
+  const status = $("indianActiveCallStatus");
+  if(status) status.textContent = message || "Call is starting…";
+}
+function indianCallErrorText(error){
+  const name = error && error.name ? error.name : "";
+  if(name === "NotAllowedError" || name === "PermissionDeniedError") return "Camera/microphone permission was denied. Allow it in browser site settings and try again.";
+  if(name === "NotFoundError" || name === "DevicesNotFoundError") return "This device could not find a microphone or camera required for this call.";
+  if(name === "NotReadableError" || name === "TrackStartError") return "The microphone or camera may already be in use by another app.";
+  const detail = error && error.message ? String(error.message).slice(0,220) : "Unknown error";
+  if(/permission|insufficient permissions/i.test(detail)) return "Firestore denied the call operation. Add the provided calls rules inside your existing Firestore rules, then publish them.";
+  return "Call could not start: " + detail;
+}
+function indianSetCallStatusForBoth(message){
+  setIndianCallStatus(message);
+  const active = $("indianActiveCallStatus");
+  if(active) active.textContent = message;
+}
+function indianCallRef(callId){ return doc(firebaseDb, "calls", callId); }
+function indianCallParticipantName(personId, fallback){
+  const person = (window.getIndianPersonById && window.getIndianPersonById(personId)) || peopleData.find(p => p.id === personId);
+  return sanitizePlainText((person && person.name) || fallback || "Indian user", 70);
+}
+function indianSetIncomingPanel(callData, callId){
+  indianIncomingCall = {id:callId, data:callData, ref:indianCallRef(callId)};
+  const panel = $("indianIncomingCallPanel");
+  const text = $("indianIncomingCallText");
+  if(text) text.textContent = sanitizePlainText(callData.callerName || "An Indian user", 70) + " is calling you by " + (callData.callType === "video" ? "video" : "voice") + ".";
+  if(panel) panel.style.display = "block";
+}
+function hideIndianIncomingPanel(){
+  const panel = $("indianIncomingCallPanel");
+  if(panel) panel.style.display = "none";
+}
+function stopIndianCallInbox(){
+  if(indianCallInboxUnsubscribe){ try{indianCallInboxUnsubscribe();}catch(e){} indianCallInboxUnsubscribe=null; }
+  indianIncomingCall=null;
+  hideIndianIncomingPanel();
+}
+function startIndianCallInbox(uid){
+  if(!firebaseDb || !uid) return;
+  if(indianCallInboxUnsubscribe && window.__indianCallInboxUid === uid) return;
+  stopIndianCallInbox();
+  window.__indianCallInboxUid = uid;
+  const incomingQuery = query(collection(firebaseDb, "calls"), where("calleeId", "==", uid));
+  indianCallInboxUnsubscribe = onSnapshot(incomingQuery, function(snapshot){
+    const now = Date.now();
+    const candidates = snapshot.docs.map(function(d){return {id:d.id, data:d.data() || {}};})
+      .filter(function(item){
+        const data = item.data;
+        return data.status === "ringing" && Number(data.createdAtMs) > 0 && now - Number(data.createdAtMs) < 120000;
+      })
+      .sort(function(a,b){return Number(b.data.createdAtMs)-Number(a.data.createdAtMs);});
+    if(indianIncomingCall){
+      const stillRinging = candidates.find(function(item){return item.id === indianIncomingCall.id;});
+      if(!stillRinging){ indianIncomingCall=null; hideIndianIncomingPanel(); }
+    }
+    if(!indianIncomingCall && !indianActiveCall && candidates.length){
+      const chosen = candidates.find(function(item){return !indianSeenIncomingCallIds.has(item.id);});
+      if(chosen){ indianSeenIncomingCallIds.add(chosen.id); indianSetIncomingPanel(chosen.data, chosen.id); }
+    }
+  }, function(error){
+    setIndianCallStatus("Incoming call listener could not connect. Publish the Firestore calls rules from the test package. " + sanitizePlainText(error.message,180));
+  });
+}
+function indianAttachCallMedia(call){
+  const localVideo = $("indianLocalCallVideo");
+  const remoteVideo = $("indianRemoteCallVideo");
+  const remoteAudio = $("indianRemoteCallAudio");
+  if(localVideo){ localVideo.srcObject = call.localStream || null; localVideo.muted = true; }
+  if(remoteVideo){ remoteVideo.srcObject = call.remoteStream || null; }
+  if(remoteAudio){ remoteAudio.srcObject = call.remoteStream || null; }
+}
+function indianCreatePeerConnection(call){
+  const pc = new RTCPeerConnection({iceServers:[
+    {urls:"stun:stun.l.google.com:19302"},
+    {urls:"stun:stun1.l.google.com:19302"}
+  ]});
+  call.pc = pc;
+  if(call.localStream) call.localStream.getTracks().forEach(function(track){pc.addTrack(track, call.localStream);});
+  pc.ontrack = function(event){
+    if(event.streams && event.streams[0]) call.remoteStream = event.streams[0];
+    else if(event.track){
+      if(!call.remoteStream) call.remoteStream = new MediaStream();
+      if(!call.remoteStream.getTracks().some(function(t){return t.id === event.track.id;})) call.remoteStream.addTrack(event.track);
+    }
+    indianAttachCallMedia(call);
+    const remoteVideo = $("indianRemoteCallVideo");
+    const remoteAudio = $("indianRemoteCallAudio");
+    const mediaElement = call.callType === "video" ? remoteVideo : remoteAudio;
+    if(mediaElement && typeof mediaElement.play === "function") mediaElement.play().catch(function(){indianSetCallStatusForBoth("Call connected. Press Play on the remote media player if audio does not start automatically.");});
+  };
+  pc.onicecandidate = function(event){
+    if(!event.candidate || !firebaseDb || !call.id) return;
+    const side = call.role === "caller" ? "callerCandidates" : "calleeCandidates";
+    addDoc(collection(firebaseDb, "calls", call.id, side), event.candidate.toJSON()).catch(function(error){
+      setIndianCallStatus("Network candidate could not be saved. Check the Firestore calls rules: " + sanitizePlainText(error.message,160));
+    });
+  };
+  pc.onconnectionstatechange = function(){
+    if(pc.connectionState === "connected") indianSetCallStatusForBoth("Call connected. Keep this page open during the call.");
+    else if(pc.connectionState === "connecting") indianSetCallStatusForBoth("Connecting call…");
+    else if(pc.connectionState === "failed") indianSetCallStatusForBoth("Connection failed. This test uses STUN only; some networks need a TURN relay server.");
+    else if(pc.connectionState === "disconnected") indianSetCallStatusForBoth("Call temporarily disconnected. Waiting for the connection…");
+  };
+  return pc;
+}
+function indianWatchRemoteCandidates(call){
+  const remoteSide = call.role === "caller" ? "calleeCandidates" : "callerCandidates";
+  const candidateCollection = collection(firebaseDb, "calls", call.id, remoteSide);
+  const seen = new Set();
+  call.unsubs.push(onSnapshot(candidateCollection, function(snapshot){
+    snapshot.docChanges().forEach(function(change){
+      if(change.type !== "added" || seen.has(change.doc.id)) return;
+      seen.add(change.doc.id);
+      const candidateData = change.doc.data();
+      if(!candidateData || !candidateData.candidate || !call.pc) return;
+      const candidate = new RTCIceCandidate(candidateData);
+      if(call.pc.remoteDescription){
+        call.pc.addIceCandidate(candidate).catch(function(error){console.warn("Remote ICE candidate could not be added",error);});
+      }else{
+        call.pendingRemoteCandidates.push(candidate);
+      }
+    });
+  }, function(error){
+    setIndianCallStatus("Call network setup could not read ICE candidates. Check Firestore rules: " + sanitizePlainText(error.message,160));
+  }));
+}
+async function indianFlushRemoteCandidates(call){
+  const queued = call.pendingRemoteCandidates.splice(0);
+  for(const candidate of queued){
+    try{ await call.pc.addIceCandidate(candidate); }
+    catch(error){ console.warn("Queued remote ICE candidate could not be added", error); }
+  }
+}
+function indianWatchActiveCallDoc(call){
+  call.unsubs.push(onSnapshot(call.ref, async function(snapshot){
+    if(!snapshot.exists() || !indianActiveCall || indianActiveCall.id !== call.id) return;
+    const data = snapshot.data() || {};
+    if(call.role === "caller" && data.answer && !call.remoteDescriptionApplied && call.pc){
+      try{
+        await call.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+        call.remoteDescriptionApplied = true;
+        await indianFlushRemoteCandidates(call);
+        indianSetCallStatusForBoth("The other person answered. Connecting call…");
+      }catch(error){ indianSetCallStatusForBoth("Could not connect the call answer: " + sanitizePlainText(error.message,180)); }
+    }
+    if(["declined","cancelled","ended","failed"].includes(data.status)){
+      const msg = data.status === "declined" ? "The other person declined the call." : data.status === "cancelled" ? "Call cancelled." : data.status === "failed" ? "Call failed." : "The other person ended the call.";
+      indianFinishActiveCall(msg);
+    }
+  }, function(error){
+    setIndianCallStatusForBoth("Call status listener failed: " + sanitizePlainText(error.message,160));
+  }));
+}
+function indianFinishActiveCall(message){
+  const call = indianActiveCall;
+  indianActiveCall = null;
+  if(call){
+    if(call.ringTimer) clearTimeout(call.ringTimer);
+    (call.unsubs || []).forEach(function(unsub){try{unsub();}catch(e){}});
+    try{ if(call.pc) call.pc.ontrack=null; }catch(e){}
+    try{ if(call.pc) call.pc.close(); }catch(e){}
+    try{ if(call.localStream) call.localStream.getTracks().forEach(function(track){track.stop();}); }catch(e){}
+    try{ if(call.remoteStream) call.remoteStream.getTracks().forEach(function(track){track.stop();}); }catch(e){}
+  }
+  const panel = $("indianActiveCallPanel");
+  if(panel) panel.style.display = "none";
+  ["indianLocalCallVideo","indianRemoteCallVideo","indianRemoteCallAudio"].forEach(function(id){const el=$(id);if(el)el.srcObject=null;});
+  setIndianCallStatus(message || "Call ended.");
+}
+async function startIndianCall(callType){
+  if(indianActiveCall){ setIndianCallStatus("A call is already active. End it before starting another call."); return; }
+  if(!firebaseDb || !firebaseCurrentUser){ setIndianCallStatus("Sign in to Indian before making a call."); return; }
+  if(selectedConversationPersonId === null){ setIndianCallStatus("Open a chat with the person you want to call first."); return; }
+  const recipientUid = getFirestoreMessagePersonUid(selectedConversationPersonId);
+  if(!recipientUid){ setIndianCallStatus("This contact is not linked to a registered Firebase account. Choose a registered user from Messages."); return; }
+  if(recipientUid === firebaseCurrentUser.uid){ setIndianCallStatus("You cannot call your own account."); return; }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.RTCPeerConnection){ setIndianCallStatus("This browser does not support WebRTC calls. Open the HTTPS website in a current browser."); return; }
+  const personName = indianCallParticipantName(selectedConversationPersonId, "Indian user");
+  const buttonMessage = callType === "video" ? "Starting video call…" : "Starting voice call…";
+  setIndianCallStatus(buttonMessage);
+  try{
+    const localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:callType === "video"});
+    const callRef = doc(collection(firebaseDb, "calls"));
+    const call = {id:callRef.id,ref:callRef,role:"caller",callType:callType,localStream:localStream,remoteStream:new MediaStream(),pc:null,unsubs:[],pendingRemoteCandidates:[],remoteDescriptionApplied:false,ringTimer:null};
+    indianActiveCall = call;
+    showIndianCallPanel(buttonMessage, callType === "video");
+    indianAttachCallMedia(call);
+    indianCreatePeerConnection(call);
+    await setDoc(callRef, {
+      callerId: firebaseCurrentUser.uid,
+      calleeId: recipientUid,
+      callerName: sanitizePlainText(firebaseCurrentUser.displayName || profileName || "Indian user",70),
+      calleeName: personName,
+      callType: callType,
+      status: "preparing",
+      createdAtMs: Date.now()
+    });
+    indianWatchRemoteCandidates(call);
+    indianWatchActiveCallDoc(call);
+    const offer = await call.pc.createOffer();
+    await call.pc.setLocalDescription(offer);
+    await updateDoc(callRef, {status:"ringing",offer:{type:call.pc.localDescription.type,sdp:call.pc.localDescription.sdp},updatedAtMs:Date.now()});
+    indianSetCallStatusForBoth("Calling " + personName + ". Waiting for them to answer…");
+    call.ringTimer = setTimeout(async function(){
+      if(indianActiveCall && indianActiveCall.id === call.id){
+        try{ await updateDoc(call.ref,{status:"cancelled",updatedAtMs:Date.now()}); }catch(e){}
+        indianFinishActiveCall("No answer. Call ended after 60 seconds.");
+      }
+    },60000);
+  }catch(error){
+    console.error("Indian call start failed", error);
+    if(indianActiveCall) indianFinishActiveCall(indianCallErrorText(error));
+    else setIndianCallStatus(indianCallErrorText(error));
+  }
+}
+window.startIndianVoiceCall = function(){ return startIndianCall("audio"); };
+window.startIndianVideoCall = function(){ return startIndianCall("video"); };
+async function acceptIndianIncomingCall(){
+  if(indianActiveCall){ setIndianCallStatus("End the current call before accepting another one."); return; }
+  if(!firebaseDb || !firebaseCurrentUser || !indianIncomingCall){ setIndianCallStatus("There is no incoming call to accept."); return; }
+  const incoming = indianIncomingCall;
+  const data = incoming.data;
+  hideIndianIncomingPanel();
+  setIndianCallStatus("Answering the call…");
+  try{
+    const localStream = await navigator.mediaDevices.getUserMedia({audio:true,video:data.callType === "video"});
+    const call = {id:incoming.id,ref:incoming.ref,role:"callee",callType:data.callType,localStream:localStream,remoteStream:new MediaStream(),pc:null,unsubs:[],pendingRemoteCandidates:[],remoteDescriptionApplied:true,ringTimer:null};
+    indianActiveCall = call;
+    indianIncomingCall = null;
+    showIndianCallPanel("Answering the call…", call.callType === "video");
+    indianAttachCallMedia(call);
+    indianCreatePeerConnection(call);
+    indianWatchRemoteCandidates(call);
+    indianWatchActiveCallDoc(call);
+    await call.pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+    await indianFlushRemoteCandidates(call);
+    const answer = await call.pc.createAnswer();
+    await call.pc.setLocalDescription(answer);
+    await updateDoc(call.ref,{status:"accepted",answer:{type:call.pc.localDescription.type,sdp:call.pc.localDescription.sdp},acceptedAtMs:Date.now(),updatedAtMs:Date.now()});
+    indianSetCallStatusForBoth("Call answered. Connecting…");
+  }catch(error){
+    console.error("Indian call accept failed", error);
+    try{await updateDoc(incoming.ref,{status:"declined",updatedAtMs:Date.now()});}catch(e){}
+    if(indianActiveCall) indianFinishActiveCall(indianCallErrorText(error));
+    else setIndianCallStatus(indianCallErrorText(error));
+  }
+}
+window.acceptIndianIncomingCall = acceptIndianIncomingCall;
+async function declineIndianIncomingCall(){
+  const incoming = indianIncomingCall;
+  indianIncomingCall = null;
+  hideIndianIncomingPanel();
+  if(incoming && firebaseDb){
+    try{await updateDoc(incoming.ref,{status:"declined",updatedAtMs:Date.now()});setIndianCallStatus("Incoming call declined.");}
+    catch(error){setIndianCallStatus("Could not decline the call: " + sanitizePlainText(error.message,160));}
+  }
+}
+window.declineIndianIncomingCall = declineIndianIncomingCall;
+async function endIndianCall(){
+  const call = indianActiveCall;
+  if(!call) return;
+  setIndianCallStatusForBoth("Ending call…");
+  try{ await updateDoc(call.ref,{status:call.role === "caller" && !call.remoteDescriptionApplied ? "cancelled" : "ended",endedAtMs:Date.now(),updatedAtMs:Date.now()}); }
+  catch(error){ setIndianCallStatusForBoth("Call ended locally, but the status could not sync: " + sanitizePlainText(error.message,160)); }
+  indianFinishActiveCall("Call ended.");
+}
+window.endIndianCall = endIndianCall;
+if(firebaseAuth){
+  onAuthStateChanged(firebaseAuth, function(user){
+    if(user && firebaseDb) startIndianCallInbox(user.uid);
+    else { stopIndianCallInbox(); window.__indianCallInboxUid = ""; if(indianActiveCall) indianFinishActiveCall("Signed out. Call ended."); }
+  });
+}
+
 </script>
 
 

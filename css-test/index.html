@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Indian</title>
+<meta name="theme-color" content="#123b2a">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
 <!-- Call buttons moved below Send Message/Clear for easier access in the chat. -->
 
 <link rel="stylesheet" href="style.css">
@@ -7014,5 +7022,15 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
 })();
 </script>
 
+
+<script id="indianPwaServiceWorkerBootstrap">
+// Register the same-origin app-shell and FCM service worker for PWA install/cache support.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./firebase-messaging-sw.js", { scope: "./" })
+      .catch(function (error) { console.warn("Indian service worker registration failed", error); });
+  });
+}
+</script>
 </body>
 </html>

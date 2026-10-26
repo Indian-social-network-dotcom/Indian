@@ -1,6 +1,6 @@
 /* Indian Web Push + Lite Cache worker. Scope: /Indian/css-test/ only. */
 const INDIAN_PUSH_APP_URL = new URL("./", self.location.href).href;
-const INDIAN_LITE_CACHE = "indian-lite-shell-v2";
+const INDIAN_LITE_CACHE = "indian-lite-shell-v3";
 
 // Register click behavior before loading Firebase Messaging.
 self.addEventListener("notificationclick", function(event){

@@ -6,8 +6,8 @@
 <title>Indian</title>
 <meta name="theme-color" content="#123b2a">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./icons/icon-192.png" type="image/png">
-<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="icon" href="./indian-pwa-icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./indian-pwa-icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -21,6 +21,81 @@
 
 
 
+
+
+<style id="indianCommunityHomeRedesignStyles">
+  :root { --indian-green:#123b2a; --indian-border:#dbe3e8; --indian-soft:#f5f8fa; }
+  body { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important; }
+  #indianActionBar {
+    display:grid !important; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px;
+    position:sticky; top:0; z-index:1001; width:100%; box-sizing:border-box;
+    margin:0; padding:5px 4px; background:#fff; border-bottom:1px solid var(--indian-border);
+    box-shadow:0 3px 10px rgba(10,30,20,.07);
+  }
+  #indianActionBar .indian-nav-button, #indianBottomNav .indian-nav-button {
+    min-width:0; width:100%; box-sizing:border-box; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:3px; padding:5px 2px; min-height:54px;
+    border:0; border-radius:10px; background:transparent; color:#18342a; font:inherit;
+    font-size:12px; line-height:1.15; white-space:normal; overflow-wrap:anywhere; cursor:pointer;
+  }
+  #indianActionBar .indian-nav-button svg, #indianBottomNav .indian-nav-button svg {
+    width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.8;
+    stroke-linecap:round; stroke-linejoin:round; flex:0 0 auto;
+  }
+  #indianActionBar .indian-nav-button.is-active, #indianBottomNav .indian-nav-button.is-active,
+  #indianActionBar .indian-nav-button[aria-current="page"], #indianBottomNav .indian-nav-button[aria-current="page"] {
+    background:#e9f3ed; color:#123b2a; font-weight:700;
+  }
+  #indianBottomNav {
+    position:fixed !important; left:0; right:0; bottom:0; z-index:9995; width:100%;
+    display:grid !important; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px;
+    box-sizing:border-box; margin:0; padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px));
+    background:rgba(255,255,255,.98); border-top:1px solid var(--indian-border);
+    box-shadow:0 -4px 16px rgba(10,30,20,.09); backdrop-filter:blur(10px);
+  }
+  #indianBottomNav .indian-nav-button { min-height:58px; font-size:11.5px; }
+  #indianBottomNav .nav-badge, #indianActionBar .nav-badge { font-size:10px; min-width:16px; padding:1px 4px; border-radius:999px; }
+  #mainContent { padding-bottom:16px; }
+  #homeSection { display:none !important; }
+  #homeStoriesSection { display:block; margin:12px auto 14px; max-width:980px; padding:0 12px; }
+  #homeStoriesSection .home-section-heading { margin-bottom:8px; }
+  #homeStoriesSection .home-section-heading .story-add-button { display:none !important; }
+  #homeStoriesTitle { font-size:1.25rem; margin:4px 0 10px; }
+  #homeStoriesStrip { display:flex; gap:10px; overflow-x:auto; overscroll-behavior-x:contain; scroll-snap-type:x proximity; padding:4px 2px 12px; }
+  #homeStoriesStrip > * { scroll-snap-align:start; flex:0 0 auto; }
+  #homeMixedFeed { display:block; max-width:980px; margin:0 auto 24px; padding:0 12px 18px; box-sizing:border-box; }
+  .indian-mixed-feed-heading { padding:0 2px 6px; }
+  .indian-mixed-feed-heading h2 { font-size:1.25rem; margin:8px 0 4px; }
+  .indian-mixed-feed-heading p { margin:0 0 8px; color:#51615a; font-size:.9rem; }
+  #indianMixedFeedItems { display:flex; flex-direction:column; gap:14px; }
+  .indian-home-feed-item { width:100%; max-width:760px; box-sizing:border-box; margin:0 auto !important; scroll-margin-top:90px; }
+  .indian-home-feed-item.post { padding:14px !important; border:1px solid var(--indian-border) !important; border-radius:14px !important; background:#fff !important; color:#172b24; box-shadow:0 3px 14px rgba(20,42,30,.06); }
+  .indian-home-feed-kind { display:inline-flex; align-items:center; gap:6px; margin:0 0 7px; padding:4px 9px; border-radius:99px; background:#e9f3ed; color:#123b2a; font-size:11px; font-weight:700; }
+  .indian-mixed-empty { padding:18px; border:1px dashed #bfcbc4; border-radius:12px; background:#fbfdfb; text-align:center; color:#40584a; }
+  .indian-load-more-feed { display:block; width:min(100%,360px); margin:14px auto 4px; }
+  #indianMixedFeedStatus { max-width:760px; margin:8px auto; color:#506258; font-size:.9rem; }
+  #indianMixedFeedSentinel { height:1px; }
+  #shortsSection, #postsSection { max-width:980px; margin-left:auto; margin-right:auto; padding:0 12px 20px; box-sizing:border-box; }
+  .indian-action-dialog { width:min(92vw,440px); max-width:440px; max-height:min(82vh,680px); overflow:auto; padding:0; border:1px solid #d7e0db; border-radius:18px; color:#172b24; background:#fff; box-shadow:0 22px 70px rgba(0,0,0,.25); }
+  .indian-action-dialog::backdrop { background:rgba(12,24,18,.48); backdrop-filter:blur(2px); }
+  .indian-action-dialog-inner { padding:18px; }
+  .indian-action-dialog h2 { margin:0 0 12px; font-size:1.25rem; }
+  .indian-dialog-option { display:flex; align-items:center; gap:12px; width:100%; min-height:50px; margin:5px 0; padding:12px; border:1px solid #e0e7e3; border-radius:12px; background:#f8faf9; color:#163b2c; font:inherit; text-align:left; cursor:pointer; }
+  .indian-dialog-option:hover, .indian-dialog-option:focus-visible { background:#eaf4ee; outline:2px solid #4c8c66; outline-offset:1px; }
+  #feedbackSection { max-width:900px; margin:8px auto; padding:0 14px 28px; box-sizing:border-box; }
+  #feedbackSection h2 { font-size:1.4rem; }
+  .indian-feedback-privacy-note { padding:10px 12px; border-left:4px solid #678c73; background:#f2f7f3; color:#314c3b; border-radius:6px; }
+  .indian-feedback-actions { display:flex; gap:9px; flex-wrap:wrap; margin-top:12px; }
+  @media (max-width:360px) {
+    #indianActionBar .indian-nav-button { font-size:10.5px; }
+    #indianBottomNav .indian-nav-button { font-size:10px; }
+  }
+  @media (min-width:850px) {
+    #indianActionBar { grid-template-columns:repeat(5,minmax(84px,120px)); justify-content:start; padding-left:max(8px,calc((100vw - 980px)/2)); padding-right:max(8px,calc((100vw - 980px)/2)); }
+    #indianActionBar .indian-nav-button { flex-direction:row; min-height:48px; font-size:14px; }
+    #indianBottomNav { left:50%; right:auto; transform:translateX(-50%); max-width:980px; border:1px solid var(--indian-border); border-bottom:0; border-radius:16px 16px 0 0; }
+  }
+</style>
 
 </head>
 
@@ -44,9 +119,9 @@
 <nav id="indianActionBar" aria-label="Quick actions">
   <button type="button" class="indian-nav-button" data-route="search" onclick="showSearch()" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg><span>Search</span></button>
   <button type="button" class="indian-nav-button" data-route="place" onclick="openPlace()" aria-label="Place"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5.3-8 11.3-8 11.3S4 15.3 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg><span>Place</span></button>
-  <button type="button" class="indian-nav-button" data-route="stories" onclick="openStories()" aria-label="Story"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="6.2"></circle><path d="M12 5.8v12.4"></path></svg><span>Story</span></button>
-  <button type="button" class="indian-nav-button" data-route="posts" onclick="createPost()" aria-label="Create a post"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg><span>Post</span></button>
-  <button type="button" class="indian-nav-button" id="navMessagesBtn" data-route="messages" onclick="openMessages()" aria-label="Messages"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.9 8.9 0 0 1-3.7-.8L4 20l1.3-3.4A7.2 7.2 0 0 1 4 12c0-4.2 3.6-7.5 8-7.5s8 2.8 8 7Z"></path></svg><span>Messages</span><span class="nav-badge" id="navMessageBadge" style="display:none;">0</span></button>
+  <button type="button" class="indian-nav-button" id="indianCreateMenuButton" onclick="openIndianCreateMenu()" aria-haspopup="dialog" aria-controls="indianCreateDialog" aria-label="Create"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span>Create</span></button>
+  <button type="button" class="indian-nav-button" id="navNotifBtn" data-route="notifications" onclick="openNotifications()" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span>Notifications</span><span class="nav-badge" id="navUnreadBadge" style="display:none;">0</span></button>
+  <button type="button" class="indian-nav-button" id="indianMoreMenuButton" onclick="openIndianMoreMenu()" aria-haspopup="dialog" aria-controls="indianMoreDialog" aria-label="More options"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg><span>More</span></button>
 </nav>
 <div id="indianRouteAnnouncer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
@@ -78,6 +153,18 @@ Welcome to Indian. Here people can connect, share, help each other and participa
   <div id="homeStoriesStrip" class="home-stories-strip" tabindex="0" role="list" aria-label="Stories">
     <p class="story-empty-note">No stories yet.</p>
   </div>
+</section>
+
+<!-- Mixed Home Feed: one Uran video, then one post, alternating -->
+<section id="homeMixedFeed" class="indian-home-mixed-feed" tabindex="-1" aria-labelledby="indianMixedFeedTitle">
+  <div class="indian-mixed-feed-heading">
+    <h2 id="indianMixedFeedTitle">For you</h2>
+    <p>Uran videos and posts, one after another. Scroll down to see more.</p>
+  </div>
+  <div id="indianMixedFeedItems" aria-live="off" aria-label="Posts and Uran videos"></div>
+  <p id="indianMixedFeedStatus" role="status" aria-live="polite">Loading posts and videos…</p>
+  <button type="button" class="action indian-load-more-feed" id="indianLoadMoreMixedFeed" onclick="loadMoreIndianHomeFeed()">Load more</button>
+  <div id="indianMixedFeedSentinel" aria-hidden="true"></div>
 </section>
 
 <!-- POSTS -->
@@ -283,6 +370,20 @@ Search registered users, places, posts or help requests:
 </div>
 </section>
 
+
+<!-- FEEDBACK SECTION: submitted through the existing Help Requests service -->
+<section id="feedbackSection" style="display:none;" tabindex="-1" aria-labelledby="indianFeedbackTitle">
+  <h2 id="indianFeedbackTitle">Website Feedback</h2>
+  <p>Share a suggestion or report a problem with Indian.</p>
+  <p class="indian-feedback-privacy-note">Feedback is submitted as a “Website feedback” Help Request and is visible to Indian users. Do not include passwords or private information.</p>
+  <label for="indianFeedbackText">Your feedback</label>
+  <textarea id="indianFeedbackText" rows="5" maxlength="2000" placeholder="Write your feedback or describe the problem…" style="display:block;width:100%;max-width:760px;box-sizing:border-box;margin:8px 0;padding:12px;border:1px solid #cbd5e1;border-radius:10px;"></textarea>
+  <p id="indianFeedbackStatus" role="status" aria-live="polite"></p>
+  <div class="indian-feedback-actions">
+    <button type="button" class="action" onclick="submitIndianFeedback()">Submit feedback</button>
+    <button type="button" class="action" onclick="openIndianHome()">Back to Home</button>
+  </div>
+</section>
 
 <!-- MESSAGES / CHAT -->
 <section id="messagesSection" style="display:none;" tabindex="-1">
@@ -653,13 +754,31 @@ Explore places and their local communities.
     </div>
 </div>
 
+<dialog id="indianCreateDialog" class="indian-action-dialog" aria-labelledby="indianCreateDialogTitle">
+  <div class="indian-action-dialog-inner">
+    <h2 id="indianCreateDialogTitle">＋ Create</h2>
+    <button type="button" class="indian-dialog-option" onclick="closeIndianMenus()"><span aria-hidden="true">←</span><span>Back</span></button>
+    <button type="button" class="indian-dialog-option" onclick="indianCreatePostFromMenu()"><span aria-hidden="true">📝</span><span>Create Post</span></button>
+    <button type="button" class="indian-dialog-option" onclick="indianAddStoryFromMenu()"><span aria-hidden="true">⭕</span><span>Add Story</span></button>
+    <button type="button" class="indian-dialog-option" onclick="indianUploadUranFromMenu()"><span aria-hidden="true">🎬</span><span>Upload Uran Video</span></button>
+  </div>
+</dialog>
+
+<dialog id="indianMoreDialog" class="indian-action-dialog" aria-labelledby="indianMoreDialogTitle">
+  <div class="indian-action-dialog-inner">
+    <h2 id="indianMoreDialogTitle">More options</h2>
+    <button type="button" class="indian-dialog-option" onclick="closeIndianMenus()"><span aria-hidden="true">←</span><span>Back</span></button>
+    <button type="button" class="indian-dialog-option" onclick="indianOpenFeedbackFromMenu()"><span aria-hidden="true">💬</span><span>Feedback</span></button>
+    <button type="button" class="indian-dialog-option" onclick="indianOpenHelpFromMenu()"><span aria-hidden="true">🆘</span><span>Help</span></button>
+  </div>
+</dialog>
+
 <nav id="indianBottomNav" aria-label="Main navigation">
   <button type="button" class="indian-nav-button" data-route="home" onclick="openIndianHome()" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7"></path><path d="M5.5 9v11h13V9M9.5 20v-6h5v6"></path></svg><span>Home</span></button>
   <button type="button" class="indian-nav-button" data-route="live" onclick="openLiveZone()" aria-label="Live Zone"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3z"></path><path d="M7 3v2M12 3v2"></path></svg><span>Live Zone</span></button>
   <button type="button" class="indian-nav-button" data-route="help" onclick="openHelp()" aria-label="Help"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-4.5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.5-8 11-8 11Z"></path><path d="M8 12h2l1.2-2.2L13 15l1.2-3H16"></path></svg><span>Help</span></button>
-  <button type="button" class="indian-nav-button" id="navUranBtn" onclick="openShorts()" aria-label="Uran">🎬 <span>Uran</span></button>
-  <button type="button" class="indian-nav-button" id="navGamesBtn" onclick="openIndianGames()" aria-label="Games Zone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12a4 4 0 0 1 3.8 5l-1 3.2a2.5 2.5 0 0 1-4.1 1.1L14.5 15h-5l-2.2 2.3a2.5 2.5 0 0 1-4.1-1.1l-1-3.2A4 4 0 0 1 6 8Z"></path><path d="M7 10v4M5 12h4M16 11h.01M18 13h.01"></path></svg><span>Games</span></button>
-  <button type="button" class="indian-nav-button" id="navNotifBtn" data-route="notifications" onclick="openNotifications()" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span>Notifications</span><span class="nav-badge" id="navUnreadBadge" style="display:none;">0</span></button>
+  <button type="button" class="indian-nav-button" id="navGamesBtn" onclick="openIndianGames()" aria-label="Games Zone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12a4 4 0 0 1 3.8 5l-1 3.2a2.5 2.5 0 0 1-4.1 1.1L14.5 15h-5l-2.2 2.3a2.5 2.5 0 0 1-4.1-1.1l-1-3.2A4 4 0 0 1 6 8Z"></path><path d="M7 10v4M5 12h4M16 11h.01M18 13h.01"></path></svg><span>Games Zone</span></button>
+  <button type="button" class="indian-nav-button" id="navMessagesBtn" data-route="messages" onclick="openMessages()" aria-label="Messages"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.9 8.9 0 0 1-3.7-.8L4 20l1.3-3.4A7.2 7.2 0 0 1 4 12c0-4.2 3.6-7.5 8-7.5s8 2.8 8 7Z"></path></svg><span>Messages</span><span class="nav-badge" id="navMessageBadge" style="display:none;">0</span></button>
 </nav>
 <footer>
 Indian — Connect • Help • Share • Live
@@ -5802,7 +5921,7 @@ else{
        indianLastScrollY=y;
        if(!indianPostsScrollArmed||indianPostsLoadingMore||!indianPostsHasMore)return;
        const button=document.getElementById("indianLoadMorePostsBtn");
-       if(button&&!button.hidden&&button.getBoundingClientRect().top < window.innerHeight+280){
+       if(button&&button.getClientRects().length&&!button.hidden&&button.getBoundingClientRect().top < window.innerHeight+280){
          indianPostsScrollArmed=false;loadMoreIndianPosts(false);
        }
      },{passive:true});
@@ -5810,8 +5929,9 @@ else{
    }
    updateIndianPostsPager();
  }
- function queueIndianPostDetails(post,clientId,firestoreId){
-   if(!post||post.dataset.indianDetailsQueued==="yes")return;
+ function queueIndianPostDetails(post,clientId,firestoreId,force){
+   if(!post||(!force&&post.dataset.indianDetailsQueued==="yes"))return;
+   if(post.dataset.indianDetailsLoaded==="yes")return;
    post.dataset.indianDetailsQueued="yes";
    const run=function(){
      if(post.dataset.indianDetailsLoaded==="yes")return;
@@ -5819,10 +5939,19 @@ else{
      loadLikes(post,"post",clientId);
      loadComments(post,firestoreId);
    };
+   if(force){run();return;}
    if("IntersectionObserver" in window){
      if(!indianPostDetailsObserver)indianPostDetailsObserver=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){indianPostDetailsObserver.unobserve(entry.target);run();}});},{rootMargin:"220px 0px",threshold:0.01});
      indianPostDetailsObserver.observe(post);
    }else run();
+ }
+ window.indianLoadPostDetailsFromClone=function(clientId,firestoreId){
+   const candidates=Array.from(document.querySelectorAll("#postsContainer .post"));
+   const source=candidates.find(function(post){return (clientId&&String(post.dataset.clientId||post.id)===String(clientId))||(firestoreId&&String(post.dataset.firestoreId||"")===String(firestoreId));});
+   if(source&&source.dataset.indianDetailsLoaded!=="yes"){
+     source.dataset.indianDetailsQueued="";
+     queueIndianPostDetails(source,clientId||source.dataset.clientId||source.id,firestoreId||source.dataset.firestoreId||"",true);
+   }
  }
  function renderStoredPost(d,appendToEnd){
    const x=d.data(),cid=x.clientId||("firestore-post-"+d.id), old=document.querySelector('[data-firestore-id="'+CSS.escape(d.id)+'"]')||document.querySelector('[data-client-id="'+CSS.escape(cid)+'"]');
@@ -6253,9 +6382,9 @@ window.openIndianGames=function(){window.location.href='games.html';};
   'use strict';
   var currentRoute = 'home';
   var authClassPreviouslyRequired = document.body.classList.contains('auth-required');
-  var sectionIds = ['homeSection','homeStoriesSection','shortsSection','postsSection','firebaseSection','searchSection','storiesSection','notificationsSection','messagesSection','profileSection','liveZoneSection','helpSection','peopleSection','placeSection'];
+  var sectionIds = ['homeSection','homeStoriesSection','homeMixedFeed','shortsSection','postsSection','firebaseSection','searchSection','storiesSection','notificationsSection','feedbackSection','messagesSection','profileSection','liveZoneSection','helpSection','peopleSection','placeSection'];
   var routeSections = {
-    home: ['homeStoriesSection','shortsSection','postsSection'],
+    home: ['homeStoriesSection','homeMixedFeed'],
     search: ['searchSection','peopleSection'],
     place: ['placeSection'],
     stories: ['storiesSection'],
@@ -6264,9 +6393,10 @@ window.openIndianGames=function(){window.location.href='games.html';};
     live: ['liveZoneSection'],
     help: ['helpSection'],
     notifications: ['notificationsSection'],
+    feedback: ['feedbackSection'],
     profile: ['profileSection']
   };
-  var routeTitles = {home:'Home',search:'Search',place:'Place',stories:'Story',posts:'Post',messages:'Messages',live:'Live Zone',help:'Help',notifications:'Notifications',profile:'Profile'};
+  var routeTitles = {home:'Home',search:'Search',place:'Place',stories:'Story',posts:'Post',messages:'Messages',live:'Live Zone',help:'Help',notifications:'Notifications',feedback:'Feedback',profile:'Profile'};
   function byId(id){return document.getElementById(id);}
   function appIsSignedOut(){return document.body.classList.contains('auth-required');}
   function refreshSelectedNav(route){
@@ -7032,5 +7162,301 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
+
+<script id="indianCommunityHomeRedesignController">
+(function(){
+  'use strict';
+  var byId = function(id){ return document.getElementById(id); };
+  var createDialog = byId('indianCreateDialog');
+  var moreDialog = byId('indianMoreDialog');
+  var lastMenuTrigger = null;
+  var mixedItems = byId('indianMixedFeedItems');
+  var renderQueued = false;
+  var videoObserver = null;
+  var sentinelObserver = null;
+  var autoLoading = false;
+  var observedSources = [];
+  var controlsSelector = 'button,a,input,textarea,select,summary,[role="button"]';
+
+  function closeDialog(dialog){
+    if(dialog && dialog.open) dialog.close();
+  }
+  window.closeIndianMenus = function(){
+    closeDialog(createDialog); closeDialog(moreDialog);
+    if(lastMenuTrigger && document.contains(lastMenuTrigger) && lastMenuTrigger.focus) lastMenuTrigger.focus();
+    lastMenuTrigger = null;
+  };
+  window.openIndianCreateMenu = function(){
+    closeDialog(moreDialog); lastMenuTrigger = byId('indianCreateMenuButton');
+    if(createDialog && typeof createDialog.showModal === 'function') createDialog.showModal();
+    else if(createDialog) createDialog.setAttribute('open','');
+    var first = createDialog && createDialog.querySelector('button'); if(first) first.focus();
+  };
+  window.openIndianMoreMenu = function(){
+    closeDialog(createDialog); lastMenuTrigger = byId('indianMoreMenuButton');
+    if(moreDialog && typeof moreDialog.showModal === 'function') moreDialog.showModal();
+    else if(moreDialog) moreDialog.setAttribute('open','');
+    var first = moreDialog && moreDialog.querySelector('button'); if(first) first.focus();
+  };
+  [createDialog,moreDialog].forEach(function(dialog){
+    if(!dialog)return;
+    dialog.addEventListener('click',function(event){
+      if(event.target===dialog) window.closeIndianMenus();
+    });
+    dialog.addEventListener('close',function(){
+      if(lastMenuTrigger && document.contains(lastMenuTrigger)) lastMenuTrigger.focus();
+    });
+  });
+  window.indianCreatePostFromMenu = function(){ window.closeIndianMenus(); if(typeof window.createPost==='function') window.createPost(); };
+  window.indianAddStoryFromMenu = function(){ window.closeIndianMenus(); if(typeof window.openStoriesFromHome==='function') window.openStoriesFromHome(); else if(typeof window.openStories==='function') window.openStories(); };
+  function showUranUploadPage(focusUpload){
+    if(typeof window.indianNavigate==='function')window.indianNavigate('home');
+    window.setTimeout(function(){
+      var homeFeed=byId('homeMixedFeed'), stories=byId('homeStoriesSection'), shorts=byId('shortsSection'), posts=byId('postsSection');
+      if(homeFeed)homeFeed.style.display='none'; if(stories)stories.style.display='none'; if(posts)posts.style.display='none';
+      if(shorts){shorts.style.display='block';shorts.scrollIntoView({behavior:'smooth',block:'start'});shorts.focus({preventScroll:true});}
+      if(focusUpload){var file=byId('uranVideoFile');if(file)file.focus({preventScroll:true});}
+    },80);
+  }
+  // Keep links from Search/shorts viewer able to open the existing Uran page.
+  window.openShorts=function(){showUranUploadPage(false);};
+  window.indianUploadUranFromMenu = function(){window.closeIndianMenus();showUranUploadPage(true);};
+  window.indianOpenHelpFromMenu = function(){ window.closeIndianMenus(); if(typeof window.openHelp==='function')window.openHelp(); };
+  window.indianOpenFeedbackFromMenu = function(){
+    window.closeIndianMenus();
+    if(typeof window.indianNavigate==='function') window.indianNavigate('feedback');
+    else { var section=byId('feedbackSection'); if(section)section.style.display='block'; }
+    window.setTimeout(function(){var box=byId('indianFeedbackText');if(box)box.focus();},120);
+  };
+
+  // Feedback is submitted through the existing Help Requests workflow so we do not need a new collection/rule.
+  window.submitIndianFeedback = async function(){
+    var box=byId('indianFeedbackText'), status=byId('indianFeedbackStatus');
+    var text=String(box && box.value || '').trim();
+    if(!text){if(status)status.textContent='Please write your feedback first.';if(box)box.focus();return;}
+    if(text.length>2000) text=text.slice(0,2000);
+    var category=byId('helpCategory');
+    if(category && !Array.from(category.options).some(function(o){return o.value==='Website feedback';})){
+      var option=document.createElement('option');option.value='Website feedback';option.textContent='Website feedback';category.appendChild(option);
+    }
+    if(status)status.textContent='Submitting feedback as a Help Request. It will be visible to Indian users…';
+    try{
+      if(typeof window.openHelp==='function') window.openHelp();
+      await new Promise(function(resolve){window.setTimeout(resolve,160);});
+      var helpBox=byId('helpBox');
+      if(category)category.value='Website feedback';
+      if(helpBox)helpBox.value='Website feedback: '+text;
+      if(typeof window.submitHelp!=='function') throw new Error('Help submission is not available on this page.');
+      await window.submitHelp();
+      if(box)box.value='';
+      if(status)status.textContent='Feedback submitted. It appears as a Website feedback Help Request for Indian users.';
+    }catch(error){
+      if(status)status.textContent='Feedback was not submitted: '+String(error && error.message || error).slice(0,220)+'. Please try from Help.';
+    }
+  };
+
+  function removeDuplicateIds(root){
+    if(root.id)root.removeAttribute('id');
+    root.querySelectorAll('[id]').forEach(function(node){node.removeAttribute('id');});
+    root.querySelectorAll('[for]').forEach(function(node){node.removeAttribute('for');});
+    root.querySelectorAll('[autofocus]').forEach(function(node){node.removeAttribute('autofocus');});
+  }
+  function wireCloneToSource(source, clone){
+    var originals=Array.from(source.querySelectorAll(controlsSelector));
+    var copies=Array.from(clone.querySelectorAll(controlsSelector));
+    copies.forEach(function(copy,index){
+      var original=originals[index]; if(!original)return;
+      if(copy.matches('input:not([type="file"]),textarea,select')){
+        copy.addEventListener('input',function(){
+          if(copy.type==='checkbox'||copy.type==='radio') original.checked=copy.checked;
+          else original.value=copy.value;
+        });
+        copy.addEventListener('change',function(){
+          if(copy.type==='checkbox'||copy.type==='radio') original.checked=copy.checked;
+          else original.value=copy.value;
+          try{original.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){}
+        });
+      }
+      copy.addEventListener('click',function(event){
+        if(copy.matches('input,textarea,select,summary')){
+          if(copy.matches('summary')){event.preventDefault();original.click();}
+          return;
+        }
+        event.preventDefault(); event.stopPropagation();
+        if(original.disabled)return;
+        try{original.click();}catch(e){}
+        var sourceCard=original.closest('.post,article[data-uran-video-id]');
+        if(sourceCard){var kind=sourceCard.matches('article[data-uran-video-id]')?'video':'post';var sourceRoot=kind==='video'?byId('shortsFeed'):byId('postsContainer');var index=sourceRoot?Array.from(sourceRoot.children).indexOf(sourceCard):0;requestFeedRender([sourceCardKey(sourceCard,kind,Math.max(index,0))],false);}
+      });
+    });
+    var sourceForms=Array.from(source.querySelectorAll('form'));
+    Array.from(clone.querySelectorAll('form')).forEach(function(form,index){
+      var originalForm=sourceForms[index]; if(!originalForm)return;
+      form.addEventListener('submit',function(event){
+        event.preventDefault();
+        var sourceFields=Array.from(originalForm.querySelectorAll('input:not([type="file"]),textarea,select'));
+        var copyFields=Array.from(form.querySelectorAll('input:not([type="file"]),textarea,select'));
+        copyFields.forEach(function(field,i){if(!sourceFields[i])return;if(field.type==='checkbox'||field.type==='radio')sourceFields[i].checked=field.checked;else sourceFields[i].value=field.value;});
+        if(typeof originalForm.requestSubmit==='function') originalForm.requestSubmit();
+        else {var btn=originalForm.querySelector('button[type="submit"],input[type="submit"]');if(btn)btn.click();}
+      });
+    });
+  }
+  function deferCloneMedia(clone){
+    clone.querySelectorAll('img').forEach(function(img){img.loading='lazy';img.decoding='async';});
+    clone.querySelectorAll('video,audio').forEach(function(media){
+      var url=media.getAttribute('data-indian-lazy-src')||media.getAttribute('src')||media.currentSrc||'';
+      if(url){media.setAttribute('data-home-lazy-src',url);media.removeAttribute('src');media.removeAttribute('data-indian-lazy-src');}
+      media.preload='none';
+      if(media.tagName==='VIDEO')media.playsInline=true;
+      try{media.load();}catch(e){}
+      if(videoObserver)videoObserver.observe(media);
+      else if(url){media.src=url;media.removeAttribute('data-home-lazy-src');}
+    });
+  }
+  function sourceCardKey(source,kind,index){
+    if(kind==='video')return 'video:' + String(source.dataset.uranVideoId||source.id||index);
+    return 'post:' + String(source.dataset.firestoreId||source.dataset.clientId||source.id||index);
+  }
+  function createFeedCard(source,kind,index,key){
+    var clone=source.cloneNode(true);
+    clone.classList.add('indian-home-feed-item');
+    clone.dataset.homeFeedClone='true';
+    clone.dataset.homeFeedKind=kind;
+    clone.dataset.homeFeedKey=key||sourceCardKey(source,kind,index);
+    removeDuplicateIds(clone);
+    var tag=document.createElement('div');tag.className='indian-home-feed-kind';tag.textContent=kind==='video'?'🎬 Uran video':'📝 Post';
+    clone.insertBefore(tag,clone.firstChild);
+    deferCloneMedia(clone);
+    wireCloneToSource(source,clone);
+    return clone;
+  }
+  function feedSources(){
+    return {
+      videos:Array.from(document.querySelectorAll('#shortsFeed > article[data-uran-video-id]')),
+      posts:Array.from(document.querySelectorAll('#postsContainer > .post'))
+    };
+  }
+  window.renderIndianMixedFeed = function(forceKeys, forceAll){
+    if(!mixedItems)return;
+    var sources=feedSources(), videos=sources.videos, posts=sources.posts;
+    var entries=[],vi=0,pi=0,next='video';
+    while(vi<videos.length || pi<posts.length){
+      if(next==='video' && vi<videos.length){entries.push({node:videos[vi],kind:'video',index:vi++,key:''});next='post';}
+      else if(next==='post' && pi<posts.length){entries.push({node:posts[pi],kind:'post',index:pi++,key:''});next='video';}
+      else if(vi<videos.length){entries.push({node:videos[vi],kind:'video',index:vi++,key:''});next='post';}
+      else if(pi<posts.length){entries.push({node:posts[pi],kind:'post',index:pi++,key:''});next='video';}
+    }
+    entries.forEach(function(entry){entry.key=sourceCardKey(entry.node,entry.kind,entry.index);});
+    var forced=new Set(Array.isArray(forceKeys)?forceKeys:[]);
+    var existing=new Map();
+    Array.from(mixedItems.children).forEach(function(node){if(node.dataset.homeFeedKey)existing.set(node.dataset.homeFeedKey,node);});
+    var wanted=new Set(entries.map(function(entry){return entry.key;}));
+    entries.forEach(function(entry,index){
+      var node=existing.get(entry.key);
+      if(!node || forceAll || forced.has(entry.key)){
+        var replacement=createFeedCard(entry.node,entry.kind,entry.index,entry.key);
+        if(node && node.parentNode===mixedItems)node.replaceWith(replacement);
+        node=replacement;
+      }
+      existing.delete(entry.key);
+      var at=mixedItems.children[index];
+      if(at!==node)mixedItems.insertBefore(node,at||null);
+    });
+    Array.from(mixedItems.children).forEach(function(node){if(node.dataset.homeFeedKey&&!wanted.has(node.dataset.homeFeedKey))node.remove();});
+    if(!entries.length && !mixedItems.querySelector('.indian-mixed-empty')){
+      var empty=document.createElement('div');empty.className='indian-mixed-empty';empty.textContent='No posts or Uran videos are ready yet. New content will appear here when it loads.';mixedItems.appendChild(empty);
+    }else if(entries.length){var oldEmpty=mixedItems.querySelector('.indian-mixed-empty');if(oldEmpty)oldEmpty.remove();}
+    var status=byId('indianMixedFeedStatus');
+    if(status)status.textContent=entries.length?('Showing '+entries.length+' loaded items: Uran videos and posts alternate in this feed.'):'Waiting for the first posts and videos…';
+    var more=byId('indianLoadMoreMixedFeed');
+    if(more){
+      var postButton=byId('indianLoadMorePostsBtn'),uranButton=byId('indianUranLoadMoreBtn');
+      var canPosts=!!(postButton&&postButton.getClientRects().length&&!postButton.disabled&&!postButton.hidden);
+      var canUran=!!(uranButton&&!uranButton.disabled&&!uranButton.hidden) || window.__indianUranHasMore===true;
+      more.hidden=!(canPosts||canUran);
+      if(!more.hidden)more.disabled=false;
+    }
+  };
+  var pendingReplaceKeys=new Set();
+  var pendingFullRender=false;
+  function findSourceCard(target,sourceRoot){
+    var node=target && target.nodeType===1 ? target : (target && target.parentElement);
+    if(!node)return null;
+    var card=node.closest('.post,article[data-uran-video-id]');
+    if(!card || !sourceRoot.contains(card))return null;
+    return card;
+  }
+  function requestFeedRender(keys,full){
+    if(Array.isArray(keys))keys.forEach(function(key){if(key)pendingReplaceKeys.add(key);});
+    if(full)pendingFullRender=true;
+    if(renderQueued)return; renderQueued=true;
+    window.requestAnimationFrame(function(){
+      renderQueued=false;
+      var keysToReplace=Array.from(pendingReplaceKeys),forceAll=pendingFullRender;
+      pendingReplaceKeys.clear();pendingFullRender=false;
+      window.renderIndianMixedFeed(keysToReplace,forceAll);
+    });
+  }
+  function queueFeedRender(){requestFeedRender([],false);}
+  function observeSourceMutations(sourceRoot,records){
+    var affected=[],structural=false;
+    records.forEach(function(record){
+      if(record.target===sourceRoot){structural=true;return;}
+      if(record.type==='childList' && record.target && record.target.parentElement===sourceRoot){structural=true;return;}
+      var card=findSourceCard(record.target,sourceRoot);
+      if(card){
+        var kind=card.matches('article[data-uran-video-id]')?'video':'post';
+        var index=kind==='video'?Array.from(sourceRoot.querySelectorAll(':scope > article[data-uran-video-id]')).indexOf(card):Array.from(sourceRoot.querySelectorAll(':scope > .post')).indexOf(card);
+        affected.push(sourceCardKey(card,kind,Math.max(index,0)));
+      }
+    });
+    if(structural)requestFeedRender([],true);else requestFeedRender(affected,false);
+  }
+  window.loadMoreIndianHomeFeed = async function(){
+    if(autoLoading)return;
+    autoLoading=true;
+    var status=byId('indianMixedFeedStatus'), buttons=[];
+    var p=byId('indianLoadMorePostsBtn'),u=byId('indianUranLoadMoreBtn');
+    if(p&&!p.disabled&&!p.hidden)buttons.push(function(){p.click();});
+    if(u&&!u.disabled&&!u.hidden)buttons.push(function(){u.click();});
+    if(!buttons.length && typeof window.indianUranShowMore==='function' && window.__indianUranHasMore===true)buttons.push(function(){return window.indianUranShowMore();});
+    if(status)status.textContent=buttons.length?'Loading the next posts and videos…':'All currently available items have been loaded.';
+    if(!buttons.length){autoLoading=false;return;}
+    try{for(var i=0;i<buttons.length;i++){var result=buttons[i]();if(result&&typeof result.then==='function')await result;}}
+    finally{window.setTimeout(function(){autoLoading=false;queueFeedRender();},700);}
+  };
+  function initialiseFeedObservers(){
+    if('IntersectionObserver' in window){
+      videoObserver=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;var media=entry.target,url=media.getAttribute('data-home-lazy-src');if(url&&!media.getAttribute('src')){media.setAttribute('src',url);media.removeAttribute('data-home-lazy-src');try{media.load();}catch(e){}}videoObserver.unobserve(media);});},{rootMargin:'280px 0px',threshold:0.01});
+      var sentinel=byId('indianMixedFeedSentinel');
+      if(sentinel){sentinelObserver=new IntersectionObserver(function(entries){if(entries.some(function(e){return e.isIntersecting})&&!autoLoading){window.loadMoreIndianHomeFeed();}},{rootMargin:'320px 0px',threshold:0.01});sentinelObserver.observe(sentinel);}
+    }
+    ['postsContainer','shortsFeed'].forEach(function(id){
+      var node=byId(id); if(!node)return;
+      var observer=new MutationObserver(function(records){observeSourceMutations(node,records);});
+      observer.observe(node,{childList:true,subtree:true,characterData:true});observedSources.push(observer);
+    });
+    queueFeedRender();
+  }
+  // Home route has a mixed feed. Keep the original forms and render targets mounted but hidden while Home is active.
+  function applyHomeDisplay(){
+    var homeRoute=location.hash===''||location.hash==='#home';
+    var mixed=byId('homeMixedFeed'),stories=byId('homeStoriesSection');
+    if(homeRoute){if(mixed)mixed.style.display='block';if(stories)stories.style.display='block';}
+    queueFeedRender();
+  }
+  window.addEventListener('hashchange',function(){window.setTimeout(applyHomeDisplay,30);});
+  // This script is placed at the end of the document, so initialize exactly once.
+  initialiseFeedObservers();
+  window.setTimeout(queueFeedRender,400);window.setTimeout(queueFeedRender,1600);
+  // Fetch likes/comments only when a visible mixed-feed post nears the screen.
+  var detailObserver = ('IntersectionObserver' in window) ? new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;var card=entry.target;detailObserver.unobserve(card);var id=card.dataset.clientId||card.id||'',firestoreId=card.dataset.firestoreId||'';if(window.indianLoadPostDetailsFromClone)window.indianLoadPostDetailsFromClone(id,firestoreId);});},{rootMargin:'220px 0px',threshold:0.01}) : null;
+  function observePostDetailsInFeed(){if(!detailObserver)return;document.querySelectorAll('#indianMixedFeedItems .indian-home-feed-item.post').forEach(function(card){if(card.dataset.detailsObserverAttached==='yes')return;card.dataset.detailsObserverAttached='yes';detailObserver.observe(card);});}
+  var mixedRoot=byId('indianMixedFeedItems');if(mixedRoot&&'MutationObserver'in window)new MutationObserver(observePostDetailsInFeed).observe(mixedRoot,{childList:true});
+  window.setTimeout(observePostDetailsInFeed,500);
+})();
+</script>
+
 </body>
 </html>

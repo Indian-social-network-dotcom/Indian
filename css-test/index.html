@@ -15,8 +15,8 @@
 <!-- Call buttons moved below Send Message/Clear for easier access in the chat. -->
 
 <link rel="stylesheet" href="style.css">
-<!-- OneSignal Web SDK: test setup for the Indian css-test site only. -->
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<!-- OneSignal Web SDK: test setup for the Indian css-test GitHub Pages project subpath only. -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer onerror="window.__indianOneSignalSdkLoadFailed = true; window.addEventListener('DOMContentLoaded', function(){ var e=document.getElementById('indianOneSignalPushStatus'); if(e) e.textContent='OneSignal SDK could not load. Check internet or browser blocking and try again.'; });"></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   window.__indianOneSignalReady = false;
@@ -29,7 +29,7 @@
     try {
       await OneSignal.init({
         appId: "019d756d-8ff5-4c09-bcab-75ace208d8da",
-        serviceWorkerPath: "push/onesignal/OneSignalSDKWorker.js",
+        serviceWorkerPath: "Indian/css-test/push/onesignal/OneSignalSDKWorker.js",
         serviceWorkerParam: { scope: "/Indian/css-test/push/onesignal/" },
         autoResubscribe: true
       });

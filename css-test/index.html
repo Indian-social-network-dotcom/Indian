@@ -15,6 +15,39 @@
 <!-- Call buttons moved below Send Message/Clear for easier access in the chat. -->
 
 <link rel="stylesheet" href="style.css">
+<!-- OneSignal Web SDK: test setup for the Indian css-test site only. -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.__indianOneSignalReady = false;
+  window.__indianOneSignalInstance = null;
+  function setIndianOneSignalStatus(message) {
+    var el = document.getElementById("indianOneSignalPushStatus");
+    if (el) el.textContent = String(message || "");
+  }
+  OneSignalDeferred.push(async function (OneSignal) {
+    try {
+      await OneSignal.init({
+        appId: "019d756d-8ff5-4c09-bcab-75ace208d8da",
+        serviceWorkerPath: "Indian/css-test/push/onesignal/OneSignalSDKWorker.js",
+        serviceWorkerParam: { scope: "/Indian/css-test/push/onesignal/" },
+        autoResubscribe: true
+      });
+      window.__indianOneSignalInstance = OneSignal;
+      window.__indianOneSignalReady = true;
+      if (window.firebaseCurrentUid) {
+        try { await OneSignal.login("indian_firebase_" + String(window.firebaseCurrentUid)); }
+        catch (identityError) { console.warn("OneSignal user link pending", identityError); }
+      }
+      setIndianOneSignalStatus(OneSignal.User.PushSubscription.optedIn
+        ? "OneSignal push is already enabled on this device."
+        : "OneSignal is ready. Choose Enable OneSignal Push to subscribe this device.");
+    } catch (error) {
+      console.error("OneSignal init failed", error);
+      setIndianOneSignalStatus("OneSignal setup failed: " + String(error && error.message || error).slice(0, 220) + ". Check the OneSignal worker file path and App ID.");
+    }
+  });
+</script>
 
 
 
@@ -361,6 +394,11 @@ Search registered users, places, posts or help requests:
   <label for="indianWebPushTokenOutput" style="display:block;margin-top:10px;">FCM test token</label>
   <textarea id="indianWebPushTokenOutput" rows="3" readonly style="display:block;width:100%;max-width:100%;box-sizing:border-box;" aria-label="FCM test token"></textarea>
   <p id="indianWebPushStatus" role="status" aria-live="polite">Push notifications are not enabled on this device yet.</p>
+  <hr style="margin:14px 0;border:0;border-top:1px solid #dbe3e8;">
+  <h3>OneSignal Push Notifications</h3>
+  <p>Subscribe this test device to OneSignal notifications. This is separate from the Firebase FCM test button above.</p>
+  <button class="action" type="button" id="enableOneSignalPushBtn">Enable OneSignal Push</button>
+  <p id="indianOneSignalPushStatus" role="status" aria-live="polite">OneSignal SDK is loading…</p>
 </div>
 
 <button class="action" onclick="markAllNotificationsAsRead()">Mark All as Read</button>
@@ -5099,6 +5137,16 @@ else{
         onAuthStateChanged(firebaseAuth, function(user){
             firebaseCurrentUser = user || null;
             window.firebaseCurrentUid = user ? user.uid : "";
+            if (window.OneSignalDeferred) {
+                window.OneSignalDeferred.push(async function (OneSignal) {
+                    try {
+                        if (user && user.uid) await OneSignal.login("indian_firebase_" + String(user.uid));
+                        else await OneSignal.logout();
+                    } catch (oneSignalIdentityError) {
+                        console.warn("OneSignal account link update failed", oneSignalIdentityError);
+                    }
+                });
+            }
             updateFirebaseAuthUI();
             if(user){
                 setTimeout(function(){ cleanupExpiredIndianStories(); }, 900);
@@ -7458,5 +7506,38 @@ if ("serviceWorker" in navigator) {
 })();
 </script>
 
+<script id="indianOneSignalPushControls">
+(function () {
+  var button = document.getElementById("enableOneSignalPushBtn");
+  if (!button) return;
+  button.addEventListener("click", async function () {
+    var status = document.getElementById("indianOneSignalPushStatus");
+    var OneSignal = window.__indianOneSignalInstance;
+    if (!OneSignal || !window.__indianOneSignalReady) {
+      if (status) status.textContent = "OneSignal is still loading. Wait a few seconds and try again.";
+      return;
+    }
+    try {
+      if (!OneSignal.Notifications.isPushSupported()) {
+        if (status) status.textContent = "This browser or device does not support OneSignal web push.";
+        return;
+      }
+      if (status) status.textContent = "Requesting notification permission…";
+      await OneSignal.Notifications.requestPermission();
+      if (!OneSignal.Notifications.permission) {
+        if (status) status.textContent = "Notification permission was not granted. Allow notifications in browser settings and retry.";
+        return;
+      }
+      await OneSignal.User.PushSubscription.optIn();
+      if (status) status.textContent = OneSignal.User.PushSubscription.optedIn
+        ? "Success: this device is subscribed to Indian Test OneSignal push notifications."
+        : "Permission is granted. OneSignal is finishing the subscription; wait a few seconds and check this message again.";
+    } catch (error) {
+      console.error("OneSignal subscribe failed", error);
+      if (status) status.textContent = "OneSignal subscription failed: " + String(error && error.message || error).slice(0, 220);
+    }
+  });
+})();
+</script>
 </body>
 </html>

@@ -4883,7 +4883,12 @@ function subscribeFirestoreMessages(personId){
 }
 
 async function sendIndianMessagePushNotification(messageId){
-    if(!messageId || !firebaseCurrentUser || typeof firebaseCurrentUser.getIdToken !== "function") return;
+    const status = document.getElementById("firebaseMessageStatus");
+    if(!messageId || !firebaseCurrentUser || typeof firebaseCurrentUser.getIdToken !== "function"){
+        if(status) status.textContent = "Push diagnostic: message ID or Firebase sign-in token is missing. Message itself may still be sent.";
+        return;
+    }
+    if(status) status.textContent = "Push diagnostic: message saved. Contacting notification server...";
     try{
         const idToken = await firebaseCurrentUser.getIdToken();
         const response = await fetch("https://indian-message-push.sadrealam892075.workers.dev/", {
@@ -4894,12 +4899,21 @@ async function sendIndianMessagePushNotification(messageId){
             },
             body: JSON.stringify({messageId: String(messageId)})
         });
-        const result = await response.json().catch(function(){ return {}; });
+        const raw = await response.text();
+        let result = {};
+        try { result = JSON.parse(raw); } catch(e) {}
+        if(response.ok && result.success === true){
+            if(status) status.textContent = "Push diagnostic: server accepted the notification request. Notification ID: " + String(result.notificationId || "confirmed");
+        }else if(status){
+            status.textContent = "Push diagnostic: server response " + response.status + ". " + String(result.error || result.message || result.reason || raw || "No detail returned").slice(0, 450);
+        }
         if(!response.ok || result.success !== true){
-            console.warn("Indian message push was not confirmed:", result.error || result.message || response.status);
+            console.warn("Indian message push was not confirmed:", result.error || result.message || result.reason || response.status);
         }
     }catch(error){
-        console.warn("Indian message push request failed:", error && error.message ? error.message : error);
+        const detail = error && error.message ? error.message : String(error);
+        if(status) status.textContent = "Push diagnostic: request failed. " + detail.slice(0, 350);
+        console.warn("Indian message push request failed:", detail);
     }
 }
 

@@ -6,7 +6,7 @@
 const ALLOWED_ORIGIN = "https://indian-social-network-dotcom.github.io";
 const FIREBASE_PROJECT_ID = "indian-84a86";
 const ONESIGNAL_APP_ID = "019d756d-8ff5-4c09-bcab-75ace208d8da";
-const TEST_SITE_URL = "https://indian-social-network-dotcom.github.io/Indian/";
+const TEST_SITE_URL = "https://indian-social-network-dotcom.github.io/Indian/css-test/index.html";
 
 function corsHeaders(origin) {
   const headers = {

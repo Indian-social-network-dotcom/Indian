@@ -34,11 +34,16 @@ async function verifyFirebaseIdToken(idToken, apiKey) {
       body: JSON.stringify({ idToken })
     }
   );
-  if (!response.ok) return null;
-  const data = await response.json();
-  return data && Array.isArray(data.users) && data.users[0] && data.users[0].localId
+  const data = await response.json().catch(() => ({}));
+  const uid = data && Array.isArray(data.users) && data.users[0] && data.users[0].localId
     ? data.users[0].localId
     : null;
+  if (response.ok && uid) return { uid: uid, error: null };
+
+  // Return only Google's short error code/message; never log or expose the ID token or API key.
+  const apiError = data && data.error ? data.error : {};
+  const detail = String(apiError.message || "Unknown Firebase verification error").slice(0, 180);
+  return { uid: null, error: { httpStatus: response.status, detail: detail } };
 }
 
 async function getFirestoreMessage(messageId, idToken) {
@@ -119,8 +124,17 @@ export default {
     if (!match) return json({ error: "Sign in is required." }, 401, origin);
     const idToken = match[1].trim();
 
-    const callerUid = await verifyFirebaseIdToken(idToken, env.FIREBASE_WEB_API_KEY);
-    if (!callerUid) return json({ error: "Firebase sign-in token is invalid or expired." }, 401, origin);
+    const verification = await verifyFirebaseIdToken(idToken, env.FIREBASE_WEB_API_KEY);
+    if (!verification.uid) {
+      const failure = verification.error || { httpStatus: 0, detail: "Unknown verification error" };
+      console.error("Firebase ID token verification failed:", failure.httpStatus, failure.detail);
+      return json({
+        error: "Firebase ID token verification failed.",
+        firebaseHttpStatus: failure.httpStatus,
+        firebaseError: failure.detail
+      }, 401, origin);
+    }
+    const callerUid = verification.uid;
 
     let body;
     try { body = await request.json(); }

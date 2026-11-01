@@ -29,8 +29,8 @@
     try {
       await OneSignal.init({
         appId: "019d756d-8ff5-4c09-bcab-75ace208d8da",
-        serviceWorkerPath: "OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/Indian/" },
+        serviceWorkerPath: "/Indian/css-test/push/onesignal/OneSignalSDKWorker.js",
+        serviceWorkerParam: { scope: "/Indian/css-test/push/onesignal/" },
         autoResubscribe: true
       });
       window.__indianOneSignalInstance = OneSignal;
@@ -470,6 +470,7 @@ Search registered users, places, posts or help requests:
 <textarea id="messageText" placeholder="Type a message..." aria-label="Write your message" oninput="handleMessageTyping()" onkeydown="handleMessageComposerKeydown(event)" maxlength="2000"></textarea>
 <div id="messageCharCount" class="messageCharCount" aria-live="polite">0 / 2000 characters</div>
 <div id="messageDraftStatus" class="messageDraftStatus" aria-live="polite"></div>
+<div id="indianMessagePushResult" role="status" aria-live="polite" aria-atomic="true" style="display:block;min-height:1.5em;margin:8px 0;padding:8px;border:1px solid #777;border-radius:6px;white-space:normal;overflow-wrap:anywhere;">Push notification status will appear here after sending a Firebase message.</div>
 
 <div id="messageReplyPreview" class="messageReplyPreview" aria-live="polite" style="display:none;">
     <span id="messageReplyText"></span>
@@ -2236,18 +2237,6 @@ async function sendMessageCore(){
             alert("Firebase message could not be sent: " + (error && error.message ? error.message : "Unknown error"));
             textBox.focus();
             return;
-        }
-    }
-
-    // Push is best-effort: a notification failure must never undo a saved message.
-    if(firebaseMessageAvailable && newMessage.firestoreId && typeof window.indianSendMessagePush === "function"){
-        try{
-            const pushResult = await window.indianSendMessagePush(newMessage.firestoreId);
-            if(pushResult && pushResult.success === false){
-                console.info("Indian message push was not delivered:", pushResult.message || "No subscribed device matched.");
-            }
-        }catch(pushError){
-            console.warn("Indian message saved, but push notification failed:", pushError);
         }
     }
 
@@ -4921,6 +4910,38 @@ async function saveFirestoreMessage(personId, text, replyTo, attachment){
     };
 
     const ref = await addDoc(collection(firebaseDb, "messages"), payload);
+
+    // Send a background push through the test Cloudflare Worker after Firestore
+    // confirms that the message has been saved. Push failure must never undo or
+    // block the message itself. Keep the result visible to screen-reader users.
+    const pushStatusNode = document.getElementById("indianMessagePushResult");
+    if(pushStatusNode){
+        pushStatusNode.style.display = "block";
+        pushStatusNode.textContent = "Message save ho gaya. Push notification ki jaanch ho rahi hai...";
+    }
+    try{
+        const idToken = await firebaseCurrentUser.getIdToken();
+        const pushResponse = await fetch("https://indian-message-push.sadrealam892075.workers.dev/", {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + idToken,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({messageId: ref.id})
+        });
+        const pushResult = await pushResponse.json().catch(function(){ return {}; });
+        if(!pushResponse.ok || pushResult.success !== true){
+            const pushProblem = pushResult.message || pushResult.error || ("HTTP " + pushResponse.status);
+            console.warn("Indian message push was not delivered:", pushProblem);
+            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin push notification nahi bheji ja saki. Karan: " + pushProblem;
+        }else{
+            console.info("Indian message push request accepted. Notification ID:", pushResult.notificationId || "not returned");
+            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya. Push notification request safalta se bhej di gayi.";
+        }
+    }catch(pushError){
+        console.warn("Indian message push request failed; message remains saved:", pushError);
+        if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin push request fail hui: " + (pushError && pushError.message ? pushError.message : "Network error");
+    }
     return ref.id;
 }
 
@@ -5640,21 +5661,6 @@ else{
  const auth=getAuth(apps[0]);
  const db=getFirestore(apps[0]);
  const storage=getStorage(apps[0]);
-
- // Secure server-side OneSignal push bridge. The REST key stays in Cloudflare secrets.
- window.indianSendMessagePush = async function(messageId){
-   if(!auth.currentUser) throw new Error("Sign in is required to send a message notification.");
-   if(!/^[A-Za-z0-9_-]{10,40}$/.test(String(messageId||""))) throw new Error("Invalid message ID.");
-   const idToken = await auth.currentUser.getIdToken();
-   const response = await fetch("https://indian-message-push.sadrealam892075.workers.dev/", {
-     method:"POST",
-     headers:{"Authorization":"Bearer "+idToken,"Content-Type":"application/json"},
-     body:JSON.stringify({messageId:String(messageId)})
-   });
-   const result = await response.json().catch(()=>({}));
-   if(!response.ok) throw new Error(result.error||("Push request failed ("+response.status+")."));
-   return result;
- };
  let currentUser=null;
  let persistenceBusy=false;
  const unsub=[];
@@ -6154,18 +6160,7 @@ else{
    const af=window.togglePersonFollow;window.togglePersonFollow=async function(id){af?.(id);const p=window.peopleData?.find(x=>x.id===id);if(p){ await saveFollow(p); if(p.isFollowing && p.firebaseUid) await saveRemoteNotification(p.firebaseUid, name()+" started following you.", "follow", p.id); }};
    const lb=window.createLikeButton;window.createLikeButton=function(type,id){const b=lb(type,id),old=b.onclick;b.onclick=async function(){old?.();await saveLike(type,id,b.classList.contains("liked"));};return b;};
  }
- onAuthStateChanged(auth,async u=>{
-   currentUser=u||null;
-   window.firebaseCurrentUid=u?.uid||"";
-   const oneSignal=window.__indianOneSignalInstance;
-   if(oneSignal){
-     try{
-       if(u) await oneSignal.login("indian_firebase_"+String(u.uid));
-       else if(typeof oneSignal.logout==="function") await oneSignal.logout();
-     }catch(identityError){console.warn("OneSignal Firebase identity sync pending",identityError);}
-   }
-   if(u){await window.loadIndianProfileFromFirestore?.();wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Firestore persistence active. Posts, comments, replies, likes, follows, notifications, help requests and Firebase messages are being synchronized.";}else clear();
- });
+ onAuthStateChanged(auth,async u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){await window.loadIndianProfileFromFirestore?.();wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Firestore persistence active. Posts, comments, replies, likes, follows, notifications, help requests and Firebase messages are being synchronized.";}else clear();});
 }
 </script>
 

@@ -470,6 +470,7 @@ Search registered users, places, posts or help requests:
 <textarea id="messageText" placeholder="Type a message..." aria-label="Write your message" oninput="handleMessageTyping()" onkeydown="handleMessageComposerKeydown(event)" maxlength="2000"></textarea>
 <div id="messageCharCount" class="messageCharCount" aria-live="polite">0 / 2000 characters</div>
 <div id="messageDraftStatus" class="messageDraftStatus" aria-live="polite"></div>
+<div id="indianMessagePushResult" role="status" aria-live="polite" aria-atomic="true" style="margin:8px 0;padding:8px;border-radius:6px;"></div>
 
 <div id="messageReplyPreview" class="messageReplyPreview" aria-live="polite" style="display:none;">
     <span id="messageReplyText"></span>
@@ -4924,11 +4925,19 @@ async function saveFirestoreMessage(personId, text, replyTo, attachment){
             body: JSON.stringify({messageId: ref.id})
         });
         const pushResult = await pushResponse.json().catch(function(){ return {}; });
+        const pushStatusNode = document.getElementById("indianMessagePushResult");
         if(!pushResponse.ok || pushResult.success !== true){
-            console.warn("Indian message push was not delivered:", pushResult.message || pushResult.error || pushResponse.status);
+            const pushProblem = pushResult.message || pushResult.error || ("HTTP " + pushResponse.status);
+            console.warn("Indian message push was not delivered:", pushProblem);
+            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin push notification nahi bheji ja saki. Karan: " + pushProblem;
+        }else{
+            console.info("Indian message push request accepted. Notification ID:", pushResult.notificationId || "not returned");
+            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya. Push notification request safalta se bhej di gayi.";
         }
     }catch(pushError){
         console.warn("Indian message push request failed; message remains saved:", pushError);
+        const pushStatusNode = document.getElementById("indianMessagePushResult");
+        if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin push request fail hui: " + (pushError && pushError.message ? pushError.message : "Network error");
     }
     return ref.id;
 }

@@ -93,10 +93,21 @@ async function sendOneSignalPush(env, receiverUid, messageId) {
     },
     body: JSON.stringify(payload)
   });
-  const result = await response.json().catch(() => ({}));
+  const responseText = await response.text();
+  let result = {};
+  try { result = responseText ? JSON.parse(responseText) : {}; } catch {}
   if (!response.ok) {
-    console.error("OneSignal API request failed", response.status);
-    throw new Error("OneSignal rejected the push request.");
+    // Expose a short provider error for diagnosis; never expose the REST API key.
+    const providerError = result && (result.errors || result.error || result.message);
+    const detail = (typeof providerError === "string"
+      ? providerError
+      : Array.isArray(providerError)
+        ? providerError.join("; ")
+        : providerError
+          ? JSON.stringify(providerError)
+          : response.statusText) || "Unknown OneSignal error";
+    console.error("OneSignal API request failed:", response.status, detail.slice(0, 240));
+    throw new Error(`OneSignal HTTP ${response.status}: ${detail.slice(0, 240)}`);
   }
   return result;
 }
@@ -166,12 +177,36 @@ export default {
 
       const result = await sendOneSignalPush(env, receiverId, messageId);
       if (!result || !result.id) {
-        return json({ success: false, message: "No subscribed OneSignal device matched this recipient." }, 200, origin);
+        // OneSignal can return HTTP 200 without creating a notification when no
+        // subscribed device matches the external_id. Preserve its diagnostic
+        // response so the website can show the actual reason instead of a guess.
+        const providerErrors = result && (result.errors || result.error || result.message);
+        let detail = "OneSignal returned HTTP 200 but did not provide a notification ID.";
+        if (typeof providerErrors === "string") {
+          detail = providerErrors;
+        } else if (Array.isArray(providerErrors)) {
+          detail = providerErrors.map(item => typeof item === "string" ? item : JSON.stringify(item)).join("; ");
+        } else if (providerErrors && typeof providerErrors === "object") {
+          detail = JSON.stringify(providerErrors);
+        } else if (result && Object.keys(result).length) {
+          detail = JSON.stringify(result);
+        }
+        detail = String(detail || "OneSignal did not create a notification.").slice(0, 300);
+        console.error("OneSignal created no notification:", detail);
+        return json({
+          success: false,
+          message: "OneSignal did not create a notification.",
+          detail: detail
+        }, 502, origin);
       }
       return json({ success: true, notificationId: result.id }, 200, origin);
     } catch (error) {
-      console.error("Indian message push failed:", error && error.message ? error.message : String(error));
-      return json({ error: "Could not send a push for this message. The message itself was saved successfully." }, 502, origin);
+      const detail = String(error && error.message ? error.message : "Unknown push delivery error").slice(0, 300);
+      console.error("Indian message push failed:", detail);
+      return json({
+        error: "Could not send a push for this message. The message itself was saved successfully.",
+        detail: detail
+      }, 502, origin);
     }
   }
 };

@@ -4927,7 +4927,7 @@ async function saveFirestoreMessage(personId, text, replyTo, attachment){
         const pushResult = await pushResponse.json().catch(function(){ return {}; });
         const pushStatusNode = document.getElementById("indianMessagePushResult");
         if(!pushResponse.ok || pushResult.success !== true){
-            const pushProblem = pushResult.message || pushResult.error || ("HTTP " + pushResponse.status);
+            const pushProblem = pushResult.detail || pushResult.message || pushResult.error || ("HTTP " + pushResponse.status);
             const firebaseDetail = pushResult.firebaseError
                 ? " | Firebase detail: " + String(pushResult.firebaseError).slice(0, 180)
                 : "";

@@ -56,6 +56,16 @@ async function getFirestoreMessage(messageId, idToken) {
   return response.json();
 }
 
+async function getPublicProfile(uid, idToken) {
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/publicProfiles/${encodeURIComponent(uid)}`;
+  const response = await fetch(url, {
+    headers: { "Authorization": `Bearer ${idToken}` }
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Firestore public profile read failed (${response.status})`);
+  return response.json();
+}
+
 function stringField(document, name) {
   const field = document && document.fields && document.fields[name];
   return field && typeof field.stringValue === "string" ? field.stringValue : "";
@@ -72,15 +82,18 @@ async function stableIdempotencyKey(messageId) {
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
-async function sendOneSignalPush(env, receiverUid, messageId) {
+async function sendOneSignalPush(env, receiverUid, messageId, senderName, messageText) {
   const idempotencyKey = await stableIdempotencyKey(messageId);
+  const safeSender = String(senderName || "Someone")
+    .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "Someone";
+  const safeMessage = String(messageText || "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
   const payload = {
     app_id: ONESIGNAL_APP_ID,
     include_aliases: { external_id: [`indian_firebase_${receiverUid}`] },
     target_channel: "push",
-    headings: { en: "New message on Indian" },
-    // Keep private message contents off the lock screen.
-    contents: { en: "You have received a new message." },
+    headings: { en: `${safeSender} sent you a message` },
+    contents: { en: safeMessage || "Sent you a photo or video." },
     url: TEST_SITE_URL,
     idempotency_key: idempotencyKey,
     data: { type: "message", messageId }
@@ -175,29 +188,23 @@ export default {
         return json({ skipped: true, reason: "Message is too old for a new push." }, 200, origin);
       }
 
-      const result = await sendOneSignalPush(env, receiverId, messageId);
+      const profile = await getPublicProfile(senderId, idToken);
+      const senderName = stringField(profile, "displayName") || "Someone";
+      const messageText = stringField(message, "text");
+      const attachmentFields = message.fields && message.fields.attachment
+        && message.fields.attachment.mapValue && message.fields.attachment.mapValue.fields;
+      const attachmentType = attachmentFields && attachmentFields.type
+        ? attachmentFields.type.stringValue : "";
+      const notificationText = messageText || (
+        attachmentType === "video" ? "Sent you a video."
+        : attachmentType === "image" ? "Sent you a photo."
+        : "Sent you a message."
+      );
+      const result = await sendOneSignalPush(
+        env, receiverId, messageId, senderName, notificationText
+      );
       if (!result || !result.id) {
-        // OneSignal can return HTTP 200 without creating a notification when no
-        // subscribed device matches the external_id. Preserve its diagnostic
-        // response so the website can show the actual reason instead of a guess.
-        const providerErrors = result && (result.errors || result.error || result.message);
-        let detail = "OneSignal returned HTTP 200 but did not provide a notification ID.";
-        if (typeof providerErrors === "string") {
-          detail = providerErrors;
-        } else if (Array.isArray(providerErrors)) {
-          detail = providerErrors.map(item => typeof item === "string" ? item : JSON.stringify(item)).join("; ");
-        } else if (providerErrors && typeof providerErrors === "object") {
-          detail = JSON.stringify(providerErrors);
-        } else if (result && Object.keys(result).length) {
-          detail = JSON.stringify(result);
-        }
-        detail = String(detail || "OneSignal did not create a notification.").slice(0, 300);
-        console.error("OneSignal created no notification:", detail);
-        return json({
-          success: false,
-          message: "OneSignal did not create a notification.",
-          detail: detail
-        }, 502, origin);
+        return json({ success: false, message: "No subscribed OneSignal device matched this recipient." }, 200, origin);
       }
       return json({ success: true, notificationId: result.id }, 200, origin);
     } catch (error) {

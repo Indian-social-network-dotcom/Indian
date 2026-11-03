@@ -771,14 +771,16 @@ Explore places and their local communities.
   <button type="button" class="action" onclick="acceptIndianIncomingCall()">Accept Call</button>
   <button type="button" class="action" onclick="declineIndianIncomingCall()">Decline Call</button>
 </div>
-<div id="indianActiveCallPanel" role="region" aria-label="Active voice or video call" style="display:none;position:fixed;z-index:10010;right:16px;bottom:92px;width:min(420px,calc(100vw - 32px));max-height:75vh;overflow:auto;box-sizing:border-box;background:#fff;color:#172b3a;border:2px solid #1d4f7c;border-radius:14px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,.25);">
-  <h2 id="indianActiveCallTitle" style="margin:0 0 8px;font-size:1.2rem;">Indian Call</h2>
+<div id="indianActiveCallPanel" role="region" aria-label="Full-screen voice or video call" style="display:none;position:fixed;inset:0;z-index:10010;width:100vw;height:100vh;max-height:100vh;overflow:auto;box-sizing:border-box;background:#101820;color:#fff;border:0;border-radius:0;padding:20px;padding-top:max(20px,env(safe-area-inset-top));padding-bottom:max(20px,env(safe-area-inset-bottom));box-shadow:none;">
+  <button type="button" class="action" onclick="minimizeIndianCallPage()" aria-label="Back; minimize call without ending it">← Back</button>
+  <h2 id="indianActiveCallTitle" style="margin:22px 0 8px;font-size:1.5rem;">Indian Call</h2>
   <p id="indianActiveCallStatus" role="status" aria-live="polite">Preparing call…</p>
-  <video id="indianLocalCallVideo" autoplay playsinline muted aria-label="Your camera preview" style="display:none;width:100%;max-height:180px;background:#111;border-radius:8px;margin:6px 0;"></video>
-  <video id="indianRemoteCallVideo" autoplay playsinline controls aria-label="Other participant's video" style="display:none;width:100%;max-height:280px;background:#111;border-radius:8px;margin:6px 0;"></video>
-  <audio id="indianRemoteCallAudio" autoplay controls aria-label="Other participant's voice" style="display:none;width:100%;margin:6px 0;"></audio>
+  <video id="indianLocalCallVideo" autoplay playsinline muted aria-label="Your camera preview" style="display:none;width:100%;max-height:28vh;background:#000;border-radius:10px;margin:10px 0;"></video>
+  <video id="indianRemoteCallVideo" autoplay playsinline controls aria-label="Other participant's video" style="display:none;width:100%;max-height:52vh;background:#000;border-radius:10px;margin:10px 0;"></video>
+  <audio id="indianRemoteCallAudio" autoplay controls aria-label="Other participant's voice" style="display:none;width:100%;margin:10px 0;"></audio>
   <button type="button" class="action" onclick="endIndianCall()" aria-label="End voice or video call">End Call</button>
 </div>
+<button id="indianReturnToCallButton" type="button" class="action" onclick="restoreIndianCallPage()" style="display:none;position:fixed;z-index:10030;right:16px;bottom:92px;" aria-label="Return to active call">Return to call</button>
 
 </main>
 
@@ -4927,9 +4929,20 @@ async function saveFirestoreMessage(personId, text, replyTo, attachment){
         const pushResult = await pushResponse.json().catch(function(){ return {}; });
         const pushStatusNode = document.getElementById("indianMessagePushResult");
         if(!pushResponse.ok || pushResult.success !== true){
-            const pushProblem = pushResult.message || pushResult.error || ("HTTP " + pushResponse.status);
-            console.warn("Indian message push was not delivered:", pushProblem);
-            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin push notification nahi bheji ja saki. Karan: " + pushProblem;
+            const pushProblem = pushResult.detail || pushResult.message || pushResult.error || ("HTTP " + pushResponse.status);
+            const firebaseDetail = pushResult.firebaseError
+                ? " | Firebase detail: " + String(pushResult.firebaseError).slice(0, 180)
+                : "";
+            const firebaseStatus = pushResult.firebaseHttpStatus
+                ? " | Firebase HTTP: " + String(pushResult.firebaseHttpStatus)
+                : "";
+            console.warn("Indian message push was not delivered:", {
+                httpStatus: pushResponse.status,
+                error: pushProblem,
+                firebaseHttpStatus: pushResult.firebaseHttpStatus || null,
+                firebaseError: pushResult.firebaseError || null
+            });
+            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin push notification nahi bheji ja saki. Karan: " + pushProblem + firebaseStatus + firebaseDetail;
         }else{
             console.info("Indian message push request accepted. Notification ID:", pushResult.notificationId || "not returned");
             if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya. Push notification request safalta se bhej di gayi.";
@@ -5317,6 +5330,20 @@ function setIndianCallStatus(message){
   const active = $("indianActiveCallStatus");
   if(active && indianActiveCall) active.textContent = String(message || "");
 }
+function minimizeIndianCallPage(){
+  if(!indianActiveCall) return;
+  const panel = $("indianActiveCallPanel");
+  const button = $("indianReturnToCallButton");
+  if(panel) panel.style.display = "none";
+  if(button) button.style.display = "block";
+}
+function restoreIndianCallPage(){
+  if(!indianActiveCall) return;
+  const panel = $("indianActiveCallPanel");
+  const button = $("indianReturnToCallButton");
+  if(panel) panel.style.display = "block";
+  if(button) button.style.display = "none";
+}
 function showIndianCallPanel(message, videoMode){
   const panel = $("indianActiveCallPanel");
   const title = $("indianActiveCallTitle");
@@ -5324,6 +5351,8 @@ function showIndianCallPanel(message, videoMode){
   const remoteVideo = $("indianRemoteCallVideo");
   const remoteAudio = $("indianRemoteCallAudio");
   if(panel) panel.style.display = "block";
+  const returnButton = $("indianReturnToCallButton");
+  if(returnButton) returnButton.style.display = "none";
   if(title) title.textContent = videoMode ? "Indian Video Call" : "Indian Voice Call";
   if(localVideo) localVideo.style.display = videoMode ? "block" : "none";
   if(remoteVideo) remoteVideo.style.display = videoMode ? "block" : "none";
@@ -5495,6 +5524,8 @@ function indianFinishActiveCall(message){
   }
   const panel = $("indianActiveCallPanel");
   if(panel) panel.style.display = "none";
+  const returnButton = $("indianReturnToCallButton");
+  if(returnButton) returnButton.style.display = "none";
   ["indianLocalCallVideo","indianRemoteCallVideo","indianRemoteCallAudio"].forEach(function(id){const el=$(id);if(el)el.srcObject=null;});
   setIndianCallStatus(message || "Call ended.");
 }
@@ -5531,6 +5562,29 @@ async function startIndianCall(callType){
     const offer = await call.pc.createOffer();
     await call.pc.setLocalDescription(offer);
     await updateDoc(callRef, {status:"ringing",offer:{type:call.pc.localDescription.type,sdp:call.pc.localDescription.sdp},updatedAtMs:Date.now()});
+
+    // Request a background incoming-call push only after Firestore has saved
+    // the real ringing call. Push failure must not interrupt WebRTC calling.
+    try{
+      const idToken = await firebaseCurrentUser.getIdToken();
+      const pushResponse = await fetch("https://indian-message-push.sadrealam892075.workers.dev/", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + idToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({callId: callRef.id})
+      });
+      const pushResult = await pushResponse.json().catch(function(){ return {}; });
+      if(!pushResponse.ok || pushResult.success !== true){
+        console.warn("Indian incoming-call push was not accepted:", pushResponse.status, pushResult);
+      }else{
+        console.info("Indian incoming-call push request accepted.", pushResult.pushResult || pushResult);
+      }
+    }catch(pushError){
+      console.warn("Indian incoming-call push request failed; WebRTC call continues:", pushError);
+    }
+
     indianSetCallStatusForBoth("Calling " + personName + ". Waiting for them to answer…");
     call.ringTimer = setTimeout(async function(){
       if(indianActiveCall && indianActiveCall.id === call.id){

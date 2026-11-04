@@ -29,8 +29,8 @@
     try {
       await OneSignal.init({
         appId: "019d756d-8ff5-4c09-bcab-75ace208d8da",
-        serviceWorkerPath: "/Indian/css-test/push/onesignal/OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/Indian/css-test/push/onesignal/" },
+        serviceWorkerPath: "/Indian/OneSignalSDKWorker.js",
+        serviceWorkerParam: { scope: "/Indian/" },
         autoResubscribe: true
       });
       window.__indianOneSignalInstance = OneSignal;
@@ -5542,6 +5542,25 @@ async function startIndianCall(callType){
     const offer = await call.pc.createOffer();
     await call.pc.setLocalDescription(offer);
     await updateDoc(callRef, {status:"ringing",offer:{type:call.pc.localDescription.type,sdp:call.pc.localDescription.sdp},updatedAtMs:Date.now()});
+    // Notify the callee through the existing Cloudflare Worker. Push failure
+    // must not interrupt the live WebRTC call attempt.
+    try{
+      const callPushToken = await firebaseCurrentUser.getIdToken();
+      const callPushResponse = await fetch("https://indian-message-push.sadrealam892075.workers.dev/", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + callPushToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({callId: callRef.id})
+      });
+      const callPushResult = await callPushResponse.json().catch(function(){ return {}; });
+      if(!callPushResponse.ok || callPushResult.success !== true){
+        console.warn("Indian incoming-call push was not delivered:", callPushResponse.status, callPushResult);
+      }
+    }catch(callPushError){
+      console.warn("Indian incoming-call push request failed:", callPushError);
+    }
     indianSetCallStatusForBoth("Calling " + personName + ". Waiting for them to answer…");
     call.ringTimer = setTimeout(async function(){
       if(indianActiveCall && indianActiveCall.id === call.id){

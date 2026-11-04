@@ -6,7 +6,7 @@
 const ALLOWED_ORIGIN = "https://indian-social-network-dotcom.github.io";
 const FIREBASE_PROJECT_ID = "indian-84a86";
 const ONESIGNAL_APP_ID = "019d756d-8ff5-4c09-bcab-75ace208d8da";
-const TEST_SITE_URL = "https://indian-social-network-dotcom.github.io/Indian/css-test/index.html";
+const TEST_SITE_URL = "https://indian-social-network-dotcom.github.io/Indian/";
 
 function corsHeaders(origin) {
   const headers = {
@@ -40,6 +40,7 @@ async function verifyFirebaseIdToken(idToken, apiKey) {
     : null;
   if (response.ok && uid) return { uid: uid, error: null };
 
+  // Return only Google's short error code/message; never log or expose the ID token or API key.
   const apiError = data && data.error ? data.error : {};
   const detail = String(apiError.message || "Unknown Firebase verification error").slice(0, 180);
   return { uid: null, error: { httpStatus: response.status, detail: detail } };
@@ -74,6 +75,7 @@ async function stableIdempotencyKey(messageId) {
   const data = new TextEncoder().encode(`indian-message-push:${FIREBASE_PROJECT_ID}:${messageId}`);
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
   const bytes = digest.slice(0, 16);
+  // Format as a stable UUID so retries for the same Firestore message are idempotent.
   bytes[6] = (bytes[6] & 0x0f) | 0x50;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
@@ -108,6 +110,7 @@ async function sendOneSignalPush(env, receiverUid, messageId, senderName, messag
   let result = {};
   try { result = responseText ? JSON.parse(responseText) : {}; } catch {}
   if (!response.ok) {
+    // Expose a short provider error for diagnosis; never expose the REST API key.
     const providerError = result && (result.errors || result.error || result.message);
     const detail = (typeof providerError === "string"
       ? providerError
@@ -126,6 +129,7 @@ export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
 
+    // A harmless GET status response is useful for opening/testing the Worker URL directly.
     if (request.method === "GET") {
       return json({ service: "indian-message-push", status: "ready", configured: !!(env.FIREBASE_WEB_API_KEY && env.ONESIGNAL_REST_API_KEY) }, 200, origin);
     }

@@ -40,7 +40,6 @@ async function verifyFirebaseIdToken(idToken, apiKey) {
     : null;
   if (response.ok && uid) return { uid: uid, error: null };
 
-  // Return only Google's short error code/message; never log or expose the ID token or API key.
   const apiError = data && data.error ? data.error : {};
   const detail = String(apiError.message || "Unknown Firebase verification error").slice(0, 180);
   return { uid: null, error: { httpStatus: response.status, detail: detail } };
@@ -75,7 +74,6 @@ async function stableIdempotencyKey(messageId) {
   const data = new TextEncoder().encode(`indian-message-push:${FIREBASE_PROJECT_ID}:${messageId}`);
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
   const bytes = digest.slice(0, 16);
-  // Format as a stable UUID so retries for the same Firestore message are idempotent.
   bytes[6] = (bytes[6] & 0x0f) | 0x50;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
@@ -110,7 +108,6 @@ async function sendOneSignalPush(env, receiverUid, messageId, senderName, messag
   let result = {};
   try { result = responseText ? JSON.parse(responseText) : {}; } catch {}
   if (!response.ok) {
-    // Expose a short provider error for diagnosis; never expose the REST API key.
     const providerError = result && (result.errors || result.error || result.message);
     const detail = (typeof providerError === "string"
       ? providerError
@@ -129,7 +126,6 @@ export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
 
-    // A harmless GET status response is useful for opening/testing the Worker URL directly.
     if (request.method === "GET") {
       return json({ service: "indian-message-push", status: "ready", configured: !!(env.FIREBASE_WEB_API_KEY && env.ONESIGNAL_REST_API_KEY) }, 200, origin);
     }
@@ -163,12 +159,76 @@ export default {
     let body;
     try { body = await request.json(); }
     catch { return json({ error: "Invalid JSON." }, 400, origin); }
-    const messageId = typeof body.messageId === "string" ? body.messageId : "";
-    if (!/^[A-Za-z0-9_-]{10,40}$/.test(messageId)) {
+    const messageId = typeof body.messageId === "string" ? body.messageId.trim() : "";
+    const callId = typeof body.callId === "string" ? body.callId.trim() : "";
+    if (messageId && callId) {
+      return json({ error: "Send either messageId or callId, not both." }, 400, origin);
+    }
+    if (!messageId && !callId) {
+      return json({ error: "Missing messageId or callId." }, 400, origin);
+    }
+    if (messageId && !/^[A-Za-z0-9_-]{10,40}$/.test(messageId)) {
       return json({ error: "Invalid message ID." }, 400, origin);
+    }
+    if (callId && !/^[A-Za-z0-9_-]{10,40}$/.test(callId)) {
+      return json({ error: "Invalid call ID." }, 400, origin);
     }
 
     try {
+      if (callId) {
+        const callUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/calls/${encodeURIComponent(callId)}`;
+        const callResponse = await fetch(callUrl, {
+          headers: { "Authorization": `Bearer ${idToken}` }
+        });
+        if (callResponse.status === 404) return json({ error: "Call not found." }, 404, origin);
+        if (!callResponse.ok) throw new Error(`Firestore call read failed (${callResponse.status})`);
+        const callDoc = await callResponse.json();
+        const callerId = stringField(callDoc, "callerId");
+        const calleeId = stringField(callDoc, "calleeId");
+        const callerName = stringField(callDoc, "callerName") || "Someone";
+        const callType = stringField(callDoc, "callType") || "audio";
+        const status = stringField(callDoc, "status");
+
+        if (!callerId || !calleeId) return json({ error: "Call caller or receiver is missing." }, 400, origin);
+        if (callerId !== callerUid) return json({ error: "You can only notify for a call you started." }, 403, origin);
+        if (status !== "ringing") return json({ error: "Call is not in ringing state." }, 400, origin);
+        if (callType !== "audio" && callType !== "video") return json({ error: "Invalid call type." }, 400, origin);
+
+        const safeCaller = callerName.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "Someone";
+        const callKey = await stableIdempotencyKey(`call:${callId}`);
+        const callPayload = {
+          app_id: ONESIGNAL_APP_ID,
+          include_aliases: { external_id: [`indian_firebase_${calleeId}`] },
+          target_channel: "push",
+          headings: { en: callType === "video" ? "Incoming Indian Video Call" : "Incoming Indian Voice Call" },
+          contents: { en: `${safeCaller} is calling you. Tap to answer.` },
+          url: TEST_SITE_URL,
+          idempotency_key: callKey,
+          data: { type: "call", callId, callType }
+        };
+        const callPushResponse = await fetch("https://api.onesignal.com/notifications", {
+          method: "POST",
+          headers: {
+            "Authorization": `Key ${env.ONESIGNAL_REST_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(callPayload)
+        });
+        const callResponseText = await callPushResponse.text();
+        let callResult = {};
+        try { callResult = callResponseText ? JSON.parse(callResponseText) : {}; } catch {}
+        if (!callPushResponse.ok) {
+          const providerError = callResult && (callResult.errors || callResult.error || callResult.message);
+          const detail = (typeof providerError === "string" ? providerError : Array.isArray(providerError) ? providerError.join("; ") : providerError ? JSON.stringify(providerError) : callPushResponse.statusText) || "Unknown OneSignal error";
+          console.error("OneSignal call push failed:", callPushResponse.status, detail.slice(0, 240));
+          throw new Error(`OneSignal call push HTTP ${callPushResponse.status}: ${detail.slice(0, 240)}`);
+        }
+        if (!callResult || !callResult.id) {
+          return json({ success: false, type: "call", message: "No subscribed OneSignal device matched this recipient." }, 200, origin);
+        }
+        return json({ success: true, type: "call", notificationId: callResult.id }, 200, origin);
+      }
+
       const message = await getFirestoreMessage(messageId, idToken);
       if (!message) return json({ error: "Message not found." }, 404, origin);
 

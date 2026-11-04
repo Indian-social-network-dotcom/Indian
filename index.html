@@ -35,6 +35,19 @@
       });
       window.__indianOneSignalInstance = OneSignal;
       window.__indianOneSignalReady = true;
+      // OneSignal v16 click event: preserve the notification's deep-link data.
+      try {
+        OneSignal.Notifications.addEventListener("click", function(event) {
+          var extra = event && event.notification && event.notification.additionalData || {};
+          var target = extra.type === "call" && extra.callId
+            ? "/Indian/?indianCallId=" + encodeURIComponent(extra.callId)
+            : extra.type === "message" && extra.messageId
+              ? "/Indian/?indianMessageId=" + encodeURIComponent(extra.messageId) : "";
+          if (target) {
+            try { window.location.assign(target); } catch (e) {}
+          }
+        });
+      } catch (clickHookError) { console.warn("OneSignal click handler unavailable", clickHookError); }
       if (window.firebaseCurrentUid) {
         try { await OneSignal.login("indian_firebase_" + String(window.firebaseCurrentUid)); }
         catch (identityError) { console.warn("OneSignal user link pending", identityError); }
@@ -1629,6 +1642,24 @@ function filterConversationList(){
     conversationSearchQuery = input ? input.value : "";
     renderConversationList();
 }
+
+async function indianOpenMessageFromNotification(messageId){
+    if(!messageId || !firebaseDb) return false;
+    try {
+        const snap = await getDoc(doc(firebaseDb, "messages", messageId));
+        if(!snap.exists()) return false;
+        const msg = snap.data() || {};
+        const otherUid = msg.senderId === window.firebaseCurrentUid ? msg.receiverId : msg.senderId;
+        if(!otherUid) return false;
+        const person = (peopleData || []).find(function(p){
+            return String(getFirestoreMessagePersonUid(p.id) || "") === String(otherUid);
+        });
+        if(!person) return false;
+        openConversation(person.id);
+        return true;
+    } catch(error) { console.warn("Could not open message notification target", error); return false; }
+}
+window.indianOpenMessageFromNotification = indianOpenMessageFromNotification;
 
 function openConversation(personId){
     const person = peopleData.find(function(p){ return p.id === personId; });
@@ -5396,8 +5427,17 @@ function startIndianCallInbox(uid){
       if(!stillRinging){ indianIncomingCall=null; hideIndianIncomingPanel(); }
     }
     if(!indianIncomingCall && !indianActiveCall && candidates.length){
-      const chosen = candidates.find(function(item){return !indianSeenIncomingCallIds.has(item.id);});
-      if(chosen){ indianSeenIncomingCallIds.add(chosen.id); indianSetIncomingPanel(chosen.data, chosen.id); }
+      const requestedCallId = new URLSearchParams(window.location.search).get("indianCallId");
+      const chosen = (requestedCallId && candidates.find(function(item){return item.id === requestedCallId;}))
+        || candidates.find(function(item){return !indianSeenIncomingCallIds.has(item.id);});
+      if(chosen){
+        indianSeenIncomingCallIds.add(chosen.id);
+        indianSetIncomingPanel(chosen.data, chosen.id);
+        if(requestedCallId === chosen.id){
+          const cleanUrl = new URL(window.location.href); cleanUrl.searchParams.delete("indianCallId");
+          window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+        }
+      }
     }
   }, function(error){
     setIndianCallStatus("Incoming call listener could not connect. Publish the Firestore calls rules from the test package. " + sanitizePlainText(error.message,180));
@@ -5621,15 +5661,26 @@ async function endIndianCall(){
   const call = indianActiveCall;
   if(!call) return;
   setIndianCallStatusForBoth("Ending call…");
-  try{ await updateDoc(call.ref,{status:call.role === "caller" && !call.remoteDescriptionApplied ? "cancelled" : "ended",endedAtMs:Date.now(),updatedAtMs:Date.now()}); }
+  try{
+    const finalStatus = call.role === "caller" && !call.remoteDescriptionApplied ? "cancelled" : "ended";
+    await updateDoc(call.ref,{status:finalStatus,endedAtMs:Date.now(),updatedAtMs:Date.now()});
+  }
   catch(error){ setIndianCallStatusForBoth("Call ended locally, but the status could not sync: " + sanitizePlainText(error.message,160)); }
   indianFinishActiveCall("Call ended.");
 }
 window.endIndianCall = endIndianCall;
 if(firebaseAuth){
   onAuthStateChanged(firebaseAuth, function(user){
-    if(user && firebaseDb) startIndianCallInbox(user.uid);
-    else { stopIndianCallInbox(); window.__indianCallInboxUid = ""; if(indianActiveCall) indianFinishActiveCall("Signed out. Call ended."); }
+    if(user && firebaseDb) {
+      startIndianCallInbox(user.uid);
+      const requestedMessageId = new URLSearchParams(window.location.search).get("indianMessageId");
+      if(requestedMessageId){
+        window.setTimeout(async function(){
+          const opened = await indianOpenMessageFromNotification(requestedMessageId);
+          if(opened){ const cleanUrl = new URL(window.location.href); cleanUrl.searchParams.delete("indianMessageId"); window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash); }
+        }, 1200);
+      }
+    } else { stopIndianCallInbox(); window.__indianCallInboxUid = ""; if(indianActiveCall) indianFinishActiveCall("Signed out. Call ended."); }
   });
 }
 

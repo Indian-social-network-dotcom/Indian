@@ -6,7 +6,7 @@
 const ALLOWED_ORIGIN = "https://indian-social-network-dotcom.github.io";
 const FIREBASE_PROJECT_ID = "indian-84a86";
 const ONESIGNAL_APP_ID = "019d756d-8ff5-4c09-bcab-75ace208d8da";
-const TEST_SITE_URL = "https://indian-social-network-dotcom.github.io/Indian/";
+const INDIAN_SITE_URL = "https://indian-social-network-dotcom.github.io/Indian/";
 
 function corsHeaders(origin) {
   const headers = {
@@ -94,7 +94,7 @@ async function sendOneSignalPush(env, receiverUid, messageId, senderName, messag
     target_channel: "push",
     headings: { en: `${safeSender} sent you a message` },
     contents: { en: safeMessage || "Sent you a photo or video." },
-    url: TEST_SITE_URL,
+    url: `${INDIAN_SITE_URL}?indianMessageId=${encodeURIComponent(messageId)}`,
     idempotency_key: idempotencyKey,
     data: { type: "message", messageId }
   };
@@ -206,7 +206,7 @@ export default {
           target_channel: "push",
           headings: { en: callType === "video" ? "Incoming Indian Video Call" : "Incoming Indian Voice Call" },
           contents: { en: `${safeCaller} is calling you. Tap to answer.` },
-          url: TEST_SITE_URL,
+          url: `${INDIAN_SITE_URL}?indianCallId=${encodeURIComponent(callId)}`,
           idempotency_key: callKey,
           data: { type: "call", callId, callType }
         };

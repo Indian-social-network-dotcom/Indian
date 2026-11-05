@@ -1,0 +1,36 @@
+/* Extracted story styles; linked at the original position. */
+
+/* Facebook-style story view: uncluttered strip and one full-screen story at a time. */
+#homeStoriesSection .home-section-heading>div p{display:none!important}
+#storiesSection>p:first-of-type{display:none!important}
+#storiesSection>h3{margin-top:16px}
+#storiesList{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+.local-story-card,.online-story-card{display:flex!important;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;width:112px;min-width:100px;margin:4px 0!important;padding:8px!important;border:0!important;background:transparent!important;box-shadow:none!important;text-align:center}
+.local-story-card h4,.local-story-card p,.online-story-card h4,.online-story-card p{display:none!important}
+.local-story-card img,.local-story-card video,.online-story-card img{width:72px!important;height:72px!important;max-width:72px!important;max-height:72px!important;object-fit:cover!important;border-radius:50%!important;border:3px solid #ff9933!important;margin:0!important}
+.local-story-card button,.online-story-card button{min-height:36px!important;padding:6px 10px!important;font-size:.8rem!important}
+.story-preview-card{min-height:0!important;min-width:94px!important;flex:0 0 94px!important;padding:7px 5px!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.story-preview-avatar{width:70px!important;height:70px!important;flex-basis:70px!important;border:3px solid #ff9933!important;box-shadow:0 0 0 2px #fff,0 0 0 4px #138808!important}
+.story-preview-name{font-size:.82rem!important;max-width:88px!important}
+.story-preview-caption{display:none!important}
+#homeStoriesStrip{min-height:0!important;padding:8px 2px 12px!important;gap:9px!important}
+.indian-story-fullscreen[hidden]{display:none!important}
+.indian-story-fullscreen{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;background:#08090c;color:#fff;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom);box-sizing:border-box}
+.indian-story-fullscreen button{font:inherit;cursor:pointer}
+.indian-story-fullscreen button:focus-visible{outline:3px solid #ff9933!important;outline-offset:3px!important}
+.indian-story-top{display:flex;align-items:center;gap:10px;padding:10px 2px;min-height:54px;flex:0 0 auto}
+.indian-story-owner{font-weight:750;font-size:1rem;overflow-wrap:anywhere;flex:1}
+.indian-story-close{width:44px;height:44px;border:1px solid #71717a;border-radius:50%;background:#222;color:#fff;font-size:1.5rem;display:flex;align-items:center;justify-content:center}
+.indian-story-stage{position:relative;display:flex;align-items:center;justify-content:center;flex:1 1 auto;min-height:0;overflow:hidden;touch-action:pan-y}
+.indian-story-stage img,.indian-story-stage video{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:6px}
+.indian-story-stage video{width:100%;max-height:100%}
+.indian-story-stage audio{display:none}
+.indian-story-bottom{flex:0 0 auto;max-height:25vh;overflow-y:auto;padding:12px 2px 10px}
+.indian-story-caption{margin:0 0 9px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:1rem;line-height:1.45}
+.indian-story-audio{width:100%;max-width:540px;min-height:42px}
+.indian-story-controls{display:flex;justify-content:space-between;gap:10px;padding:7px 0 3px;flex:0 0 auto}
+.indian-story-controls button{min-height:44px;padding:8px 15px;border:1px solid #68707b;border-radius:12px;background:#1d2733;color:#fff;font-weight:700}
+.indian-story-count{font-size:.82rem;color:#cbd5e1;align-self:center}
+.indian-story-audio-button{min-height:42px;padding:7px 12px;border:1px solid #68707b;border-radius:10px;background:#1d2733;color:white}
+@media(min-width:720px){.indian-story-fullscreen{align-items:center;padding-left:24px;padding-right:24px}.indian-story-top,.indian-story-stage,.indian-story-bottom,.indian-story-controls{width:min(760px,100%)}.indian-story-stage img,.indian-story-stage video{max-height:calc(100vh - 190px)}}
+@media(prefers-reduced-motion:reduce){.indian-story-fullscreen *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}

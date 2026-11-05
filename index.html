@@ -5496,6 +5496,62 @@ function indianSetCallStatusForBoth(message){
   const active = $("indianActiveCallStatus");
   if(active) active.textContent = message;
 }
+// Accessible call tones: incoming telephone ring and caller-side ringback.
+let indianCallToneContext = null;
+let indianCallToneTimer = null;
+let indianCallToneNodes = [];
+let indianCallToneMode = "";
+let indianCallToneStep = 0;
+function indianStopCallTone(){
+  if(indianCallToneTimer){ clearTimeout(indianCallToneTimer); indianCallToneTimer=null; }
+  indianCallToneNodes.forEach(function(node){ try{node.stop();}catch(e){} try{node.disconnect();}catch(e){} });
+  indianCallToneNodes=[];
+  indianCallToneMode="";
+  indianCallToneStep=0;
+}
+function indianCallToneBurst(mode){
+  if(!indianCallToneContext || indianCallToneContext.state !== "running") return;
+  const ctx=indianCallToneContext, now=ctx.currentTime;
+  const gain=ctx.createGain(); gain.gain.setValueAtTime(0.0001,now); gain.gain.linearRampToValueAtTime(0.12,now+0.025);
+  gain.connect(ctx.destination);
+  [440,480].forEach(function(freq){
+    const osc=ctx.createOscillator(); osc.type="sine"; osc.frequency.value=freq; osc.connect(gain); osc.start(now); osc.stop(now+0.42); indianCallToneNodes.push(osc);
+  });
+  gain.gain.setValueAtTime(0.12,now+0.36); gain.gain.linearRampToValueAtTime(0.0001,now+0.42);
+  window.setTimeout(function(){try{gain.disconnect();}catch(e){}},650);
+}
+function indianScheduleCallTone(mode){
+  if(indianCallToneMode!==mode) return;
+  const step=indianCallToneStep++;
+  const incoming=mode==="incoming";
+  const position=step%12;
+  const on=incoming ? (position===0||position===2||position===4) : (position===0||position===1||position===2||position===3);
+  if(on) indianCallToneBurst(mode);
+  indianCallToneTimer=window.setTimeout(function(){indianScheduleCallTone(mode);},incoming?500:500);
+  // Incoming: three short double-tone bursts, then a pause. Outgoing: classic long ringback, then silence.
+}
+function indianStartCallTone(mode){
+  if(mode!=="incoming" && mode!=="ringback") return;
+  indianStopCallTone();
+  try{
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx) return;
+    indianCallToneContext=indianCallToneContext||new AudioCtx();
+    const begin=function(){
+      if(indianCallToneContext.state!=="running") return;
+      indianCallToneMode=mode; indianCallToneStep=0; indianScheduleCallTone(mode);
+    };
+    const resume=indianCallToneContext.resume();
+    if(resume&&typeof resume.then==="function") resume.then(begin).catch(function(){});
+    else begin();
+  }catch(e){ console.warn("Indian call tone unavailable",e); }
+}
+// Browsers may suspend audio until the user has interacted with the page.
+["pointerdown","keydown","touchstart"].forEach(function(eventName){
+  window.addEventListener(eventName,function(){
+    if(indianCallToneContext&&indianCallToneContext.state==="suspended") indianCallToneContext.resume().catch(function(){});
+  },{passive:true});
+});
 function indianCallRef(callId){ return doc(firebaseDb, "calls", callId); }
 function indianCallParticipantName(personId, fallback){
   const person = (window.getIndianPersonById && window.getIndianPersonById(personId)) || peopleData.find(p => p.id === personId);
@@ -5515,8 +5571,10 @@ function indianSetIncomingPanel(callData, callId){
     photo.alt = "Profile photo of " + callerName;
   }
   if(panel){ panel.style.display = "flex"; const title = $("indianIncomingCallTitle"); if(title) title.focus(); }
+  indianStartCallTone("incoming");
 }
 function hideIndianIncomingPanel(){
+  indianStopCallTone();
   const panel = $("indianIncomingCallPanel");
   if(panel) panel.style.display = "none";
 }
@@ -5595,7 +5653,7 @@ function indianCreatePeerConnection(call){
     });
   };
   pc.onconnectionstatechange = function(){
-    if(pc.connectionState === "connected") indianSetCallStatusForBoth("Call connected. Keep this page open during the call.");
+    if(pc.connectionState === "connected"){ indianStopCallTone(); indianSetCallStatusForBoth("Call connected. Keep this page open during the call."); }
     else if(pc.connectionState === "connecting") indianSetCallStatusForBoth("Connecting call…");
     else if(pc.connectionState === "failed") indianSetCallStatusForBoth("Connection failed. This test uses STUN only; some networks need a TURN relay server.");
     else if(pc.connectionState === "disconnected") indianSetCallStatusForBoth("Call temporarily disconnected. Waiting for the connection…");
@@ -5635,6 +5693,7 @@ function indianWatchActiveCallDoc(call){
     if(!snapshot.exists() || !indianActiveCall || indianActiveCall.id !== call.id) return;
     const data = snapshot.data() || {};
     if(call.role === "caller" && data.answer && !call.remoteDescriptionApplied && call.pc){
+      indianStopCallTone();
       try{
         await call.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         call.remoteDescriptionApplied = true;
@@ -5653,6 +5712,7 @@ function indianWatchActiveCallDoc(call){
   }));
 }
 function indianFinishActiveCall(message){
+  indianStopCallTone();
   const call = indianActiveCall;
   indianActiveCall = null;
   if(call){
@@ -5712,6 +5772,7 @@ async function startIndianCall(callType){
     const offer = await call.pc.createOffer();
     await call.pc.setLocalDescription(offer);
     await updateDoc(callRef, {status:"ringing",offer:{type:call.pc.localDescription.type,sdp:call.pc.localDescription.sdp},updatedAtMs:Date.now()});
+    indianStartCallTone("ringback");
     // Start the ring timeout immediately after the call enters ringing.
     // Do not wait for the push request: the callee may answer while it is pending.
     call.ringTimer = setTimeout(async function(){
@@ -5753,6 +5814,7 @@ async function acceptIndianIncomingCall(){
   if(!firebaseDb || !firebaseCurrentUser || !indianIncomingCall){ setIndianCallStatus("There is no incoming call to accept."); return; }
   const incoming = indianIncomingCall;
   const data = incoming.data;
+  indianStopCallTone();
   hideIndianIncomingPanel();
   setIndianCallStatus("Answering the call…");
   try{
@@ -5782,6 +5844,7 @@ window.acceptIndianIncomingCall = acceptIndianIncomingCall;
 async function declineIndianIncomingCall(){
   const incoming = indianIncomingCall;
   indianIncomingCall = null;
+  indianStopCallTone();
   hideIndianIncomingPanel();
   if(incoming && firebaseDb){
     try{await updateDoc(incoming.ref,{status:"declined",updatedAtMs:Date.now()});setIndianCallStatus("Incoming call declined.");}

@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    // Apply id("com.google.gms.google-services") only after app/google-services.json is added.
+    id("com.google.gms.google-services")
 }
 
 android {

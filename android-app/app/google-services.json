@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "333987809341",
+    "project_id": "indian-84a86",
+    "storage_bucket": "indian-84a86.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:333987809341:android:17838ec99c4205f8808254",
+        "android_client_info": {
+          "package_name": "indian.socialnetwork.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEp7iN0BbR2JZldlrSDOSDdMFLy_Z68Zg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

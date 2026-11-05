@@ -6,7 +6,7 @@
 <title>Indian</title>
 <meta name="theme-color" content="#123b2a">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./indian-pwa-icon-192.png" type="image/png">
+<link rel="icon" href="./css-test/indian-pwa-icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="./indian-pwa-icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -151,7 +151,7 @@
 <header class="brand-header" id="indianTopHeader">
   <div class="brand-inner">
     <a class="brand-logo-link" href="#home" onclick="openIndianHome(); return false;" aria-label="Indian home">
-      <span class="brand-logo-frame"><img class="brand-logo" src="./indian-logo.webp" loading="eager" decoding="async" fetchpriority="low" width="64" height="64" alt="Indian logo: three-dimensional map of India in saffron, white and green, with the Ashoka Chakra"></span>
+      <span class="brand-logo-frame"><img class="brand-logo" src="./css-test/indian-logo.webp" loading="eager" decoding="async" fetchpriority="low" width="64" height="64" alt="Indian logo: three-dimensional map of India in saffron, white and green, with the Ashoka Chakra"></span>
     </a>
     <div class="brand-copy"><h1>Indian</h1></div>
     <button class="top-profile-button" id="topProfileButton" type="button" onclick="openProfile()" aria-label="Open Profile">
@@ -1651,9 +1651,14 @@ async function indianOpenMessageFromNotification(messageId){
         const msg = snap.data() || {};
         const otherUid = msg.senderId === window.firebaseCurrentUid ? msg.receiverId : msg.senderId;
         if(!otherUid) return false;
-        const person = (peopleData || []).find(function(p){
-            return String(getFirestoreMessagePersonUid(p.id) || "") === String(otherUid);
-        });
+        let person = null;
+        // Public profiles may still be loading immediately after a notification opens the app.
+        for(let attempt=0; attempt<20 && !person; attempt++){
+            person = (peopleData || []).find(function(p){
+                return String(getFirestoreMessagePersonUid(p.id) || "") === String(otherUid);
+            }) || null;
+            if(!person) await new Promise(function(resolve){setTimeout(resolve,400);});
+        }
         if(!person) return false;
         openConversation(person.id);
         return true;
@@ -5270,10 +5275,9 @@ async function enableIndianWebPushForThisDevice(){
             setIndianWebPushStatus(permission === "denied" ? "Notifications are blocked in this browser. Allow them in site settings, then try again." : "Notification permission was not granted. You can try again when ready.");
             return;
         }
-        const swUrl = new URL("./firebase-messaging-sw.js", window.location.href);
-        const swScope = new URL("./", window.location.href).pathname;
+        const swUrl = new URL("./fcm/firebase-messaging-sw.js", window.location.href);
+        const swScope = new URL("./fcm/", window.location.href).pathname;
         indianWebPushServiceWorkerRegistration = await navigator.serviceWorker.register(swUrl.href, {scope: swScope});
-        await navigator.serviceWorker.ready;
         indianWebPushMessaging = getMessaging(firebaseApp);
         const token = await getToken(indianWebPushMessaging, {
             vapidKey: INDIAN_WEB_PUSH_VAPID_PUBLIC_KEY,
@@ -5300,7 +5304,7 @@ async function enableIndianWebPushForThisDevice(){
         }
     }catch(error){
         console.error("Indian Web Push setup failed", error);
-        setIndianWebPushStatus("Push setup failed: " + String(error && error.message || error).slice(0, 240) + ". Check that firebase-messaging-sw.js was uploaded into css-test and try again.");
+        setIndianWebPushStatus("Push setup failed: " + String(error && error.message || error).slice(0, 240) + ". Check that fcm/firebase-messaging-sw.js is available and try again.");
     }
 }
 
@@ -7313,13 +7317,7 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
 
 
 <script id="indianPwaServiceWorkerBootstrap">
-// Register the same-origin app-shell and FCM service worker for PWA install/cache support.
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", function () {
-    navigator.serviceWorker.register("./firebase-messaging-sw.js", { scope: "./" })
-      .catch(function (error) { console.warn("Indian service worker registration failed", error); });
-  });
-}
+// OneSignal owns the parent /Indian/ scope. Firebase Messaging registers separately under /Indian/fcm/ when push is enabled.
 </script>
 
 <script id="indianCommunityHomeRedesignController">

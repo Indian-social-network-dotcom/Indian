@@ -5413,7 +5413,7 @@ function showIndianCallPanel(message, videoMode){
   if(title) title.textContent = videoMode ? "Indian Video Call" : "Indian Voice Call";
   if(personName) personName.textContent = call && call.remoteName ? call.remoteName : "Indian user";
   if(personPhoto){
-    const photo = indianCallParticipantPhoto(call && call.remoteUid);
+    const photo = String((call && call.remotePhotoURL) || indianCallParticipantPhoto(call && call.remoteUid) || "");
     if(photo){ personPhoto.src = photo; personPhoto.hidden = false; }
     else { personPhoto.removeAttribute("src"); personPhoto.hidden = true; }
     personPhoto.alt = "Profile photo of " + (call && call.remoteName ? call.remoteName : "the other person");
@@ -5505,7 +5505,7 @@ function indianSetIncomingPanel(callData, callId){
   const callerName = sanitizePlainText(callData.callerName || "An Indian user", 70);
   if(text) text.textContent = callerName + " is calling you by " + (callData.callType === "video" ? "video" : "voice") + ".";
   if(photo){
-    const url = indianCallParticipantPhoto(callData.callerId);
+    const url = String(callData.callerPhotoURL || indianCallParticipantPhoto(callData.callerId) || "");
     if(url){ photo.src = url; photo.hidden = false; }
     else { photo.removeAttribute("src"); photo.hidden = true; }
     photo.alt = "Profile photo of " + callerName;
@@ -5683,7 +5683,7 @@ async function startIndianCall(callType){
   try{
     const localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:callType === "video"});
     const callRef = doc(collection(firebaseDb, "calls"));
-    const call = {id:callRef.id,ref:callRef,role:"caller",callType:callType,remoteUid:recipientUid,remoteName:personName,muted:false,speakerEnabled:true,cameraEnabled:callType === "video",localStream:localStream,remoteStream:new MediaStream(),pc:null,unsubs:[],pendingRemoteCandidates:[],remoteDescriptionApplied:false,ringTimer:null};
+    const call = {id:callRef.id,ref:callRef,role:"caller",callType:callType,remoteUid:recipientUid,remoteName:personName,remotePhotoURL:indianCallParticipantPhoto(recipientUid),muted:false,speakerEnabled:true,cameraEnabled:callType === "video",localStream:localStream,remoteStream:new MediaStream(),pc:null,unsubs:[],pendingRemoteCandidates:[],remoteDescriptionApplied:false,ringTimer:null};
     indianActiveCall = call;
     showIndianCallPanel(buttonMessage, callType === "video");
     indianAttachCallMedia(call);
@@ -5692,6 +5692,7 @@ async function startIndianCall(callType){
       callerId: firebaseCurrentUser.uid,
       calleeId: recipientUid,
       callerName: sanitizePlainText(firebaseCurrentUser.displayName || profileName || "Indian user",70),
+      callerPhotoURL: String(window.profilePhotoURL || ""),
       calleeName: personName,
       callType: callType,
       status: "preparing",
@@ -5747,7 +5748,7 @@ async function acceptIndianIncomingCall(){
   setIndianCallStatus("Answering the call…");
   try{
     const localStream = await navigator.mediaDevices.getUserMedia({audio:true,video:data.callType === "video"});
-    const call = {id:incoming.id,ref:incoming.ref,role:"callee",callType:data.callType,remoteUid:data.callerId,remoteName:data.callerName || "Indian user",muted:false,speakerEnabled:true,cameraEnabled:data.callType === "video",localStream:localStream,remoteStream:new MediaStream(),pc:null,unsubs:[],pendingRemoteCandidates:[],remoteDescriptionApplied:true,ringTimer:null};
+    const call = {id:incoming.id,ref:incoming.ref,role:"callee",callType:data.callType,remoteUid:data.callerId,remoteName:data.callerName || "Indian user",remotePhotoURL:String(data.callerPhotoURL || indianCallParticipantPhoto(data.callerId) || ""),muted:false,speakerEnabled:true,cameraEnabled:data.callType === "video",localStream:localStream,remoteStream:new MediaStream(),pc:null,unsubs:[],pendingRemoteCandidates:[],remoteDescriptionApplied:true,ringTimer:null};
     indianActiveCall = call;
     indianIncomingCall = null;
     showIndianCallPanel("Answering the call…", call.callType === "video");

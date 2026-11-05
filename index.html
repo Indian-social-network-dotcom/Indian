@@ -5525,6 +5525,8 @@ function indianWatchActiveCallDoc(call){
       try{
         await call.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         call.remoteDescriptionApplied = true;
+        // The ringing timeout must stop once the callee answers.
+        if(call.ringTimer){ clearTimeout(call.ringTimer); call.ringTimer = null; }
         await indianFlushRemoteCandidates(call);
         indianSetCallStatusForBoth("The other person answered. Connecting call…");
       }catch(error){ indianSetCallStatusForBoth("Could not connect the call answer: " + sanitizePlainText(error.message,180)); }

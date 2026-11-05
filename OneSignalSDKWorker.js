@@ -21,7 +21,7 @@ self.addEventListener("fetch", function(event) {
   event.respondWith((async function() {
     const cache = await caches.open(INDIAN_APP_CACHE);
     const cached = await cache.match(request);
-    if (request.mode !== "navigate" && cached) return cached;
+    // Network-first keeps deployed fixes fresh; cached content is the offline fallback.
     try {
       const response = await fetch(request);
       if (response && response.ok && response.type === "basic") await cache.put(request, response.clone());

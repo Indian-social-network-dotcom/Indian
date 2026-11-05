@@ -5428,7 +5428,7 @@ function showIndianCallPanel(message, videoMode){
     if(typeof window.__indianCallPreviousOverflow === "undefined") window.__indianCallPreviousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
   }
-  if(panel) panel.focus();
+  if(title) title.focus(); else if(panel) panel.focus();
 }
 function indianCallDialogKeydown(event){
   if(!event || event.key !== "Tab") return;

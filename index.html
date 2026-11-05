@@ -5588,6 +5588,14 @@ async function startIndianCall(callType){
     const offer = await call.pc.createOffer();
     await call.pc.setLocalDescription(offer);
     await updateDoc(callRef, {status:"ringing",offer:{type:call.pc.localDescription.type,sdp:call.pc.localDescription.sdp},updatedAtMs:Date.now()});
+    // Start the ring timeout immediately after the call enters ringing.
+    // Do not wait for the push request: the callee may answer while it is pending.
+    call.ringTimer = setTimeout(async function(){
+      if(indianActiveCall && indianActiveCall.id === call.id){
+        try{ await updateDoc(call.ref,{status:"cancelled",updatedAtMs:Date.now()}); }catch(e){}
+        indianFinishActiveCall("No answer. Call ended after 60 seconds.");
+      }
+    },60000);
     // Notify the callee through the existing Cloudflare Worker. Push failure
     // must not interrupt the live WebRTC call attempt.
     try{
@@ -5608,12 +5616,6 @@ async function startIndianCall(callType){
       console.warn("Indian incoming-call push request failed:", callPushError);
     }
     indianSetCallStatusForBoth("Calling " + personName + ". Waiting for them to answer…");
-    call.ringTimer = setTimeout(async function(){
-      if(indianActiveCall && indianActiveCall.id === call.id){
-        try{ await updateDoc(call.ref,{status:"cancelled",updatedAtMs:Date.now()}); }catch(e){}
-        indianFinishActiveCall("No answer. Call ended after 60 seconds.");
-      }
-    },60000);
   }catch(error){
     console.error("Indian call start failed", error);
     if(indianActiveCall) indianFinishActiveCall(indianCallErrorText(error));

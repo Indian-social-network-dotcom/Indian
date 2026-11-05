@@ -94,7 +94,7 @@ async function sendOneSignalPush(env, receiverUid, messageId, senderName, messag
     target_channel: "push",
     headings: { en: `${safeSender} sent you a message` },
     contents: { en: safeMessage || "Sent you a photo or video." },
-    url: `${INDIAN_SITE_URL}?indianMessageId=${encodeURIComponent(messageId)}`,
+    web_url: `${INDIAN_SITE_URL}?indianMessageId=${encodeURIComponent(messageId)}`,
     idempotency_key: idempotencyKey,
     data: { type: "message", messageId }
   };
@@ -199,16 +199,21 @@ export default {
         if (callType !== "audio" && callType !== "video") return json({ error: "Invalid call type." }, 400, origin);
 
         const safeCaller = callerName.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "Someone";
+        const callerPhoto = stringField(callDoc, "callerPhotoURL");
+        // OneSignal image fields require a publicly reachable HTTPS image URL.
+        // Current Indian profile photos are Firestore data URLs, so do not send those as notification images.
+        const safeCallerPhoto = /^https:\/\//i.test(callerPhoto) ? callerPhoto : "";
         const callKey = await stableIdempotencyKey(`call:${callId}`);
         const callPayload = {
           app_id: ONESIGNAL_APP_ID,
           include_aliases: { external_id: [`indian_firebase_${calleeId}`] },
           target_channel: "push",
-          headings: { en: callType === "video" ? "Incoming Indian Video Call" : "Incoming Indian Voice Call" },
-          contents: { en: `${safeCaller} is calling you. Tap to answer.` },
-          url: `${INDIAN_SITE_URL}?indianCallId=${encodeURIComponent(callId)}`,
+          headings: { en: `${callType === "video" ? "Video" : "Voice"} call from ${safeCaller}` },
+          contents: { en: "Tap to answer on Indian." },
+          web_url: `${INDIAN_SITE_URL}?indianCallId=${encodeURIComponent(callId)}`,
+          ...(safeCallerPhoto ? { chrome_web_icon: safeCallerPhoto } : {}),
           idempotency_key: callKey,
-          data: { type: "call", callId, callType }
+          data: { type: "call", callId, callType, callerName: safeCaller }
         };
         const callPushResponse = await fetch("https://api.onesignal.com/notifications", {
           method: "POST",

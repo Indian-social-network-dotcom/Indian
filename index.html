@@ -780,17 +780,25 @@ Explore places and their local communities.
 
 <div id="indianIncomingCallPanel" role="alert" aria-live="assertive" aria-atomic="true" style="display:none;position:fixed;z-index:10020;right:16px;bottom:92px;width:min(360px,calc(100vw - 32px));box-sizing:border-box;background:#fff;color:#172b3a;border:2px solid #1d4f7c;border-radius:14px;padding:16px;box-shadow:0 12px 36px rgba(0,0,0,.25);">
   <h2 style="margin:0 0 8px;font-size:1.2rem;">Incoming Indian Call</h2>
+  <img id="indianIncomingCallPhoto" alt="Caller profile photo" hidden style="width:76px;height:76px;border-radius:50%;object-fit:cover;">
   <p id="indianIncomingCallText">Someone is calling.</p>
   <button type="button" class="action" onclick="acceptIndianIncomingCall()">Accept Call</button>
   <button type="button" class="action" onclick="declineIndianIncomingCall()">Decline Call</button>
 </div>
-<div id="indianActiveCallPanel" role="region" aria-label="Active voice or video call" style="display:none;position:fixed;z-index:10010;right:16px;bottom:92px;width:min(420px,calc(100vw - 32px));max-height:75vh;overflow:auto;box-sizing:border-box;background:#fff;color:#172b3a;border:2px solid #1d4f7c;border-radius:14px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,.25);">
-  <h2 id="indianActiveCallTitle" style="margin:0 0 8px;font-size:1.2rem;">Indian Call</h2>
-  <p id="indianActiveCallStatus" role="status" aria-live="polite">Preparing call…</p>
-  <video id="indianLocalCallVideo" autoplay playsinline muted aria-label="Your camera preview" style="display:none;width:100%;max-height:180px;background:#111;border-radius:8px;margin:6px 0;"></video>
-  <video id="indianRemoteCallVideo" autoplay playsinline controls aria-label="Other participant's video" style="display:none;width:100%;max-height:280px;background:#111;border-radius:8px;margin:6px 0;"></video>
-  <audio id="indianRemoteCallAudio" autoplay controls aria-label="Other participant's voice" style="display:none;width:100%;margin:6px 0;"></audio>
-  <button type="button" class="action" onclick="endIndianCall()" aria-label="End voice or video call">End Call</button>
+<div id="indianActiveCallPanel" role="dialog" aria-modal="true" aria-labelledby="indianActiveCallTitle" tabindex="-1" onkeydown="indianCallDialogKeydown(event)" style="display:none;position:fixed;z-index:10050;inset:0;width:100%;height:100vh;height:100dvh;box-sizing:border-box;overflow:auto;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(24px + env(safe-area-inset-top,0px)) 18px calc(24px + env(safe-area-inset-bottom,0px));background:#101820;color:#fff;">
+  <h2 id="indianActiveCallTitle" tabindex="-1" style="margin:0;font-size:1.5rem;text-align:center;">Indian Call</h2>
+  <img id="indianCallPersonPhoto" alt="Other participant profile photo" hidden style="width:clamp(112px,25vw,190px);height:clamp(112px,25vw,190px);border-radius:50%;object-fit:cover;border:3px solid #fff;">
+  <p id="indianCallPersonName" style="margin:0;font-size:1.35rem;font-weight:700;text-align:center;">Indian user</p>
+  <p id="indianActiveCallStatus" role="status" aria-live="polite" aria-atomic="true" style="margin:0;text-align:center;">Preparing call…</p>
+  <video id="indianRemoteCallVideo" autoplay playsinline controls aria-label="Other participant video" style="display:none;width:min(100%,900px);max-height:48vh;background:#000;border-radius:12px;"></video>
+  <video id="indianLocalCallVideo" autoplay playsinline muted aria-label="Your camera preview" style="display:none;width:min(42%,260px);max-height:22vh;background:#000;border-radius:12px;"></video>
+  <audio id="indianRemoteCallAudio" autoplay controls aria-label="Other participant voice" style="display:none;width:min(100%,420px);"></audio>
+  <div role="group" aria-label="Call controls" style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;width:min(100%,560px);">
+    <button type="button" class="action" id="indianCallMuteButton" onclick="indianToggleCallMute()" aria-label="Mute microphone" aria-pressed="false" style="min-height:52px;">Mute Microphone</button>
+    <button type="button" class="action" id="indianCallSpeakerButton" onclick="indianToggleCallSpeaker()" aria-label="Speaker on or off" aria-pressed="true" style="min-height:52px;">Speaker On</button>
+    <button type="button" class="action" id="indianCallCameraButton" onclick="indianToggleCallCamera()" aria-label="Turn camera off or on" aria-pressed="true" style="display:none;min-height:52px;">Camera Off</button>
+    <button type="button" class="action" onclick="endIndianCall()" aria-label="End call" style="min-height:52px;background:#c62828;color:#fff;border:2px solid #ef9a9a;">End Call</button>
+  </div>
 </div>
 
 </main>
@@ -5363,20 +5371,115 @@ function setIndianCallStatus(message){
   const active = $("indianActiveCallStatus");
   if(active && indianActiveCall) active.textContent = String(message || "");
 }
+function indianCallParticipantPhoto(uid){
+  const person = (peopleData || []).find(function(item){
+    return String(item.firebaseUid || "") === String(uid || "");
+  });
+  if(person && person.photoURL) return String(person.photoURL);
+  if(firebaseCurrentUser && uid && String(firebaseCurrentUser.uid) === String(uid)){
+    return String(window.profilePhotoURL || "");
+  }
+  return "";
+}
+function indianUpdateCallControls(){
+  const call = indianActiveCall;
+  const mute = $("indianCallMuteButton");
+  const speaker = $("indianCallSpeakerButton");
+  const camera = $("indianCallCameraButton");
+  if(mute){
+    mute.textContent = call && call.muted ? "Unmute Microphone" : "Mute Microphone";
+    mute.setAttribute("aria-pressed", call && call.muted ? "true" : "false");
+  }
+  if(speaker){
+    speaker.textContent = call && call.speakerEnabled === false ? "Speaker Off" : "Speaker On";
+    speaker.setAttribute("aria-pressed", call && call.speakerEnabled !== false ? "true" : "false");
+  }
+  if(camera){
+    camera.textContent = call && call.cameraEnabled === false ? "Camera On" : "Camera Off";
+    camera.setAttribute("aria-pressed", call && call.cameraEnabled !== false ? "true" : "false");
+    camera.style.display = call && call.callType === "video" ? "inline-flex" : "none";
+  }
+}
 function showIndianCallPanel(message, videoMode){
   const panel = $("indianActiveCallPanel");
   const title = $("indianActiveCallTitle");
   const localVideo = $("indianLocalCallVideo");
   const remoteVideo = $("indianRemoteCallVideo");
   const remoteAudio = $("indianRemoteCallAudio");
-  if(panel) panel.style.display = "block";
+  const personName = $("indianCallPersonName");
+  const personPhoto = $("indianCallPersonPhoto");
+  const call = indianActiveCall;
+  if(panel) panel.style.display = "flex";
+  if(typeof window.__indianCallPreviousFocus === "undefined") window.__indianCallPreviousFocus = document.activeElement;
   if(title) title.textContent = videoMode ? "Indian Video Call" : "Indian Voice Call";
+  if(personName) personName.textContent = call && call.remoteName ? call.remoteName : "Indian user";
+  if(personPhoto){
+    const photo = String((call && call.remotePhotoURL) || indianCallParticipantPhoto(call && call.remoteUid) || "");
+    if(photo){ personPhoto.src = photo; personPhoto.hidden = false; }
+    else { personPhoto.removeAttribute("src"); personPhoto.hidden = true; }
+    personPhoto.alt = "Profile photo of " + (call && call.remoteName ? call.remoteName : "the other person");
+  }
   if(localVideo) localVideo.style.display = videoMode ? "block" : "none";
   if(remoteVideo) remoteVideo.style.display = videoMode ? "block" : "none";
   if(remoteAudio) remoteAudio.style.display = videoMode ? "none" : "block";
   const status = $("indianActiveCallStatus");
   if(status) status.textContent = message || "Call is starting…";
+  indianUpdateCallControls();
+  if(document.body){
+    if(typeof window.__indianCallPreviousOverflow === "undefined") window.__indianCallPreviousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+  }
+  if(title) title.focus(); else if(panel) panel.focus();
 }
+function indianCallDialogKeydown(event){
+  if(!event || event.key !== "Tab") return;
+  const panel = $("indianActiveCallPanel");
+  if(!panel || panel.style.display === "none") return;
+  const items = Array.from(panel.querySelectorAll("button:not([disabled]), video[controls], audio[controls]"))
+    .filter(function(el){ return el.getClientRects().length > 0; });
+  if(!items.length) return;
+  const first = items[0], last = items[items.length - 1];
+  const title = $("indianActiveCallTitle");
+  if(event.shiftKey && (document.activeElement === first || document.activeElement === title || document.activeElement === panel)){
+    event.preventDefault(); last.focus();
+  }else if(!event.shiftKey && document.activeElement === last){
+    event.preventDefault(); first.focus();
+  }
+}
+function indianToggleCallMute(){
+  const call = indianActiveCall;
+  if(!call || !call.localStream) return;
+  call.muted = !call.muted;
+  call.localStream.getAudioTracks().forEach(function(track){ track.enabled = !call.muted; });
+  indianUpdateCallControls();
+  const status = $("indianActiveCallStatus");
+  if(status) status.textContent = call.muted ? "Microphone muted." : "Microphone on.";
+}
+function indianToggleCallSpeaker(){
+  const call = indianActiveCall;
+  if(!call) return;
+  call.speakerEnabled = call.speakerEnabled === false;
+  ["indianRemoteCallAudio","indianRemoteCallVideo"].forEach(function(id){
+    const el = $(id);
+    if(el){ el.muted = !call.speakerEnabled; el.volume = call.speakerEnabled ? 1 : 0; }
+  });
+  indianUpdateCallControls();
+  const status = $("indianActiveCallStatus");
+  if(status) status.textContent = call.speakerEnabled ? "Call audio on." : "Call audio muted.";
+}
+function indianToggleCallCamera(){
+  const call = indianActiveCall;
+  if(!call || call.callType !== "video" || !call.localStream) return;
+  call.cameraEnabled = call.cameraEnabled === false;
+  call.localStream.getVideoTracks().forEach(function(track){ track.enabled = call.cameraEnabled; });
+  indianUpdateCallControls();
+  const status = $("indianActiveCallStatus");
+  if(status) status.textContent = call.cameraEnabled ? "Camera on." : "Camera off.";
+}
+window.indianToggleCallMute = indianToggleCallMute;
+window.indianToggleCallSpeaker = indianToggleCallSpeaker;
+window.indianToggleCallCamera = indianToggleCallCamera;
+window.indianCallDialogKeydown = indianCallDialogKeydown;
 function indianCallErrorText(error){
   const name = error && error.name ? error.name : "";
   if(name === "NotAllowedError" || name === "PermissionDeniedError") return "Camera/microphone permission was denied. Allow it in browser site settings and try again.";
@@ -5400,7 +5503,15 @@ function indianSetIncomingPanel(callData, callId){
   indianIncomingCall = {id:callId, data:callData, ref:indianCallRef(callId)};
   const panel = $("indianIncomingCallPanel");
   const text = $("indianIncomingCallText");
-  if(text) text.textContent = sanitizePlainText(callData.callerName || "An Indian user", 70) + " is calling you by " + (callData.callType === "video" ? "video" : "voice") + ".";
+  const photo = $("indianIncomingCallPhoto");
+  const callerName = sanitizePlainText(callData.callerName || "An Indian user", 70);
+  if(text) text.textContent = callerName + " is calling you by " + (callData.callType === "video" ? "video" : "voice") + ".";
+  if(photo){
+    const url = String(callData.callerPhotoURL || indianCallParticipantPhoto(callData.callerId) || "");
+    if(url){ photo.src = url; photo.hidden = false; }
+    else { photo.removeAttribute("src"); photo.hidden = true; }
+    photo.alt = "Profile photo of " + callerName;
+  }
   if(panel) panel.style.display = "block";
 }
 function hideIndianIncomingPanel(){
@@ -5552,7 +5663,17 @@ function indianFinishActiveCall(message){
   }
   const panel = $("indianActiveCallPanel");
   if(panel) panel.style.display = "none";
-  ["indianLocalCallVideo","indianRemoteCallVideo","indianRemoteCallAudio"].forEach(function(id){const el=$(id);if(el)el.srcObject=null;});
+  const previousFocus = window.__indianCallPreviousFocus;
+  delete window.__indianCallPreviousFocus;
+  if(previousFocus && previousFocus !== document.body && previousFocus.isConnected && typeof previousFocus.focus === "function"){
+    try{ previousFocus.focus(); }catch(e){}
+  }
+  if(document.body && typeof window.__indianCallPreviousOverflow !== "undefined"){
+    document.body.style.overflow = window.__indianCallPreviousOverflow;
+    delete window.__indianCallPreviousOverflow;
+  }
+  ["indianLocalCallVideo","indianRemoteCallVideo","indianRemoteCallAudio"].forEach(function(id){const el=$(id);if(el){el.srcObject=null;el.muted=false;el.volume=1;}});
+  indianUpdateCallControls();
   setIndianCallStatus(message || "Call ended.");
 }
 async function startIndianCall(callType){
@@ -5569,7 +5690,7 @@ async function startIndianCall(callType){
   try{
     const localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:callType === "video"});
     const callRef = doc(collection(firebaseDb, "calls"));
-    const call = {id:callRef.id,ref:callRef,role:"caller",callType:callType,localStream:localStream,remoteStream:new MediaStream(),pc:null,unsubs:[],pendingRemoteCandidates:[],remoteDescriptionApplied:false,ringTimer:null};
+    const call = {id:callRef.id,ref:callRef,role:"caller",callType:callType,remoteUid:recipientUid,remoteName:personName,remotePhotoURL:indianCallParticipantPhoto(recipientUid),muted:false,speakerEnabled:true,cameraEnabled:callType === "video",localStream:localStream,remoteStream:new MediaStream(),pc:null,unsubs:[],pendingRemoteCandidates:[],remoteDescriptionApplied:false,ringTimer:null};
     indianActiveCall = call;
     showIndianCallPanel(buttonMessage, callType === "video");
     indianAttachCallMedia(call);
@@ -5578,6 +5699,7 @@ async function startIndianCall(callType){
       callerId: firebaseCurrentUser.uid,
       calleeId: recipientUid,
       callerName: sanitizePlainText(firebaseCurrentUser.displayName || profileName || "Indian user",70),
+      callerPhotoURL: String(window.profilePhotoURL || ""),
       calleeName: personName,
       callType: callType,
       status: "preparing",
@@ -5633,7 +5755,7 @@ async function acceptIndianIncomingCall(){
   setIndianCallStatus("Answering the call…");
   try{
     const localStream = await navigator.mediaDevices.getUserMedia({audio:true,video:data.callType === "video"});
-    const call = {id:incoming.id,ref:incoming.ref,role:"callee",callType:data.callType,localStream:localStream,remoteStream:new MediaStream(),pc:null,unsubs:[],pendingRemoteCandidates:[],remoteDescriptionApplied:true,ringTimer:null};
+    const call = {id:incoming.id,ref:incoming.ref,role:"callee",callType:data.callType,remoteUid:data.callerId,remoteName:data.callerName || "Indian user",remotePhotoURL:String(data.callerPhotoURL || indianCallParticipantPhoto(data.callerId) || ""),muted:false,speakerEnabled:true,cameraEnabled:data.callType === "video",localStream:localStream,remoteStream:new MediaStream(),pc:null,unsubs:[],pendingRemoteCandidates:[],remoteDescriptionApplied:true,ringTimer:null};
     indianActiveCall = call;
     indianIncomingCall = null;
     showIndianCallPanel("Answering the call…", call.callType === "video");

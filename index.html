@@ -778,12 +778,14 @@ Explore places and their local communities.
 
 </section>
 
-<div id="indianIncomingCallPanel" role="alert" aria-live="assertive" aria-atomic="true" style="display:none;position:fixed;z-index:10020;right:16px;bottom:92px;width:min(360px,calc(100vw - 32px));box-sizing:border-box;background:#fff;color:#172b3a;border:2px solid #1d4f7c;border-radius:14px;padding:16px;box-shadow:0 12px 36px rgba(0,0,0,.25);">
-  <h2 style="margin:0 0 8px;font-size:1.2rem;">Incoming Indian Call</h2>
-  <img id="indianIncomingCallPhoto" alt="Caller profile photo" hidden style="width:76px;height:76px;border-radius:50%;object-fit:cover;">
-  <p id="indianIncomingCallText">Someone is calling.</p>
-  <button type="button" class="action" onclick="acceptIndianIncomingCall()">Accept Call</button>
-  <button type="button" class="action" onclick="declineIndianIncomingCall()">Decline Call</button>
+<div id="indianIncomingCallPanel" role="dialog" aria-modal="true" aria-labelledby="indianIncomingCallTitle" aria-describedby="indianIncomingCallText" tabindex="-1" style="display:none;position:fixed;z-index:10040;inset:0;width:100%;height:100vh;height:100dvh;box-sizing:border-box;overflow:auto;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:calc(28px + env(safe-area-inset-top,0px)) 20px calc(28px + env(safe-area-inset-bottom,0px));background:#101820;color:#fff;text-align:center;">
+  <h2 id="indianIncomingCallTitle" tabindex="-1" style="margin:0;font-size:clamp(1.5rem,5vw,2rem);">Incoming Indian Call</h2>
+  <img id="indianIncomingCallPhoto" alt="Caller profile photo" hidden style="width:clamp(112px,25vw,180px);height:clamp(112px,25vw,180px);border-radius:50%;object-fit:cover;border:3px solid #fff;">
+  <p id="indianIncomingCallText" role="status" aria-live="assertive" style="margin:0;font-size:1.25rem;font-weight:600;">Someone is calling.</p>
+  <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px;width:min(100%,560px);">
+    <button type="button" class="action" onclick="acceptIndianIncomingCall()" aria-label="Accept incoming call" style="min-height:56px;min-width:140px;background:#16803c;color:#fff;border:2px solid #8be0a5;">Accept Call</button>
+    <button type="button" class="action" onclick="declineIndianIncomingCall()" aria-label="Decline incoming call" style="min-height:56px;min-width:140px;background:#c62828;color:#fff;border:2px solid #ef9a9a;">Decline Call</button>
+  </div>
 </div>
 <div id="indianActiveCallPanel" role="dialog" aria-modal="true" aria-labelledby="indianActiveCallTitle" tabindex="-1" onkeydown="indianCallDialogKeydown(event)" style="display:none;position:fixed;z-index:10050;inset:0;width:100%;height:100vh;height:100dvh;box-sizing:border-box;overflow:auto;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(24px + env(safe-area-inset-top,0px)) 18px calc(24px + env(safe-area-inset-bottom,0px));background:#101820;color:#fff;">
   <h2 id="indianActiveCallTitle" tabindex="-1" style="margin:0;font-size:1.5rem;text-align:center;">Indian Call</h2>
@@ -5512,7 +5514,7 @@ function indianSetIncomingPanel(callData, callId){
     else { photo.removeAttribute("src"); photo.hidden = true; }
     photo.alt = "Profile photo of " + callerName;
   }
-  if(panel) panel.style.display = "block";
+  if(panel){ panel.style.display = "flex"; const title = $("indianIncomingCallTitle"); if(title) title.focus(); }
 }
 function hideIndianIncomingPanel(){
   const panel = $("indianIncomingCallPanel");

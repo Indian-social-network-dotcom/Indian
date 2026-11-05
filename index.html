@@ -5502,10 +5502,14 @@ let indianCallToneTimer = null;
 let indianCallToneNodes = [];
 let indianCallToneMode = "";
 let indianCallToneStep = 0;
+let indianIncomingRingtoneAudio = null;
 function indianStopCallTone(){
   if(indianCallToneTimer){ clearTimeout(indianCallToneTimer); indianCallToneTimer=null; }
   indianCallToneNodes.forEach(function(node){ try{node.stop();}catch(e){} try{node.disconnect();}catch(e){} });
   indianCallToneNodes=[];
+  if(indianIncomingRingtoneAudio){
+    try{indianIncomingRingtoneAudio.pause();indianIncomingRingtoneAudio.currentTime=0;}catch(e){}
+  }
   indianCallToneMode="";
   indianCallToneStep=0;
 }
@@ -5533,6 +5537,18 @@ function indianScheduleCallTone(mode){
 function indianStartCallTone(mode){
   if(mode!=="incoming" && mode!=="ringback") return;
   indianStopCallTone();
+  if(mode==="incoming"){
+    try{
+      indianIncomingRingtoneAudio=indianIncomingRingtoneAudio||new Audio(new URL("incoming-ringtone.mp3.mpeg",document.baseURI).href);
+      indianIncomingRingtoneAudio.loop=true;
+      indianIncomingRingtoneAudio.preload="auto";
+      indianIncomingRingtoneAudio.currentTime=0;
+      indianCallToneMode="incoming";
+      const playPromise=indianIncomingRingtoneAudio.play();
+      if(playPromise&&typeof playPromise.catch==="function") playPromise.catch(function(error){console.warn("Indian incoming ringtone playback was blocked or unavailable",error);});
+    }catch(e){ console.warn("Indian incoming ringtone unavailable",e); }
+    return;
+  }
   try{
     const AudioCtx=window.AudioContext||window.webkitAudioContext;
     if(!AudioCtx) return;
@@ -5550,6 +5566,10 @@ function indianStartCallTone(mode){
 ["pointerdown","keydown","touchstart"].forEach(function(eventName){
   window.addEventListener(eventName,function(){
     if(indianCallToneContext&&indianCallToneContext.state==="suspended") indianCallToneContext.resume().catch(function(){});
+    if(indianCallToneMode==="incoming" && indianIncomingRingtoneAudio && indianIncomingRingtoneAudio.paused){
+      const playPromise=indianIncomingRingtoneAudio.play();
+      if(playPromise&&typeof playPromise.catch==="function") playPromise.catch(function(){});
+    }
   },{passive:true});
 });
 function indianCallRef(callId){ return doc(firebaseDb, "calls", callId); }

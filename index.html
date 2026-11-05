@@ -5790,13 +5790,19 @@ window.declineIndianIncomingCall = declineIndianIncomingCall;
 async function endIndianCall(){
   const call = indianActiveCall;
   if(!call) return;
-  setIndianCallStatusForBoth("Ending call…");
-  try{
-    const finalStatus = call.role === "caller" && !call.remoteDescriptionApplied ? "cancelled" : "ended";
-    await updateDoc(call.ref,{status:finalStatus,endedAtMs:Date.now(),updatedAtMs:Date.now()});
-  }
-  catch(error){ setIndianCallStatusForBoth("Call ended locally, but the status could not sync: " + sanitizePlainText(error.message,160)); }
+  const finalStatus = call.role === "caller" && !call.remoteDescriptionApplied ? "cancelled" : "ended";
+  const endedAtMs = Date.now();
+
+  // Stop local media immediately; do not keep the call alive while Firestore syncs.
   indianFinishActiveCall("Call ended.");
+
+  // Then notify the other participant through the shared call document.
+  try{
+    await updateDoc(call.ref,{status:finalStatus,endedAtMs:endedAtMs,updatedAtMs:endedAtMs});
+  }
+  catch(error){
+    setIndianCallStatus("Call ended on this device, but the other device may not receive the hang-up yet: " + sanitizePlainText(error.message,160));
+  }
 }
 window.endIndianCall = endIndianCall;
 if(firebaseAuth){

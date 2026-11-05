@@ -5596,6 +5596,7 @@ async function startIndianCall(callType){
         indianFinishActiveCall("No answer. Call ended after 60 seconds.");
       }
     },60000);
+    indianSetCallStatusForBoth("Calling " + personName + ". Waiting for them to answer…");
     // Notify the callee through the existing Cloudflare Worker. Push failure
     // must not interrupt the live WebRTC call attempt.
     try{
@@ -5615,7 +5616,6 @@ async function startIndianCall(callType){
     }catch(callPushError){
       console.warn("Indian incoming-call push request failed:", callPushError);
     }
-    indianSetCallStatusForBoth("Calling " + personName + ". Waiting for them to answer…");
   }catch(error){
     console.error("Indian call start failed", error);
     if(indianActiveCall) indianFinishActiveCall(indianCallErrorText(error));

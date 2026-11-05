@@ -5524,13 +5524,11 @@ function indianScheduleCallTone(mode){
   if(indianCallToneMode!==mode) return;
   const step=indianCallToneStep++;
   const incoming=mode==="incoming";
-  const cycle=incoming?3000:6000;
-  const position=step%(incoming?6:12);
+  const position=step%12;
   const on=incoming ? (position===0||position===2||position===4) : (position===0||position===1||position===2||position===3);
   if(on) indianCallToneBurst(mode);
   indianCallToneTimer=window.setTimeout(function(){indianScheduleCallTone(mode);},incoming?500:500);
   // Incoming: three short double-tone bursts, then a pause. Outgoing: classic long ringback, then silence.
-  if(!incoming && step%12===0) indianCallToneTimer=window.setTimeout(function(){indianScheduleCallTone(mode);},500);
 }
 function indianStartCallTone(mode){
   if(mode!=="incoming" && mode!=="ringback") return;

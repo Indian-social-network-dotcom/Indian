@@ -5572,9 +5572,11 @@ function indianSetIncomingPanel(callData, callId){
     else { photo.removeAttribute("src"); photo.hidden = true; }
     photo.alt = "Profile photo of " + callerName;
   }
-  if(panel){ panel.style.display = "flex"; const title = $("indianIncomingCallTitle"); if(title) title.focus(); }\n  indianStartCallTone("incoming");
+  if(panel){ panel.style.display = "flex"; const title = $("indianIncomingCallTitle"); if(title) title.focus(); }
+  indianStartCallTone("incoming");
 }
 function hideIndianIncomingPanel(){
+  indianStopCallTone();
   const panel = $("indianIncomingCallPanel");
   if(panel) panel.style.display = "none";
 }
@@ -5693,6 +5695,7 @@ function indianWatchActiveCallDoc(call){
     if(!snapshot.exists() || !indianActiveCall || indianActiveCall.id !== call.id) return;
     const data = snapshot.data() || {};
     if(call.role === "caller" && data.answer && !call.remoteDescriptionApplied && call.pc){
+      indianStopCallTone();
       try{
         await call.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         call.remoteDescriptionApplied = true;
@@ -5711,6 +5714,7 @@ function indianWatchActiveCallDoc(call){
   }));
 }
 function indianFinishActiveCall(message){
+  indianStopCallTone();
   const call = indianActiveCall;
   indianActiveCall = null;
   if(call){
@@ -5770,6 +5774,7 @@ async function startIndianCall(callType){
     const offer = await call.pc.createOffer();
     await call.pc.setLocalDescription(offer);
     await updateDoc(callRef, {status:"ringing",offer:{type:call.pc.localDescription.type,sdp:call.pc.localDescription.sdp},updatedAtMs:Date.now()});
+    indianStartCallTone("ringback");
     // Start the ring timeout immediately after the call enters ringing.
     // Do not wait for the push request: the callee may answer while it is pending.
     call.ringTimer = setTimeout(async function(){
@@ -5811,6 +5816,7 @@ async function acceptIndianIncomingCall(){
   if(!firebaseDb || !firebaseCurrentUser || !indianIncomingCall){ setIndianCallStatus("There is no incoming call to accept."); return; }
   const incoming = indianIncomingCall;
   const data = incoming.data;
+  indianStopCallTone();
   hideIndianIncomingPanel();
   setIndianCallStatus("Answering the call…");
   try{
@@ -5840,6 +5846,7 @@ window.acceptIndianIncomingCall = acceptIndianIncomingCall;
 async function declineIndianIncomingCall(){
   const incoming = indianIncomingCall;
   indianIncomingCall = null;
+  indianStopCallTone();
   hideIndianIncomingPanel();
   if(incoming && firebaseDb){
     try{await updateDoc(incoming.ref,{status:"declined",updatedAtMs:Date.now()});setIndianCallStatus("Incoming call declined.");}

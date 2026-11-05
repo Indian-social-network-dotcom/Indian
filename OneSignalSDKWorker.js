@@ -29,7 +29,8 @@ self.addEventListener("fetch", function(event) {
     } catch (error) {
       if (cached) return cached;
       if (request.mode === "navigate") {
-        const fallback = await cache.match(new URL("/Indian/index.html", self.location.origin).href);
+        const fallback = await cache.match(new URL("/Indian/index.html", self.location.origin).href)
+          || await cache.match(new URL("/Indian/", self.location.origin).href);
         if (fallback) return fallback;
       }
       return Response.error();

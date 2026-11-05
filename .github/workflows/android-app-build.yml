@@ -36,7 +36,9 @@ jobs:
             echo "Android SDK command-line tools were not found."
             exit 1
           fi
+          set +o pipefail
           yes | "$SDKMANAGER" --licenses >/dev/null
+          set -o pipefail
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle 8.13

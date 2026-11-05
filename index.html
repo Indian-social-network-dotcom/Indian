@@ -5496,6 +5496,64 @@ function indianSetCallStatusForBoth(message){
   const active = $("indianActiveCallStatus");
   if(active) active.textContent = message;
 }
+// Accessible call tones: incoming telephone ring and caller-side ringback.
+let indianCallToneContext = null;
+let indianCallToneTimer = null;
+let indianCallToneNodes = [];
+let indianCallToneMode = "";
+let indianCallToneStep = 0;
+function indianStopCallTone(){
+  if(indianCallToneTimer){ clearTimeout(indianCallToneTimer); indianCallToneTimer=null; }
+  indianCallToneNodes.forEach(function(node){ try{node.stop();}catch(e){} try{node.disconnect();}catch(e){} });
+  indianCallToneNodes=[];
+  indianCallToneMode="";
+  indianCallToneStep=0;
+}
+function indianCallToneBurst(mode){
+  if(!indianCallToneContext || indianCallToneContext.state !== "running") return;
+  const ctx=indianCallToneContext, now=ctx.currentTime;
+  const gain=ctx.createGain(); gain.gain.setValueAtTime(0.0001,now); gain.gain.linearRampToValueAtTime(0.12,now+0.025);
+  gain.connect(ctx.destination);
+  [440,480].forEach(function(freq){
+    const osc=ctx.createOscillator(); osc.type="sine"; osc.frequency.value=freq; osc.connect(gain); osc.start(now); osc.stop(now+0.42); indianCallToneNodes.push(osc);
+  });
+  gain.gain.setValueAtTime(0.12,now+0.36); gain.gain.linearRampToValueAtTime(0.0001,now+0.42);
+  window.setTimeout(function(){try{gain.disconnect();}catch(e){}},650);
+}
+function indianScheduleCallTone(mode){
+  if(indianCallToneMode!==mode) return;
+  const step=indianCallToneStep++;
+  const incoming=mode==="incoming";
+  const cycle=incoming?3000:6000;
+  const position=step%(incoming?6:12);
+  const on=incoming ? (position===0||position===2||position===4) : (position===0||position===1||position===2||position===3);
+  if(on) indianCallToneBurst(mode);
+  indianCallToneTimer=window.setTimeout(function(){indianScheduleCallTone(mode);},incoming?500:500);
+  // Incoming: three short double-tone bursts, then a pause. Outgoing: classic long ringback, then silence.
+  if(!incoming && step%12===0) indianCallToneTimer=window.setTimeout(function(){indianScheduleCallTone(mode);},500);
+}
+function indianStartCallTone(mode){
+  if(mode!=="incoming" && mode!=="ringback") return;
+  indianStopCallTone();
+  try{
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx) return;
+    indianCallToneContext=indianCallToneContext||new AudioCtx();
+    const begin=function(){
+      if(indianCallToneContext.state!=="running") return;
+      indianCallToneMode=mode; indianCallToneStep=0; indianScheduleCallTone(mode);
+    };
+    const resume=indianCallToneContext.resume();
+    if(resume&&typeof resume.then==="function") resume.then(begin).catch(function(){});
+    else begin();
+  }catch(e){ console.warn("Indian call tone unavailable",e); }
+}
+// Browsers may suspend audio until the user has interacted with the page.
+["pointerdown","keydown","touchstart"].forEach(function(eventName){
+  window.addEventListener(eventName,function(){
+    if(indianCallToneContext&&indianCallToneContext.state==="suspended") indianCallToneContext.resume().catch(function(){});
+  },{passive:true});
+});
 function indianCallRef(callId){ return doc(firebaseDb, "calls", callId); }
 function indianCallParticipantName(personId, fallback){
   const person = (window.getIndianPersonById && window.getIndianPersonById(personId)) || peopleData.find(p => p.id === personId);
@@ -5514,7 +5572,7 @@ function indianSetIncomingPanel(callData, callId){
     else { photo.removeAttribute("src"); photo.hidden = true; }
     photo.alt = "Profile photo of " + callerName;
   }
-  if(panel){ panel.style.display = "flex"; const title = $("indianIncomingCallTitle"); if(title) title.focus(); }
+  if(panel){ panel.style.display = "flex"; const title = $("indianIncomingCallTitle"); if(title) title.focus(); }\n  indianStartCallTone("incoming");
 }
 function hideIndianIncomingPanel(){
   const panel = $("indianIncomingCallPanel");
@@ -5595,7 +5653,7 @@ function indianCreatePeerConnection(call){
     });
   };
   pc.onconnectionstatechange = function(){
-    if(pc.connectionState === "connected") indianSetCallStatusForBoth("Call connected. Keep this page open during the call.");
+    if(pc.connectionState === "connected"){ indianStopCallTone(); indianSetCallStatusForBoth("Call connected. Keep this page open during the call."); }
     else if(pc.connectionState === "connecting") indianSetCallStatusForBoth("Connecting call…");
     else if(pc.connectionState === "failed") indianSetCallStatusForBoth("Connection failed. This test uses STUN only; some networks need a TURN relay server.");
     else if(pc.connectionState === "disconnected") indianSetCallStatusForBoth("Call temporarily disconnected. Waiting for the connection…");

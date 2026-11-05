@@ -5410,6 +5410,7 @@ function showIndianCallPanel(message, videoMode){
   const personPhoto = $("indianCallPersonPhoto");
   const call = indianActiveCall;
   if(panel) panel.style.display = "flex";
+  if(typeof window.__indianCallPreviousFocus === "undefined") window.__indianCallPreviousFocus = document.activeElement;
   if(title) title.textContent = videoMode ? "Indian Video Call" : "Indian Voice Call";
   if(personName) personName.textContent = call && call.remoteName ? call.remoteName : "Indian user";
   if(personPhoto){
@@ -5438,7 +5439,8 @@ function indianCallDialogKeydown(event){
     .filter(function(el){ return el.getClientRects().length > 0; });
   if(!items.length) return;
   const first = items[0], last = items[items.length - 1];
-  if(event.shiftKey && (document.activeElement === first || document.activeElement === panel)){
+  const title = $("indianActiveCallTitle");
+  if(event.shiftKey && (document.activeElement === first || document.activeElement === title || document.activeElement === panel)){
     event.preventDefault(); last.focus();
   }else if(!event.shiftKey && document.activeElement === last){
     event.preventDefault(); first.focus();
@@ -5661,6 +5663,11 @@ function indianFinishActiveCall(message){
   }
   const panel = $("indianActiveCallPanel");
   if(panel) panel.style.display = "none";
+  const previousFocus = window.__indianCallPreviousFocus;
+  delete window.__indianCallPreviousFocus;
+  if(previousFocus && previousFocus !== document.body && previousFocus.isConnected && typeof previousFocus.focus === "function"){
+    try{ previousFocus.focus(); }catch(e){}
+  }
   if(document.body && typeof window.__indianCallPreviousOverflow !== "undefined"){
     document.body.style.overflow = window.__indianCallPreviousOverflow;
     delete window.__indianCallPreviousOverflow;

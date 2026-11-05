@@ -1,0 +1,13 @@
+/* Extracted Uran/shorts viewer styles; linked at the original position. */
+
+#indianShortsViewer{position:fixed;inset:0;z-index:5000;background:#050505;color:#fff;display:none;align-items:center;justify-content:center;padding:12px}
+#indianShortsViewer.open{display:flex}
+#indianShortsViewer .isv-shell{width:min(100%,520px);height:calc(100dvh - 24px);max-height:900px;display:flex;flex-direction:column;gap:8px}
+#indianShortsViewer .isv-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#indianShortsViewer button{min-height:42px;padding:8px 13px;border-radius:10px;border:1px solid #aaa;background:#fff;color:#111;font-weight:700}
+#indianShortsViewer .isv-stage{flex:1;min-height:0;position:relative;overflow:hidden;border-radius:14px;background:#111;touch-action:pan-y}
+#indianShortsViewer .isv-stage iframe,#indianShortsViewer .isv-stage video{width:100%;height:100%;border:0;object-fit:contain;background:#000}
+#indianShortsViewer .isv-caption{max-height:15vh;overflow:auto;margin:0}
+#indianShortsViewer .isv-controls{display:flex;gap:8px;justify-content:space-between}
+.shortsOpenViewer{display:block;width:100%;margin-top:8px}
+@media(min-width:700px){#indianShortsViewer .isv-shell{height:calc(100vh - 30px)}}

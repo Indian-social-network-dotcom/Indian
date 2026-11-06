@@ -7477,7 +7477,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
 (function(){
   'use strict';
   var byId=function(id){return document.getElementById(id);};
-  var overlay=null,stage=null,ownerLabel=null,captionBox=null,audioBox=null,countLabel=null,returnFocus=null;
+  var overlay=null,stage=null,ownerLabel=null,captionBox=null,audioBox=null,countLabel=null,returnFocus=null,interactionArea=null,ownerAvatar=null;
   var deck=[],currentIndex=0,swipeStartX=0,swipeStartY=0;
   function safeText(v,max){return String(v==null?'':v).replace(/[\u0000-\u001F\u007F]/g,'').trim().slice(0,max||500);}
   function localItems(){try{return typeof window.readLocalStories==='function'?window.readLocalStories():[];}catch(e){return [];}}
@@ -7512,7 +7512,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
     var top=document.createElement('div');top.className='indian-story-top';
     ownerLabel=document.createElement('div');ownerLabel.className='indian-story-owner';ownerLabel.id='indianStoryOwner';
     var close=document.createElement('button');close.type='button';close.className='indian-story-close';close.textContent='×';close.setAttribute('aria-label','Close story');close.addEventListener('click',closeViewer);
-    top.append(ownerLabel,close);
+    ownerAvatar=document.createElement('img');ownerAvatar.className='indian-story-owner-avatar';ownerAvatar.alt='';ownerAvatar.hidden=true;top.append(ownerAvatar,ownerLabel,close);
     stage=document.createElement('div');stage.className='indian-story-stage';stage.setAttribute('aria-label','Story media. Swipe left or right to change story.');
     stage.addEventListener('touchstart',function(e){if(!e.touches||!e.touches.length)return;swipeStartX=e.touches[0].clientX;swipeStartY=e.touches[0].clientY;},{passive:true});
     stage.addEventListener('touchend',function(e){if(!e.changedTouches||!e.changedTouches.length)return;var dx=e.changedTouches[0].clientX-swipeStartX,dy=e.changedTouches[0].clientY-swipeStartY;if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.25){dx<0?nextStory(1):nextStory(-1);}},{passive:true});
@@ -7521,7 +7521,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
     var prev=document.createElement('button');prev.type='button';prev.textContent='Previous';prev.setAttribute('aria-label','Previous story');prev.addEventListener('click',function(){nextStory(-1);});
     countLabel=document.createElement('span');countLabel.className='indian-story-count';countLabel.setAttribute('aria-live','polite');
     var next=document.createElement('button');next.type='button';next.textContent='Next';next.setAttribute('aria-label','Next story');next.addEventListener('click',function(){nextStory(1);});
-    controls.append(prev,countLabel,next);overlay.append(top,stage,bottom,controls);document.body.appendChild(overlay);
+    var backHome=document.createElement('button');backHome.type='button';backHome.textContent='Back to Home';backHome.setAttribute('aria-label','Back to Home Page');backHome.addEventListener('click',function(){closeViewer();if(typeof window.openIndianHome==='function')window.openIndianHome();});controls.append(prev,countLabel,next,backHome);interactionArea=document.createElement('section');interactionArea.className='indian-story-interaction-area';interactionArea.setAttribute('aria-label','Story views, likes and reactions');overlay.append(top,stage,interactionArea,bottom,controls);document.body.appendChild(overlay);
   }
   function playSelectedSound(item){
     if(item.kind==='online'){
@@ -7545,6 +7545,9 @@ window.openIndianGames=function(){window.location.href='games.html';};
     if(typeof window.stopStoryDemoTone==='function')window.stopStoryDemoTone();
     stage.replaceChildren();audioBox.replaceChildren();
     ownerLabel.textContent=item.owner||'Indian User';
+    var profile=item.profile||{}, storyOwnerUid=String(profile.uid||item.ownerUid||''), storyId=String((item.story||{}).id||'');
+    var ownerPhoto=String(profile.photoURL||profile.photoUrl||'');ownerAvatar.hidden=!ownerPhoto;ownerAvatar.removeAttribute('src');if(ownerPhoto)ownerAvatar.src=ownerPhoto;
+    interactionArea.replaceChildren();
     captionBox.textContent=safeText((item.story||{}).caption||'',300);captionBox.hidden=!captionBox.textContent;
     countLabel.textContent=(currentIndex+1)+' of '+deck.length;
     var story=item.story||{};var media;
@@ -7554,6 +7557,52 @@ window.openIndianGames=function(){window.location.href='games.html';};
       media=document.createElement('img');media.src=item.mediaUrl;media.alt='Story photo by '+item.owner;media.draggable=false;
     }
     stage.appendChild(media);playSelectedSound(item);
+    if(item.kind==='online'&&storyOwnerUid&&storyId&&window.recordIndianStoryView&&window.setIndianStoryInteraction){
+      var isOwner=!!(window.firebaseCurrentUid&&String(window.firebaseCurrentUid)===storyOwnerUid);
+      var metrics=document.createElement('div');metrics.className='indian-story-metrics';
+      var views=document.createElement('span');views.className='indian-story-metric';views.textContent='👁️ Views: loading';
+      var likes=document.createElement('span');likes.className='indian-story-metric';likes.textContent='❤️ Likes: loading';
+      var viewListButton=document.createElement('button');viewListButton.type='button';viewListButton.className='indian-story-viewers-toggle';viewListButton.textContent='View people who viewed';viewListButton.hidden=!isOwner;
+      var viewerList=document.createElement('div');viewerList.className='indian-story-viewer-list';viewerList.hidden=true;
+      var viewerHeading=document.createElement('h3');viewerHeading.textContent='People who viewed your story';viewerList.appendChild(viewerHeading);
+      var viewerRows=document.createElement('div');viewerList.appendChild(viewerRows);
+      var liked=false,reaction='';
+      var likeButton=document.createElement('button');likeButton.type='button';likeButton.className='indian-story-like-button';likeButton.textContent='❤️ Like';likeButton.disabled=true;likeButton.hidden=isOwner;
+      var reactionGroup=document.createElement('div');reactionGroup.className='indian-story-reactions';reactionGroup.hidden=isOwner;
+      var choices=[{emoji:'😍',label:'Pyaar'},{emoji:'😂',label:'Hansi'},{emoji:'😮',label:'Hairani'}];
+      var reactionButtons=[];
+      choices.forEach(function(choice){
+        var b=document.createElement('button');b.type='button';b.className='indian-story-reaction-button';b.textContent=choice.emoji+' '+choice.label;b.disabled=true;b.setAttribute('aria-pressed','false');
+        b.addEventListener('click',async function(){try{var saved=await window.setIndianStoryInteraction(storyOwnerUid,storyId,liked,choice.emoji);liked=!!saved.liked;reaction=saved.reaction||'';reactionButtons.forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});}catch(e){if(window.announce)window.announce('Reaction could not be saved. '+safeText(e.message,120));}});
+        reactionButtons.push(b);reactionGroup.appendChild(b);
+      });
+      if(isOwner){metrics.append(views,likes);interactionArea.append(metrics,viewListButton,viewerList);}
+      else{interactionArea.append(likeButton,reactionGroup);}
+      async function refreshOwnerList(){
+        try{
+          var rows=await window.getIndianStoryViewerSummary(storyOwnerUid,storyId);
+          views.textContent='👁️ Views: '+rows.length;
+          likes.textContent='❤️ Likes: '+rows.filter(function(x){return x.liked===true;}).length;
+          viewerRows.replaceChildren();
+          rows.sort(function(a,b){return Number(b.viewedAtMs||0)-Number(a.viewedAtMs||0);});
+          if(!rows.length){var empty=document.createElement('p');empty.textContent='No viewers yet.';viewerRows.appendChild(empty);}
+          rows.forEach(function(row){
+            var line=document.createElement('div');line.className='indian-story-viewer-row';
+            var photo=document.createElement('img');photo.className='indian-story-viewer-photo';photo.alt='';if(row.viewerPhotoURL)photo.src=row.viewerPhotoURL;else photo.hidden=true;
+            var details=document.createElement('div');details.className='indian-story-viewer-details';
+            var name=document.createElement('strong');name.textContent=safeText(row.viewerName||'Indian user',60);
+            var activity=document.createElement('span');activity.textContent=(row.liked?'Liked ❤️':'Not liked')+' · '+(row.reaction||'No reaction');
+            details.append(name,activity);line.append(photo,details);viewerRows.appendChild(line);
+          });
+        }catch(e){viewerRows.textContent='Viewer list could not be loaded. Check Firestore Story rules.';}
+      }
+      viewListButton.addEventListener('click',async function(){viewerList.hidden=!viewerList.hidden;if(!viewerList.hidden)await refreshOwnerList();});
+      likeButton.addEventListener('click',async function(){try{var saved=await window.setIndianStoryInteraction(storyOwnerUid,storyId,!liked,reaction);liked=!!saved.liked;reaction=saved.reaction||'';likeButton.textContent=liked?'❤️ Liked':'❤️ Like';likeButton.setAttribute('aria-pressed',String(liked));}catch(e){if(window.announce)window.announce('Like could not be saved. '+safeText(e.message,120));}});
+      window.recordIndianStoryView(storyOwnerUid,storyId).then(function(saved){
+        liked=!!saved.liked;reaction=saved.reaction||'';likeButton.disabled=false;reactionButtons.forEach(function(b,index){b.disabled=false;b.setAttribute('aria-pressed',String(reaction===choices[index].emoji));});likeButton.textContent=liked?'❤️ Liked':'❤️ Like';likeButton.setAttribute('aria-pressed',String(liked));
+        if(isOwner)refreshOwnerList();
+      }).catch(function(e){if(window.announce)window.announce('Story view could not be saved. '+safeText(e.message,120));});
+    }
     overlay.setAttribute('aria-label','Story by '+item.owner+', '+(currentIndex+1)+' of '+deck.length);
     if(typeof window.announce==='function')window.announce('Story by '+item.owner+'. '+(captionBox.textContent||'No caption')+'.');
   }

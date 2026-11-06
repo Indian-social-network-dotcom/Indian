@@ -34,3 +34,20 @@
 .indian-story-audio-button{min-height:42px;padding:7px 12px;border:1px solid #68707b;border-radius:10px;background:#1d2733;color:white}
 @media(min-width:720px){.indian-story-fullscreen{align-items:center;padding-left:24px;padding-right:24px}.indian-story-top,.indian-story-stage,.indian-story-bottom,.indian-story-controls{width:min(760px,100%)}.indian-story-stage img,.indian-story-stage video{max-height:calc(100vh - 190px)}}
 @media(prefers-reduced-motion:reduce){.indian-story-fullscreen *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+
+/* Interactions in the actual full-screen story viewer. */
+.indian-story-owner-avatar{width:38px;height:38px;flex:0 0 38px;border-radius:50%;object-fit:cover;background:#29343d}
+.indian-story-interaction-area{width:100%;max-width:760px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:9px;padding:7px 0;box-sizing:border-box}
+.indian-story-metrics{display:flex;justify-content:center;gap:18px;flex-wrap:wrap}
+.indian-story-metric{font-weight:700;color:#fff;padding:5px 8px}
+.indian-story-viewers-toggle,.indian-story-like-button,.indian-story-reaction-button{min-height:42px;padding:8px 13px;border:1px solid #68707b;border-radius:10px;background:#1d2733;color:#fff;font:inherit;font-weight:650}
+.indian-story-like-button[aria-pressed=true],.indian-story-reaction-button[aria-pressed=true]{background:#5a1725;border-color:#ff8aa0}
+.indian-story-reactions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.indian-story-viewer-list{width:100%;max-height:22vh;overflow:auto;padding:10px;border:1px solid #526157;border-radius:10px;background:#111a15;box-sizing:border-box}
+.indian-story-viewer-list h3{margin:0 0 8px;color:#fff;font-size:1rem}
+.indian-story-viewer-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #344238}
+.indian-story-viewer-photo{width:38px;height:38px;flex:0 0 38px;border-radius:50%;object-fit:cover;background:#29343d}
+.indian-story-viewer-details{display:flex;flex-direction:column;gap:3px;min-width:0}
+.indian-story-viewer-details strong,.indian-story-viewer-details span{color:#fff;overflow-wrap:anywhere}
+.indian-story-controls button:last-child{background:#28533b;border-color:#78b88f}

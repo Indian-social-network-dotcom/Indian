@@ -8140,11 +8140,10 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
       if (settingsButton) settingsButton.disabled = true;
       return;
     }
-    if (settingsButton) settingsButton.disabled = false;
+    if (settingsButton) { settingsButton.disabled = false; settingsButton.hidden = false; }
     if ("Notification" in window && Notification.permission === "denied") {
       setSettingsStatus("Notifications are blocked for Indian. Open your phone or browser Settings, find Indian site/app notifications, and change permission to Allow.");
-      if (settingsButton) settingsButton.textContent = "How to Allow Notifications";
-      if (settingsButton) settingsButton.disabled = true;
+      if (settingsButton) settingsButton.hidden = true;
     } else {
       setSettingsStatus("Turn on push notifications to receive messages and activity updates.");
       if (settingsButton) settingsButton.textContent = "Enable Push Notifications";

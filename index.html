@@ -6788,8 +6788,6 @@ window.openIndianGames=function(){window.location.href='games.html';};
     applyRoute(shouldShowNotificationSetup() ? 'notificationSetup' : 'home', false, true);
   }
   window.finishIndianNotificationSetup = function(){
-    var uid = String(window.firebaseCurrentUid || 'user');
-    try { sessionStorage.removeItem('indian-notification-choice-skipped-' + uid); } catch(e) {}
     applyRoute('home', false, true);
   };
   function refreshSelectedNav(route){
@@ -7888,13 +7886,16 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
         return;
       }
       await OneSignal.User.PushSubscription.optIn();
+      for (var attempt = 0; attempt < 10 && !OneSignal.User.PushSubscription.optedIn; attempt++) {
+        await new Promise(function (resolve) { window.setTimeout(resolve, 500); });
+      }
       if (OneSignal.User.PushSubscription.optedIn) {
         setStatus("Notifications enabled. Opening Indian…");
         window.setTimeout(function () {
           if (typeof window.finishIndianNotificationSetup === "function") window.finishIndianNotificationSetup();
         }, 350);
       } else {
-        setStatus("Permission was allowed. Subscription is still being completed; please wait a moment.");
+        setStatus("Permission was allowed, but setup is taking longer. Please try Allow Notifications again in a moment.");
       }
     } catch (error) {
       console.error("Indian notification setup failed", error);

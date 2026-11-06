@@ -57,6 +57,7 @@
         : "Ready. Select Allow Notifications to continue.");
       if (typeof window.updateIndianNotificationSetupUI === "function") window.updateIndianNotificationSetupUI();
       if (typeof window.updateIndianPushSettingsUI === "function") window.updateIndianPushSettingsUI();
+      if (typeof window.resolveIndianNotificationRoute === "function") window.resolveIndianNotificationRoute();
     } catch (error) {
       console.error("OneSignal init failed", error);
       setIndianOneSignalStatus("Notifications could not be prepared. You can continue to Indian.");
@@ -6863,10 +6864,25 @@ window.openIndianGames=function(){window.location.href='games.html';};
   }
   function showSignedInLanding(){
     var requestedRoute=(location.hash||'').replace(/^#/,'');
-    var initialRoute=shouldShowNotificationSetup() ? 'notificationSetup' : (routeSections[requestedRoute] ? requestedRoute : 'home');
+    var hasRequestedRoute=!!routeSections[requestedRoute];
+    // Wait for OneSignal to restore this device's subscription before showing
+    // the first-login choice. This prevents a subscribed user seeing it briefly.
+    if(!window.__indianOneSignalReady){
+      window.__indianNotificationRoutePending=!hasRequestedRoute || requestedRoute==='home';
+      applyRoute(hasRequestedRoute ? requestedRoute : 'home', false, true);
+      return;
+    }
+    var initialRoute=shouldShowNotificationSetup() ? 'notificationSetup' : (hasRequestedRoute ? requestedRoute : 'home');
     applyRoute(initialRoute, false, true);
   }
+  window.resolveIndianNotificationRoute = function(){
+    if(!window.__indianNotificationRoutePending)return;
+    window.__indianNotificationRoutePending=false;
+    if(appIsSignedOut() || currentRoute!=='home')return;
+    if(shouldShowNotificationSetup())applyRoute('notificationSetup', false, true);
+  };
   window.finishIndianNotificationSetup = function(){
+    window.__indianNotificationRoutePending=false;
     applyRoute('home', false, true);
   };
   function refreshSelectedNav(route){

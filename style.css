@@ -1332,3 +1332,39 @@ body:not(.auth-required) #indianMixedFeedStatus {
   color: #344b3d !important;
   opacity: 1 !important;
 }
+
+
+/* First sign-in notification choice screen */
+#notificationSetupSection {
+  max-width: 680px;
+  margin: 24px auto;
+  border: 1px solid #dce5df;
+  border-top: 5px solid #e87518;
+  border-bottom: 5px solid #138808;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(19, 54, 83, .10);
+}
+#notificationSetupSection h2 {
+  color: #174a7e;
+  margin-bottom: 10px;
+}
+#notificationSetupSection p {
+  color: #26352d;
+  line-height: 1.65;
+}
+#notificationSetupSection button {
+  min-height: 46px;
+  margin: 8px 8px 4px 0;
+}
+#indianAllowNotificationsBtn {
+  background: #176b3a;
+}
+#indianAllowNotificationsBtn:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+#indianNotificationSetupStatus {
+  min-height: 1.5em;
+  font-weight: 600;
+}

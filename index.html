@@ -7650,7 +7650,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
 <script type="module" id="indianUranCloudSync">
 import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, getDocs, query, orderBy, limit, startAfter, serverTimestamp, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, getDocs, getDoc, query, where, orderBy, limit, startAfter, serverTimestamp, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 const config={apiKey:'AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs',authDomain:'indian-84a86.firebaseapp.com',projectId:'indian-84a86',storageBucket:'indian-84a86.firebasestorage.app',messagingSenderId:'333987809341',appId:'1:333987809341:web:27a351f770aa7b4e808254'};
 let auth,db,currentUser=null,stop=null,uranCursor=null,uranFirstSnapshotSeen=false,uranHasMore=false,uranLoadingMore=false;
 const URAN_PAGE_SIZE=10;
@@ -7662,49 +7662,137 @@ try{const app=getApps().length?getApp():initializeApp(config);auth=getAuth(app);
 window.indianUranIsSignedIn=function(){return !!currentUser;};
 window.indianUranCloudAdd=async function(item){if(!currentUser)throw Error('Pehle Indian account mein sign in karein.');if(!item||!/^https:\/\/res\.cloudinary\.com\//.test(item.mediaUrl||''))throw Error('Cloudinary video URL valid nahi hai.');const videoRef=doc(collection(db,'uranShorts'));await setDoc(videoRef,{videoId:videoRef.id,mediaUrl:item.mediaUrl,publicId:String(item.publicId||''),caption:String(item.caption||'').slice(0,300),addedBy:currentUser.uid,addedByName:currentUser.displayName||currentUser.email||'Indian user',createdAt:serverTimestamp(),likedBy:[]});};
 window.indianUranToggleLike=async function(id,liked){if(!currentUser)throw Error('Sign in required');await updateDoc(doc(db,'uranShorts',id),{likedBy:liked?arrayUnion(currentUser.uid):arrayRemove(currentUser.uid)});};
+window.indianUranRecordView=async function(id){if(!currentUser)throw Error('Sign in required');const profile=await getDoc(doc(db,'publicProfiles',currentUser.uid));const p=profile.exists()?profile.data()||{}:{};await setDoc(doc(db,'uranShorts',id,'views',currentUser.uid),{uid:currentUser.uid,displayName:currentUser.displayName||'Indian user',photoURL:String(p.photoURL||''),viewedAt:serverTimestamp()},{merge:true});};
+window.indianUranAddComment=async function(id,message){if(!currentUser)throw Error('Sign in required');const text=String(message||'').trim().slice(0,1000);if(!text)throw Error('Comment likhein.');const profile=await getDoc(doc(db,'publicProfiles',currentUser.uid));const p=profile.exists()?profile.data()||{}:{};await addDoc(collection(db,'uranShorts',id,'comments'),{uid:currentUser.uid,displayName:currentUser.displayName||'Indian user',photoURL:String(p.photoURL||''),text:text,createdAt:serverTimestamp()});};
+window.indianUranGetSocialData=async function(id){const video=await getDoc(doc(db,'uranShorts',id));if(!video.exists())throw Error('Video nahi mila.');const v=video.data()||{};const [views,comments]=await Promise.all([getDocs(collection(db,'uranShorts',id,'views')),getDocs(query(collection(db,'uranShorts',id,'comments'),orderBy('createdAt','asc'),limit(60)))]);return{likes:Array.isArray(v.likedBy)?v.likedBy.length:0,views:views.size,comments:comments.docs.map(d=>({id:d.id,...(d.data()||{})})),creatorUid:String(v.addedBy||''),creatorName:String(v.addedByName||'Indian user')};};
+window.indianUranGetCreatorProfile=async function(uid){const snap=await getDoc(doc(db,'publicProfiles',uid));if(!snap.exists())throw Error('Public profile nahi mila.');const p=snap.data()||{};const [followers,following,videos]=await Promise.all([getDocs(query(collection(db,'follows'),where('followingUid','==',uid))),getDocs(query(collection(db,'follows'),where('followerId','==',uid))),getDocs(query(collection(db,'uranShorts'),where('addedBy','==',uid)))]);return{profile:{uid:uid,displayName:String(p.displayName||'Indian user'),bio:String(p.bio||''),photoURL:String(p.photoURL||'')},followers:followers.docs.map(d=>d.data()||{}),following:following.docs.map(d=>d.data()||{}),videos:videos.docs.map(d=>({id:d.id,...(d.data()||{})})).sort((a,b)=>((b.createdAt&&b.createdAt.toMillis)?b.createdAt.toMillis():0)-((a.createdAt&&a.createdAt.toMillis)?a.createdAt.toMillis():0))};};
+window.indianUranIsFollowing=async function(uid){if(!currentUser)return false;const q=query(collection(db,'follows'),where('followerId','==',currentUser.uid),where('followingUid','==',uid));const snap=await getDocs(q);return !snap.empty;};
+window.indianUranToggleFollow=async function(uid,follow){if(!currentUser)throw Error('Sign in required');if(uid===currentUser.uid)throw Error('Aap apne aap ko follow nahi kar sakte.');const q=query(collection(db,'follows'),where('followerId','==',currentUser.uid),where('followingUid','==',uid));const snap=await getDocs(q);if(follow&&snap.empty){const p=await getDoc(doc(db,'publicProfiles',uid));const data=p.exists()?p.data()||{}:{};await addDoc(collection(db,'follows'),{followerId:currentUser.uid,followingKey:uid,followingUid:uid,followingName:String(data.displayName||'Indian user'),createdAt:serverTimestamp(),createdAtMs:Date.now()});}else if(!follow&&!snap.empty){await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));}};
+
 window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sign in required');const found=JSON.parse(localStorage.getItem('indian_uran_youtube_links_v1')||'[]').find(x=>x.id===id);if(!found||found.addedBy!==currentUser.uid)throw Error('Sirf video upload karne wala user ise remove kar sakta hai.');await deleteDoc(doc(db,'uranShorts',id));};
+window.indianUranGetPublicProfile=async function(uid){const snap=await getDoc(doc(db,'publicProfiles',uid));if(!snap.exists())throw Error('Public profile nahi mila.');const p=snap.data()||{};return{uid:uid,displayName:String(p.displayName||'Indian user'),bio:String(p.bio||''),photoURL:String(p.photoURL||'')};};
+window.dispatchEvent(new Event('indian-uran-cloud-ready'));
 }catch(error){const status=document.getElementById('shortsStatus');if(status)status.textContent='Uran cloud setup error: '+error.message;}
 </script>
 
 <link rel="stylesheet" href="shorts.css">
-<div id="indianShortsViewer" role="dialog" aria-modal="true" aria-label="Indian Shorts swipe viewer">
+<div id="indianShortsViewer" role="dialog" aria-modal="true" aria-label="Uran video viewer">
  <div class="isv-shell">
-  <div class="isv-top"><strong>Indian Shorts</strong><button type="button" id="isvClose">Close viewer</button></div>
-  <div class="isv-stage" id="isvStage" aria-label="Video player"></div>
-  <p class="isv-caption" id="isvCaption"></p>
-  <div class="isv-controls"><button type="button" id="isvPrev">Previous Short</button><button type="button" id="isvNext">Next Short</button></div>
-  <p id="isvStatus" role="status" aria-live="polite">Swipe up or down to change Short.</p>
+  <div class="isv-top"><strong>Uran video</strong><button type="button" id="isvClose">Back to Home</button></div>
+  <div class="isv-content">
+   <div class="isv-player-column">
+    <div class="isv-stage" id="isvStage" aria-label="Video player"></div>
+    <p class="isv-caption" id="isvCaption"></p>
+   </div>
+   <aside class="isv-social" id="isvSocial" aria-label="Creator and video actions"></aside>
+  </div>
+  <section class="isv-comments" id="isvComments" aria-label="Video comments"></section>
+  <div class="isv-controls"><button type="button" id="isvPrev">Previous video</button><button type="button" id="isvNext">Next video</button></div>
+  <p id="isvStatus" role="status" aria-live="polite">Swipe up for next video or down for previous video. You can also use the Previous and Next buttons or arrow keys.</p>
  </div>
 </div>
 <script id="indianSwipeShortsFeature">
 (function(){
  'use strict';
- var viewer=document.getElementById('indianShortsViewer'),stage=document.getElementById('isvStage'),caption=document.getElementById('isvCaption'),status=document.getElementById('isvStatus');
- if(!viewer||!stage)return;
+ var viewer=document.getElementById('indianShortsViewer'),stage=document.getElementById('isvStage'),caption=document.getElementById('isvCaption'),social=document.getElementById('isvSocial'),comments=document.getElementById('isvComments'),status=document.getElementById('isvStatus');
+ if(!viewer||!stage||!social||!comments)return;
  var cards=[],index=0,touchY=null,previousFocus=null;
- function collect(){cards=Array.from(document.querySelectorAll('#shortsFeed>article'));cards.forEach(function(card){if(card.querySelector('.shortsOpenViewer'))return;var b=document.createElement('button');b.type='button';b.className='action shortsOpenViewer';b.textContent='Open Short in swipe viewer';b.addEventListener('click',function(){collect();index=cards.indexOf(card);open();});card.appendChild(b);});}
+ function collect(){
+  var foundCards=Array.from(document.querySelectorAll('#shortsFeed>article[data-uran-video-id],#indianMixedFeedItems article[data-uran-video-id]'));
+  var seenIds=Object.create(null);
+  cards=foundCards.filter(function(card){var id=String(card.dataset.uranVideoId||'');if(!id||seenIds[id])return false;seenIds[id]=true;return true;});
+  foundCards.forEach(function(card){
+   if(card.querySelector('.shortsOpenViewer'))return;
+   var b=document.createElement('button');b.type='button';b.className='action shortsOpenViewer';b.textContent='Open video page';
+   b.setAttribute('aria-label','Open this Uran video on its own page');
+   card.appendChild(b);
+  });
+ }
+ function renderSocial(card){
+  social.replaceChildren();comments.replaceChildren();
+  var creator=card&&card.querySelector('.uran-creator-row');
+  var panel=card&&card.querySelector('.uran-social-panel');
+  if(creator)social.appendChild(creator.cloneNode(true));
+  if(panel){
+   var panelCopy=panel.cloneNode(true);
+   var heading=panelCopy.querySelector('.uran-comments-heading');
+   var list=panelCopy.querySelector('.uran-comment-list');
+   var form=panelCopy.querySelector('.uran-comment-form');
+   if(heading)comments.appendChild(heading);
+   if(list)comments.appendChild(list);
+   if(form)comments.appendChild(form);
+   social.appendChild(panelCopy);
+  }
+  if(!creator&&!panel)social.textContent='Video actions are loading. Please wait.';
+ }
  function show(){
-  collect();if(!cards.length){status.textContent='Uran mein abhi koi Short nahi hai.';stage.replaceChildren();caption.textContent='';return;}
+  collect();
+  if(!cards.length){status.textContent='Uran mein abhi koi video nahi hai.';stage.replaceChildren();caption.textContent='';social.replaceChildren();return;}
   if(index<0)index=cards.length-1;if(index>=cards.length)index=0;
-  var card=cards[index],frame=card.querySelector('iframe'),video=card.querySelector('video'),cap=card.querySelector('p');
+  var card=cards[index],frame=card.querySelector('iframe'),video=card.querySelector('video'),cap=card.querySelector(':scope > p');
   stage.replaceChildren();
-  if(frame){var f=document.createElement('iframe');f.src=frame.getAttribute('src')||'';f.title='Indian Short '+(index+1);f.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';f.allowFullscreen=true;f.referrerPolicy='strict-origin-when-cross-origin';stage.appendChild(f);}
-  else if(video){var v=document.createElement('video');v.src=video.currentSrc||video.src;v.controls=true;v.playsInline=true;v.muted=false;v.autoplay=true;stage.appendChild(v);v.play().catch(function(){status.textContent='Automatic playback with sound was blocked. Press Play on the video to hear it.';});}
-  else{stage.textContent='Video player is unavailable.';}
-  caption.textContent=cap?cap.textContent:'';status.textContent='Short '+(index+1)+' of '+cards.length+'. Swipe up or down, or use Previous and Next.';
+  if(frame){
+   var f=document.createElement('iframe');f.src=frame.getAttribute('src')||'';f.title='Uran video '+(index+1);f.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';f.allowFullscreen=true;f.referrerPolicy='strict-origin-when-cross-origin';stage.appendChild(f);
+  }else if(video){
+   var v=document.createElement('video');var source=video.currentSrc||video.getAttribute('src')||video.getAttribute('data-home-lazy-src')||video.src;
+   v.src=source;v.controls=true;v.playsInline=true;v.muted=false;v.autoplay=true;v.setAttribute('aria-label','Uran video '+(index+1)+' player');stage.appendChild(v);
+   v.play().catch(function(){status.textContent='Automatic playback was blocked. Press Play on the video to hear it.';});
+  }else{stage.textContent='Video player is unavailable.';}
+  caption.textContent=cap?cap.textContent:'';
+  renderSocial(card);
+  status.textContent='Video '+(index+1)+' of '+cards.length+'. Swipe up for next video or down for previous video. Arrow Up and Arrow Down also work.';
+ }
+ function openForId(id){
+  collect();var found=cards.findIndex(function(card){return String(card.dataset.uranVideoId)===String(id);});
+  if(found<0){status.textContent='This video is not available in the Uran list yet.';return;}
+  index=found;open();
  }
  function open(){previousFocus=document.activeElement;viewer.classList.add('open');document.body.style.overflow='hidden';show();document.getElementById('isvClose').focus();}
- function close(){viewer.classList.remove('open');document.body.style.overflow='';stage.replaceChildren();if(previousFocus&&previousFocus.focus)previousFocus.focus();}
+ function close(){viewer.classList.remove('open');document.body.style.overflow='';stage.replaceChildren();social.replaceChildren();if(previousFocus&&previousFocus.focus)previousFocus.focus();}
  function move(n){index+=n;show();}
  document.getElementById('isvClose').addEventListener('click',close);
  document.getElementById('isvPrev').addEventListener('click',function(){move(-1);});
  document.getElementById('isvNext').addEventListener('click',function(){move(1);});
  stage.addEventListener('touchstart',function(e){touchY=e.touches&&e.touches.length?e.touches[0].clientY:null;},{passive:true});
  stage.addEventListener('touchend',function(e){if(touchY===null||!e.changedTouches||!e.changedTouches.length)return;var dy=e.changedTouches[0].clientY-touchY;touchY=null;if(Math.abs(dy)>55)move(dy<0?1:-1);},{passive:true});
- viewer.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();close();}else if(e.key==='ArrowDown'){e.preventDefault();move(1);}else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}});
+ viewer.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){e.preventDefault();close();return;}
+  if(e.key==='Tab'){
+   var focusable=Array.from(viewer.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),video[controls]')).filter(function(node){return !node.hidden&&node.getAttribute('aria-hidden')!=='true';});
+   if(!focusable.length){e.preventDefault();viewer.focus();return;}
+   var first=focusable[0],last=focusable[focusable.length-1];
+   if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+   return;
+  }
+  var target=e.target;
+  if(target&&(target.tagName==='TEXTAREA'||target.tagName==='INPUT'||target.tagName==='SELECT'||target.isContentEditable||target.tagName==='VIDEO'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();move(1);}else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}
+ });
+ // Clicking a Uran player in Home opens the dedicated video page.
+ document.addEventListener('click',function(e){
+  var openButton=e.target&&e.target.closest?e.target.closest('.shortsOpenViewer'):null;
+  var video=e.target&&e.target.closest?e.target.closest('video'):null;
+  var card=openButton?openButton.closest('article[data-uran-video-id]'):(video?video.closest('article[data-uran-video-id]'):null);
+  if(!card||(!card.closest('#shortsFeed')&&!card.closest('#indianMixedFeedItems')))return;
+  e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+  openForId(card.dataset.uranVideoId);
+ },true);
+ document.addEventListener('keydown',function(e){
+  var video=e.target;if(!video||video.tagName!=='VIDEO')return;
+  var card=video.closest('article[data-uran-video-id]');
+  if(!card||(!card.closest('#shortsFeed')&&!card.closest('#indianMixedFeedItems')))return;
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();openForId(card.dataset.uranVideoId);}
+ },true);
  var feed=document.getElementById('shortsFeed');
  if(feed){new MutationObserver(function(){collect();}).observe(feed,{childList:true,subtree:true});collect();}
+ document.addEventListener('indian-uran-social-updated',function(e){
+  if(!viewer.classList.contains('open'))return;
+  var card=cards[index],id=card&&card.dataset.uranVideoId;
+  if(id&&e.detail&&String(e.detail.videoId)===String(id))renderSocial(card);
+ });
  window.openIndianShortsSwipeViewer=function(){collect();index=0;open();};
+ window.openIndianUranVideoPage=openForId;
 })();
 </script>
 <script id="indianLiteStatusController">
@@ -8236,5 +8324,6 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
 })();
 </script>
 
+<script src="uran-social.js" defer></script>
 </body>
 </html>

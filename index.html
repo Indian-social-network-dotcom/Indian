@@ -8458,7 +8458,7 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
  document.addEventListener('touchend',function(e){
   if(touchStartY===null||!e.changedTouches||!e.changedTouches.length)return;
   var delta=e.changedTouches[0].clientY-touchStartY;touchStartY=null;
-  if(Math.abs(delta)>35)onFeedMove(delta>0?1:-1);
+  if(Math.abs(delta)>35)onFeedMove(delta<0?1:-1);
  },{passive:true});
  document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&document.body.classList.contains('indian-fullscreen-open'))return;

@@ -56,6 +56,7 @@
         ? "Notifications are already enabled on this device."
         : "Ready. Select Allow Notifications to continue.");
       if (typeof window.updateIndianNotificationSetupUI === "function") window.updateIndianNotificationSetupUI();
+      if (typeof window.updateIndianPushSettingsUI === "function") window.updateIndianPushSettingsUI();
     } catch (error) {
       console.error("OneSignal init failed", error);
       setIndianOneSignalStatus("Notifications could not be prepared. You can continue to Indian.");
@@ -408,6 +409,12 @@ Search registered users, places, posts or help requests:
 <!-- NOTIFICATIONS SECTION -->
 <section id="notificationsSection" style="display:none;" tabindex="-1">
 <h2>Notifications</h2>
+
+<div id="indianPushNotificationSettings" class="firebaseCard" aria-label="Push notification settings">
+  <h3>Push Notifications</h3>
+  <p id="indianPushNotificationSettingsStatus" role="status" aria-live="polite">Checking notification status…</p>
+  <button class="action" type="button" id="indianEnablePushFromNotificationsBtn">Enable Push Notifications</button>
+</div>
 
 <button class="action" onclick="markAllNotificationsAsRead()">Mark All as Read</button>
 
@@ -6886,6 +6893,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
     if(route==='stories' && typeof window.renderLocalStories==='function') window.renderLocalStories();
     if(route==='place' && typeof window.renderPlaceList==='function') window.renderPlaceList();
     if(route==='notifications' && typeof window.renderNotifications==='function') window.renderNotifications();
+    if(route==='notifications' && typeof window.updateIndianPushSettingsUI==='function') window.updateIndianPushSettingsUI();
     if(route==='messages'){
       if(typeof window.renderConversationList==='function') window.renderConversationList();
       if(typeof window.renderMessageBadge==='function') window.renderMessageBadge();
@@ -8114,6 +8122,73 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   var skipButton = document.getElementById("indianSkipNotificationsBtn");
   var status = document.getElementById("indianNotificationSetupStatus");
   function setStatus(message) { if (status) status.textContent = String(message || ""); }
+  var settingsPanel = document.getElementById("indianPushNotificationSettings");
+  var settingsStatus = document.getElementById("indianPushNotificationSettingsStatus");
+  var settingsButton = document.getElementById("indianEnablePushFromNotificationsBtn");
+  function setSettingsStatus(message) { if (settingsStatus) settingsStatus.textContent = String(message || ""); }
+  window.updateIndianPushSettingsUI = function () {
+    if (!settingsPanel) return;
+    var OneSignal = window.__indianOneSignalInstance;
+    var optedIn = !!(OneSignal && OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optedIn);
+    if (optedIn) {
+      settingsPanel.hidden = true;
+      return;
+    }
+    settingsPanel.hidden = false;
+    if (!window.__indianOneSignalReady || !OneSignal) {
+      setSettingsStatus("Push notification settings are loading. Please try again in a moment.");
+      if (settingsButton) settingsButton.disabled = true;
+      return;
+    }
+    if (settingsButton) { settingsButton.disabled = false; settingsButton.hidden = false; }
+    if ("Notification" in window && Notification.permission === "denied") {
+      setSettingsStatus("Notifications are blocked for Indian. Open your phone or browser Settings, find Indian site/app notifications, and change permission to Allow.");
+      if (settingsButton) settingsButton.hidden = true;
+    } else {
+      setSettingsStatus("Turn on push notifications to receive messages and activity updates.");
+      if (settingsButton) settingsButton.textContent = "Enable Push Notifications";
+    }
+  };
+  if (settingsButton) settingsButton.addEventListener("click", async function () {
+    var OneSignal = window.__indianOneSignalInstance;
+    if (!OneSignal || !window.__indianOneSignalReady) {
+      setSettingsStatus("Please wait a moment, then try again.");
+      return;
+    }
+    try {
+      if (!OneSignal.Notifications.isPushSupported()) {
+        setSettingsStatus("Push notifications are not supported by this browser or device.");
+        return;
+      }
+      if ("Notification" in window && Notification.permission === "denied") {
+        setSettingsStatus("Open your phone or browser Settings, find Indian site/app notifications, and change permission to Allow.");
+        return;
+      }
+      setSettingsStatus("Please allow notifications when your browser asks.");
+      if (!OneSignal.Notifications.permission) {
+        await OneSignal.Notifications.requestPermission();
+      }
+      if (!OneSignal.Notifications.permission) {
+        setSettingsStatus("Permission was not allowed. You can enable it later in your phone or browser Settings.");
+        window.updateIndianPushSettingsUI();
+        return;
+      }
+      await OneSignal.User.PushSubscription.optIn();
+      for (var attempt = 0; attempt < 10 && !OneSignal.User.PushSubscription.optedIn; attempt++) {
+        await new Promise(function (resolve) { window.setTimeout(resolve, 500); });
+      }
+      window.updateIndianPushSettingsUI();
+      if (OneSignal.User.PushSubscription.optedIn) {
+        setSettingsStatus("Push notifications are now enabled.");
+      } else {
+        setSettingsStatus("Permission is allowed, but push setup is still processing. Please try again shortly.");
+      }
+    } catch (error) {
+      console.error("Push notification settings update failed", error);
+      setSettingsStatus("Could not enable push notifications right now. Please try again later.");
+    }
+  });
+  window.updateIndianPushSettingsUI();
   window.updateIndianNotificationSetupUI = function () {
     var OneSignal = window.__indianOneSignalInstance;
     if (OneSignal && window.__indianOneSignalReady) {

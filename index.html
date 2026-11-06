@@ -6890,7 +6890,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
       try{history.replaceState({indianApp:true,route:route},'', '#'+route);}catch(e){}
     }
     currentRoute=route;
-    if(document.body)document.body.classList.toggle('indian-home-route',route==='home');
+    if(document.body){document.body.classList.toggle('indian-home-route',route==='home');document.body.classList.remove('indian-bottom-nav-hidden');}
     var visible=routeSections[route]||routeSections.home;
     sectionIds.forEach(function(id){
       var el=byId(id); if(!el)return;

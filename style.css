@@ -1461,3 +1461,37 @@ body:not(.auth-required) #indianMixedFeedStatus {
 @media(max-width:760px){
   #messagesSection .messageCallActions .chatIconButton{flex:1 1 130px}
 }
+
+
+/* Full-screen online Story Viewer and owner-only viewer list. */
+.indian-story-viewer{
+  position:fixed!important;inset:0!important;z-index:12000!important;display:flex!important;
+  flex-direction:column;gap:10px;overflow:auto!important;margin:0!important;padding:12px!important;
+  width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;
+  box-sizing:border-box;background:#080b0a!important;color:#fff!important;border:0!important;
+  border-radius:0!important;box-shadow:none!important;
+}
+.indian-story-viewer[hidden]{display:none!important}
+.indian-story-viewer .indian-story-viewer-top{display:flex;align-items:center;gap:12px;min-height:48px}
+.indian-story-owner-photo,.indian-story-viewer-photo{width:42px;height:42px;flex:0 0 42px;object-fit:cover;border-radius:50%;background:#34443a}
+.indian-story-viewer .indian-story-viewer-top h2{margin:0;color:#fff;font-size:1.05rem}
+.indian-story-media-stage{flex:1 1 auto;min-height:180px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#000;border-radius:10px}
+.indian-story-media-stage img,.indian-story-media-stage video{display:block;width:100%;height:100%;max-width:100%;max-height:calc(100dvh - 220px);object-fit:contain;background:#000}
+.indian-story-caption{margin:0;color:#fff}
+.indian-story-viewer audio{width:100%;max-width:520px}
+.indian-story-metrics{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.indian-story-stat{min-width:86px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 14px;border:1px solid #69766e;border-radius:10px;background:#18231d;color:#fff;font:inherit}
+.indian-story-stat strong{font-size:1.15rem}
+.indian-story-stat[aria-pressed=true],.indian-story-stat.is-liked{background:#5a1725;border-color:#ff8aa0}
+.indian-story-like-action{align-self:center}
+.indian-story-reactions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.indian-story-reaction{min-height:44px;padding:8px 12px;border:1px solid #69766e;border-radius:10px;background:#18231d;color:#fff;font:inherit}
+.indian-story-reaction[aria-pressed=true]{background:#174d34;border-color:#7be0a8}
+.indian-story-viewer-list{padding:12px;border:1px solid #526157;border-radius:10px;background:#111a15}
+.indian-story-viewer-list h3{margin:0 0 10px;color:#fff}
+.indian-story-viewer-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #344238}
+.indian-story-viewer-detail{display:flex;flex-direction:column;gap:3px;min-width:0}
+.indian-story-viewer-detail strong,.indian-story-viewer-detail span{color:#fff;overflow-wrap:anywhere}
+.indian-story-back-home{align-self:center;min-width:180px}
+.indian-story-viewer button:focus-visible{outline:3px solid #ffca75!important;outline-offset:3px!important}
+@media(max-width:480px){.indian-story-viewer{padding:8px!important;gap:8px}.indian-story-media-stage img,.indian-story-media-stage video{max-height:calc(100dvh - 250px)}}

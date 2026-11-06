@@ -6955,6 +6955,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
   window.addEventListener('popstate',function(event){
     if(appIsSignedOut())return;
     var target=event.state && event.state.indianApp && routeSections[event.state.route] ? event.state.route : 'home';
+    if(target===currentRoute)return;
     applyRoute(target,false,true);
   });
   var observer = new MutationObserver(function(){

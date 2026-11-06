@@ -5106,6 +5106,48 @@ window.firebaseIndianMessages = {
         return !!(firebaseDb && firebaseCurrentUser && getFirestoreMessagePersonUid(personId));
     }
 };
+
+async function indianStoryInteractionRef(ownerUid,storyId){
+    if(!firebaseDb||!firebaseCurrentUser)throw new Error("Sign in to view or react to a story.");
+    const safeOwner=String(ownerUid||"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,128);
+    const safeStory=String(storyId||"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,128);
+    if(!safeOwner||!safeStory)throw new Error("Story information is missing.");
+    return {id:safeOwner+"_"+safeStory+"_"+firebaseCurrentUser.uid,ownerUid:safeOwner,storyId:safeStory};
+}
+async function recordIndianStoryView(ownerUid,storyId){
+    const key=await indianStoryInteractionRef(ownerUid,storyId);
+    const ref=doc(firebaseDb,"storyInteractions",key.id);
+    const snap=await getDoc(ref);
+    if(!snap.exists()){
+        await setDoc(ref,{
+            ownerUid:key.ownerUid,storyId:key.storyId,viewerUid:firebaseCurrentUser.uid,
+            viewerName:sanitizePlainText(firebaseCurrentUser.displayName||"Indian User",60),
+            viewerPhotoURL:String(window.profilePhotoURL||""),
+            viewedAtMs:Date.now(),liked:false,reaction:""
+        });
+        return {liked:false,reaction:""};
+    }
+    const data=snap.data()||{};
+    return {liked:data.liked===true,reaction:String(data.reaction||"")};
+}
+async function setIndianStoryInteraction(ownerUid,storyId,liked,reaction){
+    const key=await indianStoryInteractionRef(ownerUid,storyId);
+    const safeReaction=["","😍","😂","😮"].includes(String(reaction||""))?String(reaction||""):"";
+    const ref=doc(firebaseDb,"storyInteractions",key.id);
+    await updateDoc(ref,{liked:liked===true,reaction:safeReaction,updatedAtMs:Date.now()});
+    return {liked:liked===true,reaction:safeReaction};
+}
+async function getIndianStoryViewerSummary(ownerUid,storyId){
+    if(!firebaseDb||!firebaseCurrentUser||firebaseCurrentUser.uid!==String(ownerUid))throw new Error("Only the story owner can see the viewer list.");
+    const key=await indianStoryInteractionRef(ownerUid,storyId);
+    const q=query(collection(firebaseDb,"storyInteractions"),where("ownerUid","==",key.ownerUid),where("storyId","==",key.storyId));
+    const snapshot=await getDocs(q);
+    return snapshot.docs.map(function(item){return item.data()||{};});
+}
+window.recordIndianStoryView=recordIndianStoryView;
+window.setIndianStoryInteraction=setIndianStoryInteraction;
+window.getIndianStoryViewerSummary=getIndianStoryViewerSummary;
+
 window.saveIndianStoryToFirestore = saveIndianStoryRecord;
 window.setIndianLiveStatus = setIndianFirestoreLiveStatus;
 
@@ -7021,30 +7063,95 @@ window.openIndianGames=function(){window.location.href='games.html';};
   function storyOwnerLabel(profile){return cleanText(profile.displayName||'Indian User',60)||'Indian User';}
   function showOnlineStory(profile,story){
     if(typeof window.openStories==='function')window.openStories();
-    window.setTimeout(function(){
+    window.setTimeout(async function(){
       var section=byId('storiesSection'),list=byId('storiesList');if(!section||!list)return;
-      var viewer=byId('onlineStoryViewer');if(!viewer){viewer=document.createElement('section');viewer.id='onlineStoryViewer';viewer.tabIndex=-1;viewer.setAttribute('aria-labelledby','onlineStoryViewerTitle');list.parentNode.insertBefore(viewer,list);}
-      viewer.replaceChildren();var h=document.createElement('h3');h.id='onlineStoryViewerTitle';h.textContent='Story by '+storyOwnerLabel(profile);viewer.appendChild(h);
+      var viewer=byId('onlineStoryViewer');if(!viewer){viewer=document.createElement('section');viewer.id='onlineStoryViewer';list.parentNode.insertBefore(viewer,list);}
+      viewer.className='indian-story-viewer';viewer.tabIndex=-1;viewer.setAttribute('role','dialog');viewer.setAttribute('aria-modal','true');viewer.setAttribute('aria-labelledby','onlineStoryViewerTitle');
+      viewer.replaceChildren();
+      var top=document.createElement('div');top.className='indian-story-viewer-top';
+      var avatar=document.createElement('img');avatar.className='indian-story-owner-photo';avatar.alt='Profile photo of '+storyOwnerLabel(profile);
+      var ownerPhoto=String(profile.photoURL||profile.photoUrl||'');if(ownerPhoto)avatar.src=ownerPhoto;else avatar.hidden=true;
+      var h=document.createElement('h2');h.id='onlineStoryViewerTitle';h.textContent=storyOwnerLabel(profile);
+      top.append(avatar,h);viewer.appendChild(top);
       var storyMediaUrl=story.mediaType==='video'&&story.mediaUrl?story.mediaUrl:(story.imageData||story.mediaUrl||'');
+      var mediaWrap=document.createElement('div');mediaWrap.className='indian-story-media-stage';
       var storyMedia;
       if(story.mediaType==='video'&&storyMediaUrl){storyMedia=document.createElement('video');storyMedia.controls=true;storyMedia.playsInline=true;storyMedia.preload='metadata';storyMedia.muted=false;storyMedia.src=storyMediaUrl;storyMedia.setAttribute('aria-label','Video story shared by '+storyOwnerLabel(profile));}
       else{storyMedia=document.createElement('img');storyMedia.src=storyMediaUrl;storyMedia.alt='Photo story shared by '+storyOwnerLabel(profile);}
-      storyMedia.style.cssText='display:block;max-width:100%;max-height:65vh;object-fit:contain;';viewer.appendChild(storyMedia);
-      var cap=document.createElement('p');cap.textContent=String(story.caption||'No caption');viewer.appendChild(cap);
+      mediaWrap.appendChild(storyMedia);viewer.appendChild(mediaWrap);
+      if(story.caption){var cap=document.createElement('p');cap.className='indian-story-caption';cap.textContent=String(story.caption);viewer.appendChild(cap);}
       if(story.audioUrl && String(story.audioUrl).startsWith('https://res.cloudinary.com/')){
-        var audioLabel=document.createElement('p');audioLabel.textContent='15-second story music';viewer.appendChild(audioLabel);
-        var audio=document.createElement('audio');audio.controls=true;audio.preload='auto';audio.src=story.audioUrl;audio.setAttribute('aria-label','Play 15-second story music selected by '+storyOwnerLabel(profile));audio.style.cssText='display:block;width:100%;margin:8px 0;';viewer.appendChild(audio);var autoPlay=audio.play();if(autoPlay&&autoPlay.catch)autoPlay.catch(function(){var tip=document.createElement('p');tip.textContent='If sound does not start automatically, activate the Play control. The phone browser may block autoplay.';viewer.appendChild(tip);});
-      }else if(story.audioData && String(story.audioData).startsWith('data:audio/')){
         var audioLabel=document.createElement('p');audioLabel.textContent='Story music';viewer.appendChild(audioLabel);
-        var audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.src=story.audioData;audio.setAttribute('aria-label','Play story music selected by '+storyOwnerLabel(profile));audio.style.cssText='display:block;width:100%;margin:8px 0;';viewer.appendChild(audio);
+        var audio=document.createElement('audio');audio.controls=true;audio.preload='auto';audio.src=story.audioUrl;audio.setAttribute('aria-label','Play story music selected by '+storyOwnerLabel(profile));viewer.appendChild(audio);
+        var autoPlay=audio.play();if(autoPlay&&autoPlay.catch)autoPlay.catch(function(){});
+      }else if(story.audioData && String(story.audioData).startsWith('data:audio/')){
+        var audioDataPlayer=document.createElement('audio');audioDataPlayer.controls=true;audioDataPlayer.preload='none';audioDataPlayer.src=story.audioData;audioDataPlayer.setAttribute('aria-label','Play story music selected by '+storyOwnerLabel(profile));viewer.appendChild(audioDataPlayer);
       }else if(story.musicChoice && story.musicChoice!=='none'){
-        var tune=document.createElement('button');tune.type='button';tune.className='action';tune.textContent='Play website tune';tune.setAttribute('aria-label','Play the website demo tune for this story');tune.addEventListener('click',function(){try{if(window.playStoryDemoTone)window.playStoryDemoTone(story.musicChoice);var st=byId('storiesStatus');if(st)st.textContent='Playing the short website demo tune. It is a generated tone, not a song.';}catch(e){announce('Audio playback is not available in this browser.');}});viewer.appendChild(tune);
-      }else{
-        var silent=document.createElement('p');silent.textContent='No shared music was added to this story.';viewer.appendChild(silent);
+        var tune=document.createElement('button');tune.type='button';tune.className='action';tune.textContent='Play website tune';tune.addEventListener('click',function(){try{if(window.playStoryDemoTone)window.playStoryDemoTone(story.musicChoice);}catch(e){}});viewer.appendChild(tune);
       }
-      
-      var reply=document.createElement('button');reply.type='button';reply.className='action';reply.textContent='Reply to Story in Messages';reply.setAttribute('aria-label','Reply to story by '+storyOwnerLabel(profile));reply.addEventListener('click',function(){window.startHelpConversation&&window.startHelpConversation(profile.uid,storyOwnerLabel(profile),'Replying to your story: '+String(story.caption||'Photo story'));});viewer.appendChild(reply);
-      var close=document.createElement('button');close.type='button';close.className='action';close.textContent='Close story preview';close.addEventListener('click',function(){viewer.hidden=true;var trigger=document.querySelector('[data-online-story-id="'+CSS.escape(String(story.id))+'"]');if(trigger)trigger.focus();});viewer.appendChild(close);viewer.hidden=false;viewer.focus();
+      var interaction=null,ownerUid=String(profile.uid||story.ownerUid||''),storyId=String(story.id||'');
+      var isOwner=!!(window.firebaseCurrentUid&&ownerUid&&String(window.firebaseCurrentUid)===ownerUid);
+      var metrics=document.createElement('div');metrics.className='indian-story-metrics';
+      var viewButton=document.createElement('button');viewButton.type='button';viewButton.className='indian-story-stat';viewButton.setAttribute('aria-label','Show story viewers');
+      var viewIcon=document.createElement('span');viewIcon.textContent='👁️';viewIcon.setAttribute('aria-hidden','true');
+      var viewCount=document.createElement('strong');viewCount.textContent='0';
+      var viewLabel=document.createElement('span');viewLabel.textContent='Views';viewButton.append(viewIcon,viewCount,viewLabel);
+      var likeButton=document.createElement('button');likeButton.type='button';likeButton.className='indian-story-stat';likeButton.setAttribute('aria-label','Like this story');
+      var likeIcon=document.createElement('span');likeIcon.textContent='❤️';likeIcon.setAttribute('aria-hidden','true');
+      var likeCount=document.createElement('strong');likeCount.textContent=isOwner?'0':'Like';
+      var likeLabel=document.createElement('span');likeLabel.textContent='Likes';likeButton.append(likeIcon,likeCount,likeLabel);
+      if(isOwner){metrics.append(viewButton,likeButton);}else{likeButton.classList.add('indian-story-like-action');}
+      var reactionGroup=document.createElement('div');reactionGroup.className='indian-story-reactions';reactionGroup.setAttribute('aria-label','Story emoji reactions');
+      var reactionChoices=[{emoji:'😍',label:'Pyaar'},{emoji:'😂',label:'Hansi'},{emoji:'😮',label:'Hairani'}];
+      var reactionButtons=[];
+      reactionChoices.forEach(function(choice){
+        var button=document.createElement('button');button.type='button';button.className='indian-story-reaction';button.textContent=choice.emoji+' '+choice.label;button.setAttribute('aria-label',choice.label+' reaction '+choice.emoji);button.setAttribute('aria-pressed','false');
+        button.addEventListener('click',async function(){
+          if(!window.setIndianStoryInteraction||!ownerUid||!storyId){announce('Sign in to react to this story.');return;}
+          try{interaction=await window.setIndianStoryInteraction(ownerUid,storyId,interaction?interaction.liked:false,choice.emoji);reactionButtons.forEach(function(item){item.setAttribute('aria-pressed',String(item===button));});announce('Your '+choice.label+' reaction was saved.');if(isOwner)await refreshSummary();}
+          catch(error){announce('Reaction could not be saved. '+cleanText(error.message,140));}
+        });
+        reactionButtons.push(button);reactionGroup.appendChild(button);
+      });
+      var viewers=document.createElement('div');viewers.className='indian-story-viewer-list';viewers.hidden=true;viewers.setAttribute('aria-label','People who viewed this story');
+      var viewersTitle=document.createElement('h3');viewersTitle.textContent='People who viewed your story';viewers.appendChild(viewersTitle);
+      var viewersRows=document.createElement('div');viewers.appendChild(viewersRows);
+      async function refreshSummary(){
+        if(!isOwner||!window.getIndianStoryViewerSummary)return;
+        try{
+          var rows=await window.getIndianStoryViewerSummary(ownerUid,storyId);
+          viewCount.textContent=String(rows.length);
+          likeCount.textContent=String(rows.filter(function(row){return row.liked===true;}).length);
+          viewersRows.replaceChildren();
+          if(!rows.length){var empty=document.createElement('p');empty.textContent='No one has viewed this story yet.';viewersRows.appendChild(empty);}
+          rows.sort(function(a,b){return Number(b.viewedAtMs||0)-Number(a.viewedAtMs||0);});
+          rows.forEach(function(row){
+            var item=document.createElement('div');item.className='indian-story-viewer-row';
+            var photo=document.createElement('img');photo.alt='';photo.className='indian-story-viewer-photo';if(row.viewerPhotoURL)photo.src=row.viewerPhotoURL;else photo.hidden=true;
+            var detail=document.createElement('div');detail.className='indian-story-viewer-detail';
+            var name=document.createElement('strong');name.textContent=String(row.viewerName||'Indian user');
+            var activity=document.createElement('span');activity.textContent=(row.liked?'Liked ❤️':'Did not like')+' · '+(row.reaction||'No emoji reaction');
+            detail.append(name,activity);item.append(photo,detail);viewersRows.appendChild(item);
+          });
+        }catch(error){viewersRows.textContent='Viewer list could not be loaded. Check the Firestore Story rules.';}
+      }
+      viewButton.addEventListener('click',async function(){viewers.hidden=!viewers.hidden;if(!viewers.hidden){await refreshSummary();viewers.scrollIntoView({block:'nearest',behavior:'smooth'});}});
+      likeButton.addEventListener('click',async function(){
+        if(!window.setIndianStoryInteraction||!ownerUid||!storyId){announce('Sign in to like this story.');return;}
+        try{interaction=await window.setIndianStoryInteraction(ownerUid,storyId,!(interaction&&interaction.liked),interaction?interaction.reaction:'');likeButton.setAttribute('aria-pressed',String(!!interaction.liked));likeButton.classList.toggle('is-liked',!!interaction.liked);if(isOwner)await refreshSummary();else likeCount.textContent=interaction.liked?'Liked':'Like';}
+        catch(error){announce('Like could not be saved. '+cleanText(error.message,140));}
+      });
+      if(isOwner){viewer.appendChild(metrics);}else{viewer.appendChild(likeButton);}
+      viewer.appendChild(reactionGroup);
+      if(isOwner)viewer.appendChild(viewers);
+      var reply=document.createElement('button');reply.type='button';reply.className='action';reply.textContent='Reply to Story in Messages';reply.addEventListener('click',function(){window.startHelpConversation&&window.startHelpConversation(profile.uid,storyOwnerLabel(profile),'Replying to your story: '+String(story.caption||'Story'));});viewer.appendChild(reply);
+      var back=document.createElement('button');back.type='button';back.className='action indian-story-back-home';back.textContent='Back to Home';back.setAttribute('aria-label','Back to Home Page');back.addEventListener('click',function(){viewer.hidden=true;if(typeof window.openIndianHome==='function')window.openIndianHome();});viewer.appendChild(back);
+      viewer.hidden=false;
+      if(window.recordIndianStoryView&&ownerUid&&storyId){
+        try{interaction=await window.recordIndianStoryView(ownerUid,storyId);if(interaction){likeButton.setAttribute('aria-pressed',String(!!interaction.liked));likeButton.classList.toggle('is-liked',!!interaction.liked);reactionButtons.forEach(function(button,index){button.setAttribute('aria-pressed',String(interaction.reaction===reactionChoices[index].emoji));});}if(isOwner)await refreshSummary();}
+        catch(error){announce('Story opened, but its view could not be saved. Check the Firestore Story rules.');}
+      }
+      viewer.focus();
       announce('Story by '+storyOwnerLabel(profile)+'. '+String(story.caption||'No caption')+'.');
     },80);
   }

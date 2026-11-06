@@ -7698,11 +7698,10 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
  var cards=[],index=0,touchY=null,previousFocus=null;
  function collect(){
   cards=Array.from(document.querySelectorAll('#shortsFeed>article[data-uran-video-id]'));
-  cards.forEach(function(card){
+  Array.from(document.querySelectorAll('#shortsFeed>article[data-uran-video-id],#indianMixedFeedItems article[data-uran-video-id]')).forEach(function(card){
    if(card.querySelector('.shortsOpenViewer'))return;
    var b=document.createElement('button');b.type='button';b.className='action shortsOpenViewer';b.textContent='Open video page';
    b.setAttribute('aria-label','Open this Uran video on its own page');
-   b.addEventListener('click',function(){openForId(card.dataset.uranVideoId);});
    card.appendChild(b);
   });
  }
@@ -7747,11 +7746,18 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
  viewer.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();close();}else if(e.key==='ArrowDown'){e.preventDefault();move(1);}else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}});
  // Clicking a Uran player in Home opens the dedicated video page.
  document.addEventListener('click',function(e){
-  var video=e.target&&e.target.closest?e.target.closest('video'):null;if(!video)return;
-  var card=video.closest('article[data-uran-video-id]');if(!card)return;
-  if(!card.closest('#shortsFeed')&&!card.closest('#indianMixedFeedItems'))return;
+  var openButton=e.target&&e.target.closest?e.target.closest('.shortsOpenViewer'):null;
+  var video=e.target&&e.target.closest?e.target.closest('video'):null;
+  var card=openButton?openButton.closest('article[data-uran-video-id]'):(video?video.closest('article[data-uran-video-id]'):null);
+  if(!card||(!card.closest('#shortsFeed')&&!card.closest('#indianMixedFeedItems')))return;
   e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();
   openForId(card.dataset.uranVideoId);
+ },true);
+ document.addEventListener('keydown',function(e){
+  var video=e.target;if(!video||video.tagName!=='VIDEO')return;
+  var card=video.closest('article[data-uran-video-id]');
+  if(!card||(!card.closest('#shortsFeed')&&!card.closest('#indianMixedFeedItems')))return;
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();openForId(card.dataset.uranVideoId);}
  },true);
  var feed=document.getElementById('shortsFeed');
  if(feed){new MutationObserver(function(){collect();}).observe(feed,{childList:true,subtree:true});collect();}

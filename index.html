@@ -7385,7 +7385,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
   }
   async function uploadStoryAudio15s(file){
     // Upload the original audio file instead of converting it to WAV. The preset
-    // previously rejected WAV; Cloudinary applies a 15-second delivery trim.
+    // previously rejected WAV; Cloudinary applies a 30-second delivery trim.
     var form=new FormData();
     var safeName=String(file.name||'story-song.mp3').replace(/[^a-zA-Z0-9._-]/g,'_');
     form.append('file',file,safeName);
@@ -7419,7 +7419,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
       var audioUrl='',audioData='',audioError='',videoUrl='',videoError='';
       var status=byId('storiesStatus');
       if(audio){
-        if(status)status.textContent='Your song is uploading. The online story link will play the first 15 seconds. Please wait.';
+        if(status)status.textContent='Your song is uploading. The online story link will play up to 30 seconds from your selected start time. Please wait.';
         try{audioUrl=await uploadStoryAudio15s(audio);}catch(e){audioError=String(e&&e.message||e);}
       }
       if(file&&String(file.type||'').startsWith('video/')){
@@ -7447,9 +7447,9 @@ window.openIndianGames=function(){window.location.href='games.html';};
       }
       if(status){
         if(videoError)status.textContent='Video story is saved on this device, but online sharing failed: '+videoError;
-        else if(file&&String(file.type||'').startsWith('video/'))status.textContent='Video story shared with Indian users. On another phone, tap Play on the video; mobile browsers may block automatic sound.'+(audioUrl?' The selected song is also attached for up to 15 seconds.':'');
+        else if(file&&String(file.type||'').startsWith('video/'))status.textContent='Video story shared with Indian users. It is trimmed to a maximum of 30 seconds. On another phone, tap Play if needed.'+(audioUrl?' The selected song is also attached for up to 30 seconds.':'');
         else if(audioError)status.textContent='Story may be shared, but its music was not uploaded: '+audioError+'. The Cloudinary upload preset must allow the selected audio format.';
-        else if(audioUrl)status.textContent='Story song uploaded for up to 15 seconds. On another phone, open the story and press Play if sound does not start.';
+        else if(audioUrl)status.textContent='Story song uploaded for up to 30 seconds from your selected start time. On another phone, open the story and press Play if sound does not start.';
         else if(audio)status.textContent='Story publish was attempted. No online song link was created, so the story may not have music on other phones.';
       }
     };

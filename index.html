@@ -432,101 +432,88 @@ Search registered users, places, posts or help requests:
 </section>
 
 <!-- MESSAGES / CHAT -->
-<section id="messagesSection" style="display:none;" tabindex="-1">
-
+<section id="messagesSection" class="messagesPage" style="display:none;" tabindex="-1">
 <h2>Messages</h2>
-
-<p>Send messages to people on Indian. Firebase-connected users can use real-time Firestore messages; demo contacts continue to work locally until they have a Firebase profile.</p>
-<div id="firebaseMessageStatus" aria-live="polite" style="margin:10px 0;padding:10px;border:1px solid #ddd;border-radius:6px;background:#f8fafc;">Checking Firebase Messages...</div>
-<div id="messageUserDiscovery" style="margin:14px 0;padding:12px;border:1px solid #cbd5e1;border-radius:8px;">
-<h3>Find registered users</h3>
-<label for="messageUserSearch">Search registered users by name:</label>
-<input id="messageUserSearch" type="search" placeholder="Type a user's name..." aria-label="Search registered users for messaging" style="display:block;width:100%;padding:10px;margin:8px 0;" oninput="searchRegisteredUsersForMessages()">
-<div id="messageUserResults" aria-live="polite">Sign in to search registered users.</div>
+<div id="firebaseMessageStatus" class="messagesConnectionStatus" aria-live="polite">Messages ready.</div>
+<div id="messageUserDiscovery" class="messageUserDiscovery">
+<h3>New chat</h3>
+<label for="messageUserSearch">Find a person</label>
+<input id="messageUserSearch" type="search" placeholder="Search by name..." aria-label="Find a person to message" oninput="searchRegisteredUsersForMessages()">
+<div id="messageUserResults" aria-live="polite">Search for someone to start a chat.</div>
 </div>
-
 <div id="messagesLayout">
-
-<div>
-<h3>Conversations</h3>
+<div class="messagesSidebar">
+<h3>Chats</h3>
 <div class="messageConversationSearch">
-<label for="conversationSearchBox">Search conversations:</label>
-<input id="conversationSearchBox" type="search" placeholder="Search people or latest message..." aria-label="Search conversations" oninput="filterConversationList()">
+<label for="conversationSearchBox">Search chats</label>
+<input id="conversationSearchBox" type="search" placeholder="Search chats..." aria-label="Search chats" oninput="filterConversationList()">
 </div>
 <div id="conversationList" aria-label="Conversation list"></div>
 </div>
-
 <div class="chatPanel">
-<h3 id="chatTitle">Select a conversation</h3>
-<div id="chatPresence" class="messageConversationMeta" aria-live="polite">Select a person to open a chat.</div>
+<div class="chatHeader">
+<div class="chatHeaderIdentity">
+<div id="chatProfileAvatar" class="chatHeaderAvatar" aria-label="Profile photo"><span aria-hidden="true">👤</span></div>
+<div class="chatHeaderText">
+<h3 id="chatTitle">Select a chat</h3>
+<div id="chatPresence" class="messageConversationMeta" aria-live="polite">Choose a person to start chatting.</div>
+</div>
+</div>
+<div class="chatHeaderActions" aria-label="Call options">
+<button type="button" class="chatIconButton" onclick="startIndianVoiceCall()" aria-label="Voice call" title="Voice call">📞</button>
+<button type="button" class="chatIconButton" onclick="startIndianVideoCall()" aria-label="Video call" title="Video call">📹</button>
+<details class="chatHeaderMore">
+<summary aria-label="More chat actions" title="More chat actions">⋮</summary>
+<div class="messageConversationTools">
+<button type="button" class="action" onclick="toggleMessageSearch()" aria-label="Search chat">Search chat</button>
+<button type="button" class="action" id="markUnreadButton" onclick="markCurrentConversationUnread()">Mark unread</button>
+<button type="button" class="action" id="muteConversationButton" onclick="toggleCurrentConversationMute()">Mute chat</button>
+<button type="button" class="action" id="pinConversationButton" onclick="toggleCurrentConversationPin()">Pin chat</button>
+<button type="button" class="action messageDanger" id="clearConversationButton" onclick="clearCurrentConversation()">Clear chat</button>
+</div>
+</details>
+</div>
+</div>
+<div id="indianCallStatus" class="chatCallStatus" role="status" aria-live="polite">Voice and video calls are available for connected accounts.</div>
 <div id="chatTypingStatus" class="messageTypingStatus" aria-live="polite"></div>
 <div class="messageSearchBar" id="messageSearchBar" style="display:none;">
-    <label for="messageSearchBox">Search messages in this chat:</label>
-    <input id="messageSearchBox" type="search" placeholder="Type to search this chat..." aria-label="Search messages in this chat" oninput="filterCurrentChatMessages()">
-    <div id="messageSearchInfo" class="messageSearchInfo" aria-live="polite"></div>
+<label for="messageSearchBox">Search messages</label>
+<input id="messageSearchBox" type="search" placeholder="Search this chat..." aria-label="Search messages in this chat" oninput="filterCurrentChatMessages()">
+<div id="messageSearchInfo" class="messageSearchInfo" aria-live="polite"></div>
 </div>
-<div id="chatMessages" class="chatMessages" aria-live="polite">
-<p class="chatEmpty">Select a person to open a chat.</p>
-</div>
-
+<div id="chatMessages" class="chatMessages" aria-live="polite"><p class="chatEmpty">Select a chat to see messages.</p></div>
 <div id="messageComposer" style="display:none;">
 <div id="messageEditNotice" class="messageEditNotice" aria-live="polite" style="display:none;">
-    <span id="messageEditText"></span>
-    <button type="button" class="action" onclick="cancelMessageEdit()" aria-label="Cancel editing message">Cancel Edit</button>
+<span id="messageEditText"></span>
+<button type="button" class="action" onclick="cancelMessageEdit()" aria-label="Cancel editing message">Cancel</button>
 </div>
-<label for="messageText">Write your message:</label>
+<label for="messageText">Message</label>
 <textarea id="messageText" placeholder="Type a message..." aria-label="Write your message" oninput="handleMessageTyping()" onkeydown="handleMessageComposerKeydown(event)" maxlength="2000"></textarea>
 <div id="messageCharCount" class="messageCharCount" aria-live="polite">0 / 2000 characters</div>
 <div id="messageDraftStatus" class="messageDraftStatus" aria-live="polite"></div>
-<div id="indianMessagePushResult" role="status" aria-live="polite" aria-atomic="true" style="margin:8px 0;padding:8px;border-radius:6px;"></div>
-
+<div id="indianMessagePushResult" role="status" aria-live="polite" aria-atomic="true" class="indianMessagePushResult"></div>
 <div id="messageReplyPreview" class="messageReplyPreview" aria-live="polite" style="display:none;">
-    <span id="messageReplyText"></span>
-    <button type="button" class="action" onclick="cancelMessageReply()" aria-label="Cancel reply">Cancel Reply</button>
+<span id="messageReplyText"></span>
+<button type="button" class="action" onclick="cancelMessageReply()" aria-label="Cancel reply">Cancel</button>
 </div>
-
+<details class="messageAttachmentDetails">
+<summary>Attach photo or video</summary>
 <div class="messageAttachControls" aria-label="Message attachments">
-    <strong>Attach to this message (photo up to 10 MB; MP4/WebM video up to 50 MB):</strong>
-    <div class="messageAttachRow">
-        <label for="messagePhotoInput">Photo:</label>
-        <input id="messagePhotoInput" type="file" accept="image/*" aria-label="Attach a photo to your message" onchange="handleMessagePhotoChange()">
-    </div>
-    <div class="messageAttachRow">
-        <label for="messageVideoInput">Video:</label>
-        <input id="messageVideoInput" type="file" accept="video/*" aria-label="Attach a video to your message" onchange="handleMessageVideoChange()">
-    </div>
-    <div id="messageSelectedPhoto" class="messageSelectedFile" aria-live="polite">No photo selected.</div>
-    <button type="button" id="removeMessagePhotoButton" class="action messageAttachmentRemove" onclick="removeSelectedMessagePhoto()" style="display:none;">Remove Photo</button>
-    <div id="messageSelectedVideo" class="messageSelectedFile" aria-live="polite">No video selected.</div>
-    <button type="button" id="removeMessageVideoButton" class="action messageAttachmentRemove" onclick="removeSelectedMessageVideo()" style="display:none;">Remove Video</button>
+<div class="messageAttachRow"><label for="messagePhotoInput">Photo</label><input id="messagePhotoInput" type="file" accept="image/*" aria-label="Attach a photo to your message" onchange="handleMessagePhotoChange()"></div>
+<div class="messageAttachRow"><label for="messageVideoInput">Video</label><input id="messageVideoInput" type="file" accept="video/*" aria-label="Attach a video to your message" onchange="handleMessageVideoChange()"></div>
+<div id="messageSelectedPhoto" class="messageSelectedFile" aria-live="polite">No photo selected.</div>
+<button type="button" id="removeMessagePhotoButton" class="action messageAttachmentRemove" onclick="removeSelectedMessagePhoto()" style="display:none;">Remove photo</button>
+<div id="messageSelectedVideo" class="messageSelectedFile" aria-live="polite">No video selected.</div>
+<button type="button" id="removeMessageVideoButton" class="action messageAttachmentRemove" onclick="removeSelectedMessageVideo()" style="display:none;">Remove video</button>
 </div>
-
-<button type="button" id="sendMessageButton" class="action" onclick="sendMessage()">Send Message</button>
-<button class="action" onclick="clearMessageDraft()">Clear</button>
-<!-- Quick call controls are located at the bottom of the selected chat, next to the message composer. -->
-<div id="indianChatCallQuickActions" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;align-items:center;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;">
-    <strong style="flex-basis:100%;">Call this person</strong>
-    <button type="button" class="action" onclick="startIndianVoiceCall()" aria-label="Start voice call with selected user">Voice Call</button>
-    <button type="button" class="action" onclick="startIndianVideoCall()" aria-label="Start video call with selected user">Video Call</button>
-    <div id="indianCallStatus" role="status" aria-live="polite" style="flex-basis:100%;margin-top:4px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;">Choose a Firebase-connected chat to make a voice or video call.</div>
-</div>
-<div class="messageConversationTools">
-    <button type="button" class="action" onclick="toggleMessageSearch()" aria-label="Search messages in this chat">Search Chat</button>
-    <button type="button" class="action" id="markUnreadButton" onclick="markCurrentConversationUnread()">Mark Unread</button>
-    <button type="button" class="action" id="muteConversationButton" onclick="toggleCurrentConversationMute()">Mute Chat</button>
-    <button type="button" class="action" id="pinConversationButton" onclick="toggleCurrentConversationPin()">Pin Chat</button>
-    <button type="button" class="action messageDanger" id="clearConversationButton" onclick="clearCurrentConversation()">Clear Chat</button>
-</div>
-<div class="messageDemoBox">
-    <strong>Local demo:</strong> Use “Receive Demo Reply” to test incoming messages, unread count and notifications.
-    <br>
-    <button type="button" class="action" onclick="receiveDemoReply()" aria-label="Receive a demo reply in this chat">Receive Demo Reply</button>
+</details>
+<div class="messageSendRow">
+<button type="button" id="sendMessageButton" class="action" onclick="sendMessage()">Send</button>
+<button type="button" class="action messageClearDraftButton" onclick="clearMessageDraft()">Clear draft</button>
 </div>
 </div>
 </div>
-
 </div>
-
 </section>
 
 
@@ -1596,6 +1583,12 @@ function renderConversationList(){
         openBtn.setAttribute("aria-label", "Open chat with " + person.name);
         openBtn.onclick = function(){ openConversation(person.id); };
 
+        const more = document.createElement("details");
+        more.className = "conversationMore";
+        const moreSummary = document.createElement("summary");
+        moreSummary.textContent = "⋮";
+        moreSummary.setAttribute("aria-label", "More actions for chat with " + person.name);
+        moreSummary.title = "More actions";
         const tools = document.createElement("div");
         tools.className = "messageConversationTools";
 
@@ -1628,7 +1621,9 @@ function renderConversationList(){
         header.appendChild(info);
         header.appendChild(openBtn);
         card.appendChild(header);
-        card.appendChild(tools);
+        more.appendChild(moreSummary);
+        more.appendChild(tools);
+        card.appendChild(more);
         container.appendChild(card);
     });
 
@@ -1738,8 +1733,22 @@ function renderChat(personId){
     if(!person || !container || !title || !composer) return;
 
     const meta = getMessageMeta(personId);
-    title.textContent = "Chat with " + person.name;
-    if(presence) presence.textContent = meta.online ? person.name + " is online now." : person.name + " was last seen " + meta.lastSeen + ".";
+    title.textContent = person.name;
+    const chatAvatar = document.getElementById("chatProfileAvatar");
+    if(chatAvatar){
+        chatAvatar.innerHTML = "";
+        chatAvatar.setAttribute("aria-label", person.name + " profile photo");
+        if(person.photoURL){
+            const avatarImage = document.createElement("img");
+            avatarImage.src = person.photoURL;
+            avatarImage.alt = person.name + " profile photo";
+            avatarImage.loading = "lazy";
+            chatAvatar.appendChild(avatarImage);
+        }else{
+            chatAvatar.textContent = "👤";
+        }
+    }
+    if(presence) presence.textContent = meta.online ? "Online" : (meta.lastSeen && meta.lastSeen !== "Unknown" ? "Last seen " + meta.lastSeen : "");
     if(typing && !typing.textContent) typing.textContent = "";
     if(searchBar) searchBar.style.display = "block";
 
@@ -1852,6 +1861,12 @@ function renderChat(personId){
             time.className = "chatMessageTime";
             time.textContent = message.time;
 
+            const moreActions = document.createElement("details");
+            moreActions.className = "chatMessageMore";
+            const moreSummary = document.createElement("summary");
+            moreSummary.textContent = "⋮";
+            moreSummary.setAttribute("aria-label", "More actions");
+            moreSummary.title = "More actions";
             const actions = document.createElement("div");
             actions.className = "chatMessageActions";
 
@@ -1914,7 +1929,9 @@ function renderChat(personId){
             }
             if(status.textContent) bubble.appendChild(status);
 
-            bubble.appendChild(actions);
+            moreActions.appendChild(moreSummary);
+            moreActions.appendChild(actions);
+            bubble.appendChild(moreActions);
             container.appendChild(bubble);
         });
     }
@@ -4849,13 +4866,13 @@ function applyFirestoreConversation(personId){
 
 function subscribeFirestoreMessages(personId){
     if(!firebaseDb || !firebaseCurrentUser){
-        setFirebaseMessageStatus("Sign in to Firebase to use real-time Messages.");
+        setFirebaseMessageStatus("Sign in to start chatting.");
         return false;
     }
 
     const recipientUid = getFirestoreMessagePersonUid(personId);
     if(!recipientUid){
-        setFirebaseMessageStatus("This demo contact is not linked to a Firebase account yet. Its conversation remains local.");
+        setFirebaseMessageStatus("This chat is available on this device.");
         return false;
     }
 
@@ -4897,7 +4914,7 @@ function subscribeFirestoreMessages(personId){
         });
         outgoingReady = true;
         applyFirestoreConversation(personId);
-        if(outgoingReady && incomingReady) setFirebaseMessageStatus("Firebase Messages connected for " + (person ? person.name : "this user") + ".");
+        if(outgoingReady && incomingReady) setFirebaseMessageStatus("Chat connected.");
     }, function(error){
         setFirebaseMessageStatus("Firebase Messages read failed: " + sanitizePlainText(error.message, 250));
         cleanup();
@@ -6454,7 +6471,7 @@ else{
    const af=window.togglePersonFollow;window.togglePersonFollow=async function(id){af?.(id);const p=window.peopleData?.find(x=>x.id===id);if(p){ await saveFollow(p); if(p.isFollowing && p.firebaseUid) await saveRemoteNotification(p.firebaseUid, name()+" started following you.", "follow", p.id); }};
    const lb=window.createLikeButton;window.createLikeButton=function(type,id){const b=lb(type,id),old=b.onclick;b.onclick=async function(){old?.();await saveLike(type,id,b.classList.contains("liked"));};return b;};
  }
- onAuthStateChanged(auth,async u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){await window.loadIndianProfileFromFirestore?.();wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Firestore persistence active. Posts, comments, replies, likes, follows, notifications, help requests and Firebase messages are being synchronized.";}else clear();});
+ onAuthStateChanged(auth,async u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){await window.loadIndianProfileFromFirestore?.();wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Your chats are ready.";}else clear();});
 }
 </script>
 

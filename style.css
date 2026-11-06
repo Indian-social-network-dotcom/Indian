@@ -1368,3 +1368,82 @@ body:not(.auth-required) #indianMixedFeedStatus {
   min-height: 1.5em;
   font-weight: 600;
 }
+
+
+/* Indian Messages refresh: crisp, high-contrast, keyboard-friendly chat UI */
+#messagesSection.messagesPage{background:#fff!important;color:#17212b!important;border:1px solid #d6e0e8;border-radius:16px;padding:clamp(12px,2.5vw,24px);box-shadow:0 8px 28px rgba(20,42,60,.10);-webkit-backdrop-filter:none!important;backdrop-filter:none!important;filter:none!important}
+#messagesSection.messagesPage *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;text-shadow:none!important}
+#messagesSection h2{color:#102a43;font-size:clamp(24px,3vw,30px);margin:0 0 14px}
+#messagesSection h3{color:#17324d;margin:0 0 12px}
+.messagesConnectionStatus{font-size:13px;color:#40566b;margin:0 0 12px}
+.messageUserDiscovery{padding:12px 14px;margin:0 0 16px;background:#f7fafc;border:1px solid #d8e2eb;border-radius:12px}
+.messageUserDiscovery input,.messageConversationSearch input,.messageSearchBar input{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #9aabba;border-radius:9px;background:#fff;color:#142536;font-size:16px}
+#messagesLayout{display:grid;grid-template-columns:minmax(240px,.78fr) minmax(0,1.5fr);gap:14px;margin-top:12px;align-items:stretch}
+.messagesSidebar,.chatPanel{min-width:0;background:#fff;border:1px solid #d7e1e9;border-radius:14px;box-shadow:0 3px 12px rgba(22,45,65,.06)}
+.messagesSidebar{padding:14px}
+.chatPanel{padding:0;overflow:visible}
+#conversationList{gap:7px}
+.conversationCard{position:relative;background:#fff;border:1px solid #e0e7ed;border-radius:12px;padding:10px 12px}
+.conversationCard:focus-within,.conversationCard:hover{border-color:#6b9fba;background:#f8fbfd}
+.conversationHeader{gap:10px}
+.conversationHeader .personAvatar{width:48px;height:48px;min-width:48px;border:1px solid #c7d6e2;font-size:23px}
+.conversationHeader .personAvatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.conversationInfo{min-width:0}
+.conversationName{font-size:15px;color:#142b3e;overflow-wrap:anywhere}
+.conversationPreview{font-size:13px;color:#526579;overflow-wrap:anywhere}
+.conversationCard .messageConversationMeta{font-size:11px;color:#607487}
+.conversationCard .action{font-size:13px;min-height:36px}
+.conversationMore,.chatMessageMore,.chatHeaderMore{position:relative}
+.conversationMore>summary,.chatMessageMore>summary,.chatHeaderMore>summary{display:flex;align-items:center;justify-content:center;list-style:none;cursor:pointer;user-select:none;width:40px;height:38px;border:1px solid #cbd7e1;border-radius:9px;background:#fff;color:#17324d;font-size:25px;font-weight:700;line-height:1}
+.conversationMore>summary::-webkit-details-marker,.chatMessageMore>summary::-webkit-details-marker,.chatHeaderMore>summary::-webkit-details-marker{display:none}
+.conversationMore[open]>summary,.chatMessageMore[open]>summary,.chatHeaderMore[open]>summary{background:#eaf3f8;border-color:#5c8da8}
+.conversationMore .messageConversationTools,.chatHeaderMore .messageConversationTools{display:flex;flex-direction:column;gap:6px;position:absolute;right:0;top:42px;z-index:30;min-width:165px;padding:9px;background:#fff;border:1px solid #cbd7e1;border-radius:10px;box-shadow:0 8px 24px rgba(20,42,60,.16)}
+.conversationMore .messageConversationTools .action,.chatHeaderMore .messageConversationTools .action{text-align:left;margin:0}
+.chatHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#f6fafc;border-bottom:1px solid #dbe5ec;border-radius:14px 14px 0 0}
+.chatHeaderIdentity{display:flex;align-items:center;gap:11px;min-width:0}
+.chatHeaderAvatar{width:48px;height:48px;flex:0 0 48px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:50%;background:#e6eef4;border:1px solid #c4d3df;font-size:24px;color:#526a7d}
+.chatHeaderAvatar img{width:100%;height:100%;object-fit:cover}
+.chatHeaderText{min-width:0}
+.chatHeaderText h3{margin:0;font-size:17px;overflow-wrap:anywhere}
+.chatHeaderText .messageConversationMeta{margin:3px 0 0;color:#4d6578;font-size:12px}
+.chatHeaderActions{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.chatIconButton{width:42px;height:42px;border:1px solid #b9d2df;border-radius:50%;background:#e9f5f8;color:#14536b;font-size:20px;cursor:pointer}
+.chatIconButton:hover{background:#d7edf2}
+.chatCallStatus{padding:5px 14px;color:#526779;font-size:12px;min-height:18px}
+#chatTypingStatus{padding:0 14px;color:#35627a;font-size:12px}
+#messagesSection .chatMessages{max-height:min(58vh,620px);min-height:220px;overflow-y:auto;padding:14px;background:#f4f8f7;border-top:1px solid #e1e9e7;border-bottom:1px solid #e1e9e7;scroll-behavior:smooth}
+#messagesSection .chatEmpty{padding:35px 12px;text-align:center;color:#607487}
+#messagesSection .chatMessage{max-width:min(84%,560px);padding:10px 12px;margin:9px 0;border:1px solid #d5e0e5;border-radius:13px;background:#fff;color:#172b3b;box-shadow:0 1px 3px rgba(20,40,55,.06);overflow-wrap:anywhere}
+#messagesSection .chatMessage.mine{margin-left:auto;background:#e3f5e9;border-color:#c5e5d0;border-bottom-right-radius:4px}
+#messagesSection .chatMessage.theirs{margin-right:auto;border-bottom-left-radius:4px}
+#messagesSection .chatMessageAuthor{font-size:12px;color:#38617a;margin-bottom:4px}
+#messagesSection .chatMessageTime{color:#536a7b;font-size:11px}
+#messagesSection .messageStatus{color:#35647a;font-size:11px}
+.chatMessageMore{display:flex;justify-content:flex-end;margin-top:6px}
+.chatMessageMore>summary{width:34px;height:30px;font-size:21px}
+.chatMessageActions{display:flex;flex-direction:column;gap:5px;position:absolute;right:0;bottom:34px;z-index:25;min-width:130px;padding:8px;background:#fff;border:1px solid #cbd7e1;border-radius:10px;box-shadow:0 8px 22px rgba(20,42,60,.16)}
+.chatMessageActions .action{margin:0;text-align:left;min-height:36px}
+#messageComposer{padding:13px;background:#fff;border-radius:0 0 14px 14px}
+#messageComposer textarea{width:100%;box-sizing:border-box;min-height:76px;padding:12px;border:1px solid #9aabba;border-radius:11px;background:#fff;color:#142536;font:inherit;font-size:16px;resize:vertical}
+.messageAttachmentDetails{margin:10px 0;border:1px solid #d7e1e9;border-radius:10px;padding:9px 11px}
+.messageAttachmentDetails>summary{cursor:pointer;color:#214d65;font-weight:600}
+.messageSendRow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+#sendMessageButton{min-width:100px}
+#messagesSection button:focus-visible,#messagesSection input:focus-visible,#messagesSection textarea:focus-visible,#messagesSection summary:focus-visible{outline:3px solid #126b9a!important;outline-offset:2px!important}
+#messagesSection .messageConversationSearch{margin-bottom:10px}
+#messagesSection .messageSearchBar{padding:10px 14px;background:#fff}
+#messagesSection .messageSearchInfo{font-size:12px;color:#536a7b;margin-top:5px}
+#messagesSection .messageSelectedFile{background:#f2f6f8;color:#344d60}
+#messagesSection .messageReplyPreview{background:#f4f8fb;border-color:#b8cbd8}
+#messagesSection .indianMessagePushResult:empty{display:none}
+@media(max-width:760px){
+#messagesLayout{grid-template-columns:minmax(0,1fr);gap:10px}
+.messagesSidebar{padding:11px}
+.chatHeader{padding:10px;gap:7px}
+.chatHeaderAvatar{width:42px;height:42px;flex-basis:42px}
+.chatHeaderText h3{font-size:15px}
+.chatIconButton{width:38px;height:38px;font-size:18px}
+#messagesSection .chatMessages{max-height:52vh;min-height:180px;padding:10px}
+#messagesSection .chatMessage{max-width:91%}
+}
+@media(min-width:761px){.messagesSidebar{max-height:760px;overflow-y:auto}}

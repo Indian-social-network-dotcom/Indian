@@ -19,6 +19,7 @@ class MainActivity : Activity() {
     companion object {
         private const val REQUEST_WEB_MEDIA_PERMISSIONS = 4101
         private const val REQUEST_NOTIFICATION_PERMISSION = 4102
+        private const val REQUEST_STARTUP_MEDIA_PERMISSIONS = 4103
         private const val INDIAN_HOST = "indian-social-network-dotcom.github.io"
     }
 
@@ -90,7 +91,25 @@ class MainActivity : Activity() {
             webView.loadUrl("https://indian-social-network-dotcom.github.io/Indian/")
         }
 
-        requestNotificationPermissionIfNeeded()
+        requestStartupMediaPermissionsIfNeeded()
+    }
+
+    private fun requestStartupMediaPermissionsIfNeeded() {
+        val missingPermissions = arrayOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO
+        ).filter { permission ->
+            checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED
+        }.toTypedArray()
+
+        if (missingPermissions.isNotEmpty()) {
+            requestPermissions(
+                missingPermissions,
+                REQUEST_STARTUP_MEDIA_PERMISSIONS
+            )
+        } else {
+            requestNotificationPermissionIfNeeded()
+        }
     }
 
     private fun allowedWebResources(request: PermissionRequest): Array<String> {
@@ -123,6 +142,11 @@ class MainActivity : Activity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == REQUEST_STARTUP_MEDIA_PERMISSIONS) {
+            requestNotificationPermissionIfNeeded()
+            return
+        }
 
         if (requestCode == REQUEST_WEB_MEDIA_PERMISSIONS) {
             val request = pendingWebPermissionRequest

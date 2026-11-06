@@ -434,7 +434,7 @@ Search registered users, places, posts or help requests:
 <!-- MESSAGES / CHAT -->
 <section id="messagesSection" class="messagesPage" style="display:none;" tabindex="-1">
 <h2>Messages</h2>
-<div id="firebaseMessageStatus" class="messagesConnectionStatus" aria-live="polite" style="display:none;">Messages ready.</div>
+<div id="firebaseMessageStatus" class="messagesConnectionStatus" aria-live="polite" style="display:none!important;">Messages ready.</div>
 <div class="messageConversationSearch messagesTopSearch">
 <label for="conversationSearchBox">Search chats</label>
 <input id="conversationSearchBox" type="search" placeholder="Search chats or people..." aria-label="Search chats or people" oninput="filterConversationList()">
@@ -463,7 +463,6 @@ Search registered users, places, posts or help requests:
 <details class="chatHeaderMore">
 <summary aria-label="More chat actions" title="More chat actions">⋮</summary>
 <div class="messageConversationTools">
-<button type="button" class="action" onclick="toggleMessageSearch()" aria-label="Search chat">Search chat</button>
 <button type="button" class="action" id="markUnreadButton" onclick="markCurrentConversationUnread()">Mark unread</button>
 <button type="button" class="action" id="muteConversationButton" onclick="toggleCurrentConversationMute()">Mute chat</button>
 <button type="button" class="action" id="pinConversationButton" onclick="toggleCurrentConversationPin()">Pin chat</button>
@@ -507,7 +506,7 @@ Search registered users, places, posts or help requests:
 <button type="button" class="chatIconButton" onclick="startIndianVoiceCall()" aria-label="Voice call" title="Voice call">📞 Voice call</button>
 <button type="button" class="chatIconButton" onclick="startIndianVideoCall()" aria-label="Video call" title="Video call">📹 Video call</button>
 </div>
-<div id="indianCallStatus" class="chatCallStatus" role="status" aria-live="polite">Voice and video calls are available for connected accounts.</div>
+<div id="indianCallStatus" class="chatCallStatus" role="status" aria-live="polite"></div>
 <div class="messageSearchBar" id="messageSearchBar" style="display:block;">
 <label for="messageSearchBox">Search previous messages</label>
 <input id="messageSearchBox" type="search" placeholder="Search previous messages..." aria-label="Search previous messages in this chat" oninput="filterCurrentChatMessages()">

@@ -54,13 +54,13 @@
   if(typeof window.indianUranGetSocialData!=='function')return;
   try{
    var data=await window.indianUranGetSocialData(id);
-   document.dispatchEvent(new CustomEvent('indian-uran-social-updated',{detail:{videoId:id}}));
    var like=card.querySelector('[data-uran-social-action="like"]');if(like){like.textContent='♡ Like · '+data.likes;like.setAttribute('aria-pressed',String(!!(JSON.parse(localStorage.getItem('indian_uran_youtube_links_v1')||'[]').find(function(x){return String(x.id)===id;})||{}).liked));}
    var view=card.querySelector('[data-uran-views-for="'+id+'"]');if(view)view.textContent=countLabel('Views',data.views);
    var list=card.querySelector('[data-uran-comments-for="'+id+'"]');if(list)renderCommentRows(list,data.comments);
    var uid=creatorUid||data.creatorUid;var follow=card.querySelector('[data-uran-social-action="follow"]');if(follow&&uid&&typeof window.indianUranIsFollowing==='function'&&uid!==String(window.firebaseCurrentUid||'')){var isFollowing=await window.indianUranIsFollowing(uid);follow.textContent=isFollowing?'Following':'Follow';follow.dataset.following=String(isFollowing);}
    if(uid){var who=card.querySelector('[data-uran-social-action="profile"]');if(who){who.dataset.uranCreatorUid=uid;if(typeof window.indianUranGetPublicProfile==='function'){try{var creator=await window.indianUranGetPublicProfile(uid);who.textContent=creator.displayName||data.creatorName||'Indian creator';if(creator.photoURL){var avatar=make('img','uran-creator-avatar');avatar.src=creator.photoURL;avatar.alt=who.textContent+' profile photo';who.prepend(avatar);}}catch(profileError){console.warn('Uran creator photo could not load',profileError);}}}}
    if(typeof window.indianUranRecordView==='function'&&uid&&window.firebaseCurrentUid){var key='indian_uran_viewed_'+window.firebaseCurrentUid+'_'+id;try{if(!sessionStorage.getItem(key)){await window.indianUranRecordView(id);sessionStorage.setItem(key,'1');var updated=await window.indianUranGetSocialData(id);if(view)view.textContent=countLabel('Views',updated.views);}}catch(viewError){console.warn('Uran view could not be recorded',viewError);}}
+   document.dispatchEvent(new CustomEvent('indian-uran-social-updated',{detail:{videoId:id}}));
   }catch(error){var view=card.querySelector('[data-uran-views-for="'+id+'"]');if(view)view.textContent='Views unavailable';console.warn('Uran social data load failed',error);}
  }
  function collect(){var feed=el('shortsFeed');if(feed)Array.from(feed.querySelectorAll(':scope > article[data-uran-video-id]')).forEach(ensureCard);}

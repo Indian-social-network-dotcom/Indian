@@ -7676,34 +7676,68 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
 </script>
 
 <link rel="stylesheet" href="shorts.css">
-<div id="indianShortsViewer" role="dialog" aria-modal="true" aria-label="Indian Shorts swipe viewer">
+<div id="indianShortsViewer" role="dialog" aria-modal="true" aria-label="Uran video viewer">
  <div class="isv-shell">
-  <div class="isv-top"><strong>Indian Shorts</strong><button type="button" id="isvClose">Close viewer</button></div>
-  <div class="isv-stage" id="isvStage" aria-label="Video player"></div>
-  <p class="isv-caption" id="isvCaption"></p>
-  <div class="isv-controls"><button type="button" id="isvPrev">Previous Short</button><button type="button" id="isvNext">Next Short</button></div>
-  <p id="isvStatus" role="status" aria-live="polite">Swipe up or down to change Short.</p>
+  <div class="isv-top"><strong>Uran video</strong><button type="button" id="isvClose">Back to Home</button></div>
+  <div class="isv-content">
+   <div class="isv-player-column">
+    <div class="isv-stage" id="isvStage" aria-label="Video player"></div>
+    <p class="isv-caption" id="isvCaption"></p>
+   </div>
+   <aside class="isv-social" id="isvSocial" aria-label="Creator and video actions"></aside>
+  </div>
+  <div class="isv-controls"><button type="button" id="isvPrev">Previous video</button><button type="button" id="isvNext">Next video</button></div>
+  <p id="isvStatus" role="status" aria-live="polite">Swipe up for next video or down for previous video. You can also use the Previous and Next buttons or arrow keys.</p>
  </div>
 </div>
 <script id="indianSwipeShortsFeature">
 (function(){
  'use strict';
- var viewer=document.getElementById('indianShortsViewer'),stage=document.getElementById('isvStage'),caption=document.getElementById('isvCaption'),status=document.getElementById('isvStatus');
- if(!viewer||!stage)return;
+ var viewer=document.getElementById('indianShortsViewer'),stage=document.getElementById('isvStage'),caption=document.getElementById('isvCaption'),social=document.getElementById('isvSocial'),status=document.getElementById('isvStatus');
+ if(!viewer||!stage||!social)return;
  var cards=[],index=0,touchY=null,previousFocus=null;
- function collect(){cards=Array.from(document.querySelectorAll('#shortsFeed>article'));cards.forEach(function(card){if(card.querySelector('.shortsOpenViewer'))return;var b=document.createElement('button');b.type='button';b.className='action shortsOpenViewer';b.textContent='Open Short in swipe viewer';b.addEventListener('click',function(){collect();index=cards.indexOf(card);open();});card.appendChild(b);});}
+ function collect(){
+  cards=Array.from(document.querySelectorAll('#shortsFeed>article[data-uran-video-id]'));
+  cards.forEach(function(card){
+   if(card.querySelector('.shortsOpenViewer'))return;
+   var b=document.createElement('button');b.type='button';b.className='action shortsOpenViewer';b.textContent='Open video page';
+   b.setAttribute('aria-label','Open this Uran video on its own page');
+   b.addEventListener('click',function(){openForId(card.dataset.uranVideoId);});
+   card.appendChild(b);
+  });
+ }
+ function renderSocial(card){
+  social.replaceChildren();
+  var creator=card&&card.querySelector('.uran-creator-row');
+  var panel=card&&card.querySelector('.uran-social-panel');
+  if(creator)social.appendChild(creator.cloneNode(true));
+  if(panel)social.appendChild(panel.cloneNode(true));
+  if(!creator&&!panel)social.textContent='Video actions are loading. Please wait.';
+ }
  function show(){
-  collect();if(!cards.length){status.textContent='Uran mein abhi koi Short nahi hai.';stage.replaceChildren();caption.textContent='';return;}
+  collect();
+  if(!cards.length){status.textContent='Uran mein abhi koi video nahi hai.';stage.replaceChildren();caption.textContent='';social.replaceChildren();return;}
   if(index<0)index=cards.length-1;if(index>=cards.length)index=0;
-  var card=cards[index],frame=card.querySelector('iframe'),video=card.querySelector('video'),cap=card.querySelector('p');
+  var card=cards[index],frame=card.querySelector('iframe'),video=card.querySelector('video'),cap=card.querySelector(':scope > p');
   stage.replaceChildren();
-  if(frame){var f=document.createElement('iframe');f.src=frame.getAttribute('src')||'';f.title='Indian Short '+(index+1);f.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';f.allowFullscreen=true;f.referrerPolicy='strict-origin-when-cross-origin';stage.appendChild(f);}
-  else if(video){var v=document.createElement('video');v.src=video.currentSrc||video.src;v.controls=true;v.playsInline=true;v.muted=false;v.autoplay=true;stage.appendChild(v);v.play().catch(function(){status.textContent='Automatic playback with sound was blocked. Press Play on the video to hear it.';});}
-  else{stage.textContent='Video player is unavailable.';}
-  caption.textContent=cap?cap.textContent:'';status.textContent='Short '+(index+1)+' of '+cards.length+'. Swipe up or down, or use Previous and Next.';
+  if(frame){
+   var f=document.createElement('iframe');f.src=frame.getAttribute('src')||'';f.title='Uran video '+(index+1);f.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';f.allowFullscreen=true;f.referrerPolicy='strict-origin-when-cross-origin';stage.appendChild(f);
+  }else if(video){
+   var v=document.createElement('video');var source=video.currentSrc||video.getAttribute('src')||video.getAttribute('data-home-lazy-src')||video.src;
+   v.src=source;v.controls=true;v.playsInline=true;v.muted=false;v.autoplay=true;v.setAttribute('aria-label','Uran video '+(index+1)+' player');stage.appendChild(v);
+   v.play().catch(function(){status.textContent='Automatic playback was blocked. Press Play on the video to hear it.';});
+  }else{stage.textContent='Video player is unavailable.';}
+  caption.textContent=cap?cap.textContent:'';
+  renderSocial(card);
+  status.textContent='Video '+(index+1)+' of '+cards.length+'. Swipe up for next video or down for previous video. Arrow Up and Arrow Down also work.';
+ }
+ function openForId(id){
+  collect();var found=cards.findIndex(function(card){return String(card.dataset.uranVideoId)===String(id);});
+  if(found<0){status.textContent='This video is not available in the Uran list yet.';return;}
+  index=found;open();
  }
  function open(){previousFocus=document.activeElement;viewer.classList.add('open');document.body.style.overflow='hidden';show();document.getElementById('isvClose').focus();}
- function close(){viewer.classList.remove('open');document.body.style.overflow='';stage.replaceChildren();if(previousFocus&&previousFocus.focus)previousFocus.focus();}
+ function close(){viewer.classList.remove('open');document.body.style.overflow='';stage.replaceChildren();social.replaceChildren();if(previousFocus&&previousFocus.focus)previousFocus.focus();}
  function move(n){index+=n;show();}
  document.getElementById('isvClose').addEventListener('click',close);
  document.getElementById('isvPrev').addEventListener('click',function(){move(-1);});
@@ -7711,9 +7745,23 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
  stage.addEventListener('touchstart',function(e){touchY=e.touches&&e.touches.length?e.touches[0].clientY:null;},{passive:true});
  stage.addEventListener('touchend',function(e){if(touchY===null||!e.changedTouches||!e.changedTouches.length)return;var dy=e.changedTouches[0].clientY-touchY;touchY=null;if(Math.abs(dy)>55)move(dy<0?1:-1);},{passive:true});
  viewer.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();close();}else if(e.key==='ArrowDown'){e.preventDefault();move(1);}else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}});
+ // Clicking a Uran player in Home opens the dedicated video page.
+ document.addEventListener('click',function(e){
+  var video=e.target&&e.target.closest?e.target.closest('video'):null;if(!video)return;
+  var card=video.closest('article[data-uran-video-id]');if(!card)return;
+  if(!card.closest('#shortsFeed')&&!card.closest('#indianMixedFeedItems'))return;
+  e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+  openForId(card.dataset.uranVideoId);
+ },true);
  var feed=document.getElementById('shortsFeed');
  if(feed){new MutationObserver(function(){collect();}).observe(feed,{childList:true,subtree:true});collect();}
+ document.addEventListener('indian-uran-social-updated',function(e){
+  if(!viewer.classList.contains('open'))return;
+  var card=cards[index],id=card&&card.dataset.uranVideoId;
+  if(id&&e.detail&&String(e.detail.videoId)===String(id))renderSocial(card);
+ });
  window.openIndianShortsSwipeViewer=function(){collect();index=0;open();};
+ window.openIndianUranVideoPage=openForId;
 })();
 </script>
 <script id="indianLiteStatusController">

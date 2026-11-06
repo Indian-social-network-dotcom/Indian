@@ -1,20 +1,74 @@
 package indian.socialnetwork.app
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private var pendingWebPermissionRequest: PermissionRequest? = null
+    private var pendingAndroidPermissions: Array<String> = emptyArray()
+
+    companion object {
+        private const val REQUEST_WEB_MEDIA_PERMISSIONS = 4101
+        private const val REQUEST_NOTIFICATION_PERMISSION = 4102
+        private const val INDIAN_HOST = "indian-social-network-dotcom.github.io"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         webView = WebView(this)
         webView.webViewClient = WebViewClient()
-        webView.webChromeClient = WebChromeClient()
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                runOnUiThread {
+                    val origin: Uri = request.origin
+                    if (origin.scheme != "https" || origin.host != INDIAN_HOST) {
+                        request.deny()
+                        return@runOnUiThread
+                    }
+
+                    val androidPermissions = mutableListOf<String>()
+                    if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in request.resources &&
+                        checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        androidPermissions.add(Manifest.permission.CAMERA)
+                    }
+                    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE in request.resources &&
+                        checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        androidPermissions.add(Manifest.permission.RECORD_AUDIO)
+                    }
+
+                    if (androidPermissions.isEmpty()) {
+                        request.grant(request.resources)
+                    } else {
+                        pendingWebPermissionRequest?.deny()
+                        pendingWebPermissionRequest = request
+                        pendingAndroidPermissions = androidPermissions.toTypedArray()
+                        requestPermissions(
+                            pendingAndroidPermissions,
+                            REQUEST_WEB_MEDIA_PERMISSIONS
+                        )
+                    }
+                }
+            }
+
+            override fun onPermissionRequestCanceled(request: PermissionRequest) {
+                if (pendingWebPermissionRequest == request) {
+                    pendingWebPermissionRequest = null
+                    pendingAndroidPermissions = emptyArray()
+                }
+            }
+        }
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -29,6 +83,63 @@ class MainActivity : Activity() {
             webView.restoreState(savedInstanceState)
         } else {
             webView.loadUrl("https://indian-social-network-dotcom.github.io/Indian/")
+        }
+
+        requestNotificationPermissionIfNeeded()
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                REQUEST_NOTIFICATION_PERMISSION
+            )
+        }
+    }
+
+    @Deprecated("Deprecated in Android 6.0; kept for compatibility with the app's Activity base class")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == REQUEST_WEB_MEDIA_PERMISSIONS) {
+            val request = pendingWebPermissionRequest
+            val requestedAndroidPermissions = pendingAndroidPermissions
+            pendingWebPermissionRequest = null
+            pendingAndroidPermissions = emptyArray()
+
+            if (request == null) return
+
+            val allGranted = requestedAndroidPermissions.isNotEmpty() &&
+                requestedAndroidPermissions.all {
+                    checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+                }
+
+            if (!allGranted) {
+                request.deny()
+                return
+            }
+
+            val allowedResources = request.resources.filter { resource ->
+                when (resource) {
+                    PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
+                        checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                    PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
+                        checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                    else -> false
+                }
+            }
+
+            if (allowedResources.isNotEmpty()) {
+                request.grant(allowedResources.toTypedArray())
+            } else {
+                request.deny()
+            }
         }
     }
 
@@ -47,6 +158,8 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        pendingWebPermissionRequest?.deny()
+        pendingWebPermissionRequest = null
         if (::webView.isInitialized) {
             webView.destroy()
         }

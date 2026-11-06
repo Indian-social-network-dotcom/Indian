@@ -7670,6 +7670,8 @@ window.indianUranIsFollowing=async function(uid){if(!currentUser)return false;co
 window.indianUranToggleFollow=async function(uid,follow){if(!currentUser)throw Error('Sign in required');if(uid===currentUser.uid)throw Error('Aap apne aap ko follow nahi kar sakte.');const q=query(collection(db,'follows'),where('followerId','==',currentUser.uid),where('followingUid','==',uid));const snap=await getDocs(q);if(follow&&snap.empty){const p=await getDoc(doc(db,'publicProfiles',uid));const data=p.exists()?p.data()||{}:{};await addDoc(collection(db,'follows'),{followerId:currentUser.uid,followingKey:uid,followingUid:uid,followingName:String(data.displayName||'Indian user'),createdAt:serverTimestamp(),createdAtMs:Date.now()});}else if(!follow&&!snap.empty){await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));}};
 
 window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sign in required');const found=JSON.parse(localStorage.getItem('indian_uran_youtube_links_v1')||'[]').find(x=>x.id===id);if(!found||found.addedBy!==currentUser.uid)throw Error('Sirf video upload karne wala user ise remove kar sakta hai.');await deleteDoc(doc(db,'uranShorts',id));};
+window.indianUranGetPublicProfile=async function(uid){const snap=await getDoc(doc(db,'publicProfiles',uid));if(!snap.exists())throw Error('Public profile nahi mila.');const p=snap.data()||{};return{uid:uid,displayName:String(p.displayName||'Indian user'),bio:String(p.bio||''),photoURL:String(p.photoURL||'')};};
+window.dispatchEvent(new Event('indian-uran-cloud-ready'));
 }catch(error){const status=document.getElementById('shortsStatus');if(status)status.textContent='Uran cloud setup error: '+error.message;}
 </script>
 

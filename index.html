@@ -7698,8 +7698,10 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
  if(!viewer||!stage||!social||!comments)return;
  var cards=[],index=0,touchY=null,previousFocus=null;
  function collect(){
-  cards=Array.from(document.querySelectorAll('#shortsFeed>article[data-uran-video-id]'));
-  Array.from(document.querySelectorAll('#shortsFeed>article[data-uran-video-id],#indianMixedFeedItems article[data-uran-video-id]')).forEach(function(card){
+  var foundCards=Array.from(document.querySelectorAll('#shortsFeed>article[data-uran-video-id],#indianMixedFeedItems article[data-uran-video-id]'));
+  var seenIds=Object.create(null);
+  cards=foundCards.filter(function(card){var id=String(card.dataset.uranVideoId||'');if(!id||seenIds[id])return false;seenIds[id]=true;return true;});
+  foundCards.forEach(function(card){
    if(card.querySelector('.shortsOpenViewer'))return;
    var b=document.createElement('button');b.type='button';b.className='action shortsOpenViewer';b.textContent='Open video page';
    b.setAttribute('aria-label','Open this Uran video on its own page');
@@ -7753,7 +7755,20 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
  document.getElementById('isvNext').addEventListener('click',function(){move(1);});
  stage.addEventListener('touchstart',function(e){touchY=e.touches&&e.touches.length?e.touches[0].clientY:null;},{passive:true});
  stage.addEventListener('touchend',function(e){if(touchY===null||!e.changedTouches||!e.changedTouches.length)return;var dy=e.changedTouches[0].clientY-touchY;touchY=null;if(Math.abs(dy)>55)move(dy<0?1:-1);},{passive:true});
- viewer.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();close();}else if(e.key==='ArrowDown'){e.preventDefault();move(1);}else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}});
+ viewer.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){e.preventDefault();close();return;}
+  if(e.key==='Tab'){
+   var focusable=Array.from(viewer.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),video[controls]')).filter(function(node){return !node.hidden&&node.getAttribute('aria-hidden')!=='true';});
+   if(!focusable.length){e.preventDefault();viewer.focus();return;}
+   var first=focusable[0],last=focusable[focusable.length-1];
+   if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+   return;
+  }
+  var target=e.target;
+  if(target&&(target.tagName==='TEXTAREA'||target.tagName==='INPUT'||target.tagName==='SELECT'||target.isContentEditable||target.tagName==='VIDEO'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();move(1);}else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}
+ });
  // Clicking a Uran player in Home opens the dedicated video page.
  document.addEventListener('click',function(e){
   var openButton=e.target&&e.target.closest?e.target.closest('.shortsOpenViewer'):null;

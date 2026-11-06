@@ -4866,13 +4866,13 @@ function applyFirestoreConversation(personId){
 
 function subscribeFirestoreMessages(personId){
     if(!firebaseDb || !firebaseCurrentUser){
-        setFirebaseMessageStatus("Sign in to Firebase to use real-time Messages.");
+        setFirebaseMessageStatus("Sign in to start chatting.");
         return false;
     }
 
     const recipientUid = getFirestoreMessagePersonUid(personId);
     if(!recipientUid){
-        setFirebaseMessageStatus("This demo contact is not linked to a Firebase account yet. Its conversation remains local.");
+        setFirebaseMessageStatus("This chat is available on this device.");
         return false;
     }
 
@@ -4914,7 +4914,7 @@ function subscribeFirestoreMessages(personId){
         });
         outgoingReady = true;
         applyFirestoreConversation(personId);
-        if(outgoingReady && incomingReady) setFirebaseMessageStatus("Firebase Messages connected for " + (person ? person.name : "this user") + ".");
+        if(outgoingReady && incomingReady) setFirebaseMessageStatus("Chat connected.");
     }, function(error){
         setFirebaseMessageStatus("Firebase Messages read failed: " + sanitizePlainText(error.message, 250));
         cleanup();
@@ -6471,7 +6471,7 @@ else{
    const af=window.togglePersonFollow;window.togglePersonFollow=async function(id){af?.(id);const p=window.peopleData?.find(x=>x.id===id);if(p){ await saveFollow(p); if(p.isFollowing && p.firebaseUid) await saveRemoteNotification(p.firebaseUid, name()+" started following you.", "follow", p.id); }};
    const lb=window.createLikeButton;window.createLikeButton=function(type,id){const b=lb(type,id),old=b.onclick;b.onclick=async function(){old?.();await saveLike(type,id,b.classList.contains("liked"));};return b;};
  }
- onAuthStateChanged(auth,async u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){await window.loadIndianProfileFromFirestore?.();wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Firestore persistence active. Posts, comments, replies, likes, follows, notifications, help requests and Firebase messages are being synchronized.";}else clear();});
+ onAuthStateChanged(auth,async u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){await window.loadIndianProfileFromFirestore?.();wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Your chats are ready.";}else clear();});
 }
 </script>
 

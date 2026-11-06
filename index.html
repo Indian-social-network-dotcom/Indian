@@ -7434,7 +7434,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
       try{
         await basePublishStory();
         if(videoUrl&&window.saveIndianStoryToFirestore){
-          await window.saveIndianStoryToFirestore({id:'story-'+Date.now(),caption:String(byId('storyCaption')&&byId('storyCaption').value||'').slice(0,300),mediaType:'video',mediaUrl:videoUrl});
+          await window.saveIndianStoryToFirestore({id:'story-'+Date.now(),caption:String(byId('storyCaption')&&byId('storyCaption').value||'').slice(0,300),mediaType:'video',mediaUrl:videoUrl,audioUrl:audioUrl,musicChoice:musicChoice});
           if(typeof window.renderIndianOnlineStories==='function')window.renderIndianOnlineStories();
           if(typeof window.renderIndianHomeStories==='function')window.renderIndianHomeStories();
         }
@@ -8167,13 +8167,15 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
       videoNote.hidden=true;videoStart.closest('.indian-story-editor-control').hidden=true;
       imagePreview=document.createElement('img');imagePreview.src=mediaObjectUrl;imagePreview.alt='Story photo editing preview';preview.appendChild(imagePreview);videoNote.hidden=true;videoStart.hidden=true;
     }
+    if(audioPreview&&audioPreview.src)preview.appendChild(audioPreview);
     updateFilter();
   });
   audioInput.addEventListener('change',function(){
-    var file=audioInput.files&&audioInput.files[0];if(!file){if(audioObjectUrl)URL.revokeObjectURL(audioObjectUrl);audioObjectUrl='';audioPreview=null;musicDuration=0;return;}
+    var file=audioInput.files&&audioInput.files[0];if(!file){if(audioObjectUrl)URL.revokeObjectURL(audioObjectUrl);audioObjectUrl='';if(audioPreview&&audioPreview.parentNode)audioPreview.parentNode.removeChild(audioPreview);audioPreview=null;musicDuration=0;musicNote.hidden=true;musicStart.closest('.indian-story-editor-control').hidden=true;return;}
     editor.hidden=false;musicNote.hidden=false;musicStart.closest('.indian-story-editor-control').hidden=false;
     if(audioObjectUrl)URL.revokeObjectURL(audioObjectUrl);audioObjectUrl=URL.createObjectURL(file);
-    if(!audioPreview){audioPreview=document.createElement('audio');audioPreview.controls=true;audioPreview.preload='metadata';audioPreview.setAttribute('aria-label','Music trim preview');preview.appendChild(audioPreview);}
+    if(!audioPreview){audioPreview=document.createElement('audio');audioPreview.controls=true;audioPreview.preload='metadata';audioPreview.setAttribute('aria-label','Music trim preview');}
+    if(audioPreview.parentNode!==preview)preview.appendChild(audioPreview);
     audioPreview.src=audioObjectUrl;setupDuration(file,true);
     audioPreview.addEventListener('timeupdate',function(){var start=Number(musicStart.value)||0;if(audioPreview.currentTime>=start+30){audioPreview.pause();audioPreview.currentTime=start;}});
     audioPreview.addEventListener('play',function(){var start=Number(musicStart.value)||0;if(audioPreview.currentTime<start||audioPreview.currentTime>=start+30)audioPreview.currentTime=start;});
@@ -8185,6 +8187,7 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
     if(ct)bits.push('e_contrast:'+Math.round(ct));
     if(sat)bits.push('e_saturation:'+Math.round(sat));
     if(filter.value==='mono')bits.push('e_grayscale');
+    if(filter.value==='cool')bits.push('e_hue:12');
     if(filter.value==='sepia'||filter.value==='warm')bits.push('e_sepia:70');
     if(filter.value==='vivid')bits.push('e_saturation:40');
     return bits.join(',');
@@ -8226,6 +8229,7 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
   window.publishLocalStory=async function(){
     var result=await priorPublish.apply(this,arguments);
     var status=byId('storiesStatus');
+    if(mediaInput.files&&mediaInput.files.length===0&&audioInput.files&&audioInput.files.length===0){editor.hidden=true;preview.replaceChildren();videoPreview=null;imagePreview=null;audioPreview=null;}
     if(status&&mediaInput.files&&mediaInput.files.length===0){status.textContent=status.textContent||'Story editing applied.';}
     return result;
   };

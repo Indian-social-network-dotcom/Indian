@@ -6,15 +6,53 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.onesignal.OneSignal
+import org.json.JSONTokener
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private var pendingWebPermissionRequest: PermissionRequest? = null
     private var pendingAndroidPermissions: Array<String> = emptyArray()
+    private val authSyncHandler = Handler(Looper.getMainLooper())
+    private var lastOneSignalUid: String? = null
+
+    private val oneSignalIdentitySync = object : Runnable {
+        override fun run() {
+            if (!::webView.isInitialized || isFinishing || isDestroyed) return
+
+            webView.evaluateJavascript(
+                "(typeof window.firebaseCurrentUid === 'string' ? window.firebaseCurrentUid : null)"
+            ) { result ->
+                val uid = try {
+                    JSONTokener(result ?: "null").nextValue() as? String
+                } catch (_: Exception) {
+                    null
+                }
+
+                // null means the website auth module has not initialized yet.
+                // An empty string means the website has confirmed the user is signed out.
+                if (uid != null && uid != lastOneSignalUid) {
+                    if (uid.isNotEmpty()) {
+                        OneSignal.login("indian_firebase_$uid")
+                        lastOneSignalUid = uid
+                    } else {
+                        if (lastOneSignalUid != null) OneSignal.logout()
+                        lastOneSignalUid = null
+                    }
+                }
+
+                if (!isFinishing && !isDestroyed) {
+                    authSyncHandler.postDelayed(this, 1500)
+                }
+            }
+        }
+    }
 
     companion object {
         private const val REQUEST_WEB_MEDIA_PERMISSIONS = 4101
@@ -92,6 +130,7 @@ class MainActivity : Activity() {
         }
 
         requestStartupMediaPermissionsIfNeeded()
+        authSyncHandler.post(oneSignalIdentitySync)
     }
 
     private fun requestStartupMediaPermissionsIfNeeded() {
@@ -191,6 +230,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        authSyncHandler.removeCallbacks(oneSignalIdentitySync)
         pendingWebPermissionRequest?.deny()
         pendingWebPermissionRequest = null
         if (::webView.isInitialized) {

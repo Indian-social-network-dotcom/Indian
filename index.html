@@ -7529,7 +7529,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
   function playSelectedSound(item){
     if(item.kind==='online'){
       var story=item.story||{};
-      if(story.audioUrl&&String(story.audioUrl).indexOf('https://res.cloudinary.com/')===0){var remoteAudio=document.createElement('audio');remoteAudio.className='indian-story-audio';remoteAudio.controls=true;remoteAudio.preload='auto';remoteAudio.src=story.audioUrl;remoteAudio.setAttribute('aria-label','Play 15-second story music');audioBox.appendChild(remoteAudio);var rp=remoteAudio.play();if(rp&&rp.catch)rp.catch(function(){var msg=document.createElement('p');msg.textContent='If the song did not start automatically, use the Play control. Some mobile browsers block automatic sound.';audioBox.appendChild(msg);});return;}
+      if(story.audioUrl&&String(story.audioUrl).indexOf('https://res.cloudinary.com/')===0){var remoteAudio=document.createElement('audio');remoteAudio.className='indian-story-audio';remoteAudio.controls=true;remoteAudio.preload='auto';remoteAudio.src=story.audioUrl;remoteAudio.setAttribute('aria-label','Play story music, maximum 30 seconds');audioBox.appendChild(remoteAudio);var rp=remoteAudio.play();if(rp&&rp.catch)rp.catch(function(){var msg=document.createElement('p');msg.textContent='If the song did not start automatically, use the Play control. Some mobile browsers block automatic sound.';audioBox.appendChild(msg);});return;}
       if(story.audioData&&String(story.audioData).indexOf('data:audio/')===0){var audio=document.createElement('audio');audio.className='indian-story-audio';audio.controls=true;audio.preload='auto';audio.src=story.audioData;audio.setAttribute('aria-label','Story music');audioBox.appendChild(audio);var p=audio.play();if(p&&p.catch)p.catch(function(){});return;}
       if(story.musicChoice&&story.musicChoice!=='none'&&typeof window.playStoryDemoTone==='function'){
         var b=document.createElement('button');b.type='button';b.className='indian-story-audio-button';b.textContent='Play music';b.setAttribute('aria-label','Play story music');b.addEventListener('click',function(){window.playStoryDemoTone(story.musicChoice);});audioBox.appendChild(b);return;
@@ -8113,9 +8113,9 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
     wrap.appendChild(select);editor.appendChild(wrap);return select;
   }
   var videoNote=document.createElement('p');videoNote.id='indianStoryVideoDuration';videoNote.textContent='Video trim: choose a video to see its duration.';editor.appendChild(videoNote);
-  var videoStart=makeRange('indianStoryVideoStart','Video start time (seconds)',0,0,0,1);
+  var videoStart=makeRange('indianStoryVideoStart','Video start time (seconds)',0,0,0,1);videoNote.hidden=true;videoStart.closest('.indian-story-editor-control').hidden=true;
   var musicNote=document.createElement('p');musicNote.id='indianStoryMusicDuration';musicNote.textContent='Music trim: choose a song to see its duration.';editor.appendChild(musicNote);
-  var musicStart=makeRange('indianStoryMusicStart','Music start time (seconds)',0,0,0,1);
+  var musicStart=makeRange('indianStoryMusicStart','Music start time (seconds)',0,0,0,1);musicNote.hidden=true;musicStart.closest('.indian-story-editor-control').hidden=true;
   var filter=makeSelect('indianStoryFilter','Filter',[['original','Original'],['vivid','Vivid'],['warm','Warm'],['cool','Cool'],['mono','Black and white'],['sepia','Sepia']]);
   var crop=makeSelect('indianStoryCrop','Photo crop',[['original','Original size'],['square','Square crop']]);
   var brightness=makeRange('indianStoryBrightness','Brightness',50,150,100,5);
@@ -8161,14 +8161,17 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
     var file=mediaInput.files&&mediaInput.files[0];if(!file){editor.hidden=true;return;}editor.hidden=false;
     if(mediaObjectUrl)URL.revokeObjectURL(mediaObjectUrl);mediaObjectUrl=URL.createObjectURL(file);
     if(file.type.indexOf('video/')===0){
-      videoPreview=document.createElement('video');videoPreview.controls=true;videoPreview.playsInline=true;videoPreview.preload='metadata';videoPreview.src=mediaObjectUrl;videoPreview.setAttribute('aria-label','Story video editing preview');preview.appendChild(videoPreview);setupDuration(file,false);
+      videoNote.hidden=false;videoStart.closest('.indian-story-editor-control').hidden=false;
+      videoPreview=document.createElement('video');videoPreview.controls=true;videoPreview.playsInline=true;videoPreview.preload='metadata';videoPreview.src=mediaObjectUrl;videoPreview.setAttribute('aria-label','Story video editing preview');preview.appendChild(videoPreview);setupDuration(file,false);videoPreview.addEventListener('timeupdate',function(){var start=Number(videoStart.value)||0;if(videoPreview.currentTime>=start+30){videoPreview.pause();videoPreview.currentTime=start;}});videoPreview.addEventListener('play',function(){var start=Number(videoStart.value)||0;if(videoPreview.currentTime<start||videoPreview.currentTime>=start+30)videoPreview.currentTime=start;});
     }else if(file.type.indexOf('image/')===0){
+      videoNote.hidden=true;videoStart.closest('.indian-story-editor-control').hidden=true;
       imagePreview=document.createElement('img');imagePreview.src=mediaObjectUrl;imagePreview.alt='Story photo editing preview';preview.appendChild(imagePreview);videoNote.hidden=true;videoStart.hidden=true;
     }
     updateFilter();
   });
   audioInput.addEventListener('change',function(){
     var file=audioInput.files&&audioInput.files[0];if(!file){if(audioObjectUrl)URL.revokeObjectURL(audioObjectUrl);audioObjectUrl='';audioPreview=null;musicDuration=0;return;}
+    editor.hidden=false;musicNote.hidden=false;musicStart.closest('.indian-story-editor-control').hidden=false;
     if(audioObjectUrl)URL.revokeObjectURL(audioObjectUrl);audioObjectUrl=URL.createObjectURL(file);
     if(!audioPreview){audioPreview=document.createElement('audio');audioPreview.controls=true;audioPreview.preload='metadata';audioPreview.setAttribute('aria-label','Music trim preview');preview.appendChild(audioPreview);}
     audioPreview.src=audioObjectUrl;setupDuration(file,true);

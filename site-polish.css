@@ -157,3 +157,40 @@ body{
   html{scroll-behavior:auto}
   *,*::before,*::after{transition:none!important;animation:none!important}
 }
+
+
+/* Navigation visibility and fixed mobile feed controls. */
+#indianTopHeader{position:sticky;top:0;z-index:1002}
+body:not(.indian-home-route) #indianTopHeader,
+body:not(.indian-home-route) #indianActionBar{display:none!important}
+#indianBottomNav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:9995!important}
+body.indian-fullscreen-open #indianTopHeader,
+body.indian-fullscreen-open #indianActionBar,
+body.indian-fullscreen-open #indianBottomNav{display:none!important}
+body.indian-home-route #indianBottomNav{transition:transform .18s ease,opacity .18s ease}
+body.indian-home-route.indian-bottom-nav-hidden #indianBottomNav{
+  transform:translateY(110%)!important;opacity:0!important;pointer-events:none!important
+}
+#mainContent{padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+#indianBottomNav{will-change:transform}
+#indianMessageSearchResults[hidden],#messageUserResults[hidden]{display:none!important}
+#messageUserResults{margin:8px 0 14px}
+.indian-message-search-result{
+  display:flex;align-items:center;gap:12px;width:100%;min-height:64px;
+  padding:9px 12px;margin:0;border:0;border-bottom:1px solid var(--indian-line);
+  background:#fff;color:var(--indian-ink);text-align:left;font:inherit;cursor:pointer
+}
+.indian-message-search-result:focus-visible{outline:3px solid var(--indian-focus);outline-offset:-3px}
+.indian-message-search-avatar{
+  display:flex;align-items:center;justify-content:center;flex:0 0 46px;width:46px;height:46px;
+  overflow:hidden;border-radius:50%;background:var(--indian-brand-soft);font-size:24px
+}
+.indian-message-search-avatar img{width:100%;height:100%;object-fit:cover}
+.indian-message-search-name{font-weight:650}
+#indianUnifiedMessageSearch{position:sticky;top:0;z-index:5;padding:8px 0;background:var(--indian-page)}
+#indianUnifiedMessageSearch input{width:100%;box-sizing:border-box}
+@media(max-width:600px){
+  #indianTopHeader{top:0}
+  #indianBottomNav{left:0!important;right:0!important;transform:none}
+  body.indian-home-route.indian-bottom-nav-hidden #indianBottomNav{transform:translateY(110%)!important}
+}

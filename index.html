@@ -7686,6 +7686,7 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
    </div>
    <aside class="isv-social" id="isvSocial" aria-label="Creator and video actions"></aside>
   </div>
+  <section class="isv-comments" id="isvComments" aria-label="Video comments"></section>
   <div class="isv-controls"><button type="button" id="isvPrev">Previous video</button><button type="button" id="isvNext">Next video</button></div>
   <p id="isvStatus" role="status" aria-live="polite">Swipe up for next video or down for previous video. You can also use the Previous and Next buttons or arrow keys.</p>
  </div>
@@ -7693,8 +7694,8 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
 <script id="indianSwipeShortsFeature">
 (function(){
  'use strict';
- var viewer=document.getElementById('indianShortsViewer'),stage=document.getElementById('isvStage'),caption=document.getElementById('isvCaption'),social=document.getElementById('isvSocial'),status=document.getElementById('isvStatus');
- if(!viewer||!stage||!social)return;
+ var viewer=document.getElementById('indianShortsViewer'),stage=document.getElementById('isvStage'),caption=document.getElementById('isvCaption'),social=document.getElementById('isvSocial'),comments=document.getElementById('isvComments'),status=document.getElementById('isvStatus');
+ if(!viewer||!stage||!social||!comments)return;
  var cards=[],index=0,touchY=null,previousFocus=null;
  function collect(){
   cards=Array.from(document.querySelectorAll('#shortsFeed>article[data-uran-video-id]'));
@@ -7706,11 +7707,20 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   });
  }
  function renderSocial(card){
-  social.replaceChildren();
+  social.replaceChildren();comments.replaceChildren();
   var creator=card&&card.querySelector('.uran-creator-row');
   var panel=card&&card.querySelector('.uran-social-panel');
   if(creator)social.appendChild(creator.cloneNode(true));
-  if(panel)social.appendChild(panel.cloneNode(true));
+  if(panel){
+   var panelCopy=panel.cloneNode(true);
+   var heading=panelCopy.querySelector('.uran-comments-heading');
+   var list=panelCopy.querySelector('.uran-comment-list');
+   var form=panelCopy.querySelector('.uran-comment-form');
+   if(heading)comments.appendChild(heading);
+   if(list)comments.appendChild(list);
+   if(form)comments.appendChild(form);
+   social.appendChild(panelCopy);
+  }
   if(!creator&&!panel)social.textContent='Video actions are loading. Please wait.';
  }
  function show(){

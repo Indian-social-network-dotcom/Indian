@@ -16,13 +16,13 @@
 
 <link rel="stylesheet" href="style.css">
 <!-- OneSignal Web SDK: configured for the Indian GitHub Pages project subpath. -->
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer onerror="window.__indianOneSignalSdkLoadFailed = true; window.addEventListener('DOMContentLoaded', function(){ var e=document.getElementById('indianOneSignalPushStatus'); if(e) e.textContent='OneSignal SDK could not load. Check internet or browser blocking and try again.'; });"></script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer onerror="window.__indianOneSignalSdkLoadFailed = true; window.addEventListener('DOMContentLoaded', function(){ var e=document.getElementById('indianNotificationSetupStatus'); if(e) e.textContent='Notifications are temporarily unavailable. You can continue to Indian.'; });"></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   window.__indianOneSignalReady = false;
   window.__indianOneSignalInstance = null;
   function setIndianOneSignalStatus(message) {
-    var el = document.getElementById("indianOneSignalPushStatus");
+    var el = document.getElementById("indianNotificationSetupStatus");
     if (el) el.textContent = String(message || "");
   }
   OneSignalDeferred.push(async function (OneSignal) {
@@ -53,11 +53,12 @@
         catch (identityError) { console.warn("OneSignal user link pending", identityError); }
       }
       setIndianOneSignalStatus(OneSignal.User.PushSubscription.optedIn
-        ? "OneSignal push is already enabled on this device."
-        : "OneSignal is ready. Choose Enable OneSignal Push to subscribe this device.");
+        ? "Notifications are already enabled on this device."
+        : "Ready. Select Allow Notifications to continue.");
+      if (typeof window.updateIndianNotificationSetupUI === "function") window.updateIndianNotificationSetupUI();
     } catch (error) {
       console.error("OneSignal init failed", error);
-      setIndianOneSignalStatus("OneSignal setup failed: " + String(error && error.message || error).slice(0, 220) + ". Check the OneSignal worker file path and App ID.");
+      setIndianOneSignalStatus("Notifications could not be prepared. You can continue to Indian.");
     }
   });
 </script>
@@ -339,6 +340,15 @@ Firebase is not configured yet. Add your Firebase Web App config in the code com
 </section>
 
 
+<!-- FIRST SIGN-IN NOTIFICATION CHOICE -->
+<section id="notificationSetupSection" style="display:none;" tabindex="-1" aria-labelledby="notificationSetupTitle">
+  <h2 id="notificationSetupTitle">Stay connected</h2>
+  <p>Allow notifications to receive updates about messages and activity on Indian.</p>
+  <button class="action" type="button" id="indianAllowNotificationsBtn" disabled>Allow Notifications</button>
+  <button class="action" type="button" id="indianSkipNotificationsBtn">Not now</button>
+  <p id="indianNotificationSetupStatus" role="status" aria-live="polite">Preparing notifications…</p>
+</section>
+
 <!-- SEARCH SECTION -->
 <section id="searchSection" style="display:none;">
 
@@ -398,21 +408,6 @@ Search registered users, places, posts or help requests:
 <!-- NOTIFICATIONS SECTION -->
 <section id="notificationsSection" style="display:none;" tabindex="-1">
 <h2>Notifications</h2>
-
-<div id="indianWebPushPanel" style="margin:12px 0;padding:12px;border:1px solid #cbd5e1;border-radius:8px;max-width:760px;">
-  <h3>Browser Push Notifications</h3>
-  <p>Enable notifications on this device. Allow the browser permission when asked.</p>
-  <button class="action" type="button" id="enableIndianWebPushBtn">Enable Push Notifications</button>
-  <button class="action" type="button" id="copyIndianWebPushTokenBtn" disabled>Copy FCM Test Token</button>
-  <label for="indianWebPushTokenOutput" style="display:block;margin-top:10px;">FCM test token</label>
-  <textarea id="indianWebPushTokenOutput" rows="3" readonly style="display:block;width:100%;max-width:100%;box-sizing:border-box;" aria-label="FCM test token"></textarea>
-  <p id="indianWebPushStatus" role="status" aria-live="polite">Push notifications are not enabled on this device yet.</p>
-  <hr style="margin:14px 0;border:0;border-top:1px solid #dbe3e8;">
-  <h3>OneSignal Push Notifications</h3>
-  <p>Subscribe this test device to OneSignal notifications. This is separate from the Firebase FCM test button above.</p>
-  <button class="action" type="button" id="enableOneSignalPushBtn">Enable OneSignal Push</button>
-  <p id="indianOneSignalPushStatus" role="status" aria-live="polite">OneSignal SDK is loading…</p>
-</div>
 
 <button class="action" onclick="markAllNotificationsAsRead()">Mark All as Read</button>
 
@@ -4986,15 +4981,15 @@ async function saveFirestoreMessage(personId, text, replyTo, attachment){
                 firebaseHttpStatus: pushResult.firebaseHttpStatus || null,
                 firebaseError: pushResult.firebaseError || null
             });
-            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin push notification nahi bheji ja saki. Karan: " + pushProblem + firebaseStatus + firebaseDetail;
+            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin alert nahi bheja ja saka. Karan: " + pushProblem + firebaseStatus + firebaseDetail;
         }else{
             console.info("Indian message push request accepted. Notification ID:", pushResult.notificationId || "not returned");
-            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya. Push notification request safalta se bhej di gayi.";
+            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya.";
         }
     }catch(pushError){
         console.warn("Indian message push request failed; message remains saved:", pushError);
         const pushStatusNode = document.getElementById("indianMessagePushResult");
-        if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin push request fail hui: " + (pushError && pushError.message ? pushError.message : "Network error");
+        if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin alert nahi bheja ja saka: " + (pushError && pushError.message ? pushError.message : "Network error");
     }
     return ref.id;
 }
@@ -6762,9 +6757,10 @@ window.openIndianGames=function(){window.location.href='games.html';};
   'use strict';
   var currentRoute = 'home';
   var authClassPreviouslyRequired = document.body.classList.contains('auth-required');
-  var sectionIds = ['homeSection','homeStoriesSection','homeMixedFeed','shortsSection','postsSection','firebaseSection','searchSection','storiesSection','notificationsSection','feedbackSection','messagesSection','profileSection','liveZoneSection','helpSection','peopleSection','placeSection'];
+  var sectionIds = ['homeSection','homeStoriesSection','homeMixedFeed','shortsSection','postsSection','firebaseSection','notificationSetupSection','searchSection','storiesSection','notificationsSection','feedbackSection','messagesSection','profileSection','liveZoneSection','helpSection','peopleSection','placeSection'];
   var routeSections = {
     home: ['homeStoriesSection','homeMixedFeed'],
+    notificationSetup: ['notificationSetupSection'],
     search: ['searchSection','peopleSection'],
     place: ['placeSection'],
     stories: ['storiesSection'],
@@ -6776,9 +6772,26 @@ window.openIndianGames=function(){window.location.href='games.html';};
     feedback: ['feedbackSection'],
     profile: ['profileSection']
   };
-  var routeTitles = {home:'Home',search:'Search',place:'Place',stories:'Story',posts:'Post',messages:'Messages',live:'Live Zone',help:'Help',notifications:'Notifications',feedback:'Feedback',profile:'Profile'};
+  var routeTitles = {home:'Home',notificationSetup:'Notifications',search:'Search',place:'Place',stories:'Story',posts:'Post',messages:'Messages',live:'Live Zone',help:'Help',notifications:'Notifications',feedback:'Feedback',profile:'Profile'};
   function byId(id){return document.getElementById(id);}
   function appIsSignedOut(){return document.body.classList.contains('auth-required');}
+  function shouldShowNotificationSetup(){
+    if(!window.isSecureContext || !('serviceWorker' in navigator) || !('Notification' in window)) return false;
+    if(Notification.permission === 'denied') return false;
+    var OneSignal = window.__indianOneSignalInstance;
+    if(OneSignal && OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optedIn) return false;
+    var uid = String(window.firebaseCurrentUid || 'user');
+    try { if(sessionStorage.getItem('indian-notification-choice-skipped-' + uid) === '1') return false; } catch(e) {}
+    return true;
+  }
+  function showSignedInLanding(){
+    applyRoute(shouldShowNotificationSetup() ? 'notificationSetup' : 'home', false, true);
+  }
+  window.finishIndianNotificationSetup = function(){
+    var uid = String(window.firebaseCurrentUid || 'user');
+    try { sessionStorage.removeItem('indian-notification-choice-skipped-' + uid); } catch(e) {}
+    applyRoute('home', false, true);
+  };
   function refreshSelectedNav(route){
     document.querySelectorAll('[data-route]').forEach(function(button){
       var active = button.getAttribute('data-route') === route;
@@ -6872,12 +6885,12 @@ window.openIndianGames=function(){window.location.href='games.html';};
     if(nowRequired===authClassPreviouslyRequired)return;
     authClassPreviouslyRequired=nowRequired;
     if(nowRequired){applyRoute('auth',false,false);}
-    else{currentRoute='auth';applyRoute('home',false,true);}
+    else{currentRoute='auth';showSignedInLanding();}
   });
   observer.observe(document.body,{attributes:true,attributeFilter:['class']});
   // Initial state follows Firebase Auth's gate. Signed-out visitors only see the welcome/create-account view.
   if(appIsSignedOut())applyRoute('auth',false,false);
-  else applyRoute('home',false,false);
+  else showSignedInLanding();
 })();
 </script>
 
@@ -7834,35 +7847,66 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
 
 <script id="indianOneSignalPushControls">
 (function () {
-  var button = document.getElementById("enableOneSignalPushBtn");
-  if (!button) return;
-  button.addEventListener("click", async function () {
-    var status = document.getElementById("indianOneSignalPushStatus");
+  var button = document.getElementById("indianAllowNotificationsBtn");
+  var skipButton = document.getElementById("indianSkipNotificationsBtn");
+  var status = document.getElementById("indianNotificationSetupStatus");
+  function setStatus(message) { if (status) status.textContent = String(message || ""); }
+  window.updateIndianNotificationSetupUI = function () {
+    var OneSignal = window.__indianOneSignalInstance;
+    if (OneSignal && window.__indianOneSignalReady) {
+      if (OneSignal.User.PushSubscription.optedIn) {
+        setStatus("Notifications are already enabled.");
+        if (button) button.disabled = true;
+        var section = document.getElementById("notificationSetupSection");
+        if (section && section.style.display !== "none" && typeof window.finishIndianNotificationSetup === "function") {
+          window.finishIndianNotificationSetup();
+        }
+      } else {
+        setStatus("Select Allow Notifications to receive updates.");
+        if (button) button.disabled = false;
+      }
+    } else {
+      setStatus("Preparing notifications…");
+      if (button) button.disabled = true;
+    }
+  };
+  if (button) button.addEventListener("click", async function () {
     var OneSignal = window.__indianOneSignalInstance;
     if (!OneSignal || !window.__indianOneSignalReady) {
-      if (status) status.textContent = "OneSignal is still loading. Wait a few seconds and try again.";
+      setStatus("Please wait a moment, then try again.");
       return;
     }
     try {
       if (!OneSignal.Notifications.isPushSupported()) {
-        if (status) status.textContent = "This browser or device does not support OneSignal web push.";
+        setStatus("This browser or device cannot show notifications. You can continue to Indian.");
         return;
       }
-      if (status) status.textContent = "Requesting notification permission…";
+      setStatus("Please allow notifications in the browser message.");
       await OneSignal.Notifications.requestPermission();
       if (!OneSignal.Notifications.permission) {
-        if (status) status.textContent = "Notification permission was not granted. Allow notifications in browser settings and retry.";
+        setStatus("Permission was not allowed. You can continue to Indian and change this later in browser settings.");
         return;
       }
       await OneSignal.User.PushSubscription.optIn();
-      if (status) status.textContent = OneSignal.User.PushSubscription.optedIn
-        ? "Success: this device is subscribed to Indian Test OneSignal push notifications."
-        : "Permission is granted. OneSignal is finishing the subscription; wait a few seconds and check this message again.";
+      if (OneSignal.User.PushSubscription.optedIn) {
+        setStatus("Notifications enabled. Opening Indian…");
+        window.setTimeout(function () {
+          if (typeof window.finishIndianNotificationSetup === "function") window.finishIndianNotificationSetup();
+        }, 350);
+      } else {
+        setStatus("Permission was allowed. Subscription is still being completed; please wait a moment.");
+      }
     } catch (error) {
-      console.error("OneSignal subscribe failed", error);
-      if (status) status.textContent = "OneSignal subscription failed: " + String(error && error.message || error).slice(0, 220);
+      console.error("Indian notification setup failed", error);
+      setStatus("Notifications could not be enabled right now. You can continue to Indian.");
     }
   });
+  if (skipButton) skipButton.addEventListener("click", function () {
+    var uid = String(window.firebaseCurrentUid || "user");
+    try { sessionStorage.setItem("indian-notification-choice-skipped-" + uid, "1"); } catch(e) {}
+    if (typeof window.finishIndianNotificationSetup === "function") window.finishIndianNotificationSetup();
+  });
+  window.updateIndianNotificationSetupUI();
 })();
 </script>
 </body>

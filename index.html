@@ -205,10 +205,10 @@ Welcome to Indian. Here people can connect, share, help each other and participa
 <section id="homeMixedFeed" class="indian-home-mixed-feed" tabindex="-1" aria-labelledby="indianMixedFeedTitle">
   <div class="indian-mixed-feed-heading">
     <h2 id="indianMixedFeedTitle">For you</h2>
-    <p>Uran videos and posts, one after another. Scroll down to see more.</p>
+    <p>Posts and videos.</p>
   </div>
   <div id="indianMixedFeedItems" aria-live="off" aria-label="Posts and Uran videos"></div>
-  <p id="indianMixedFeedStatus" role="status" aria-live="polite">Loading posts and videos…</p>
+  <p id="indianMixedFeedStatus" role="status" aria-live="polite">Loading…</p>
   <button type="button" class="action indian-load-more-feed" id="indianLoadMoreMixedFeed" onclick="loadMoreIndianHomeFeed()">Load more</button>
   <div id="indianMixedFeedSentinel" aria-hidden="true"></div>
 </section>
@@ -278,7 +278,7 @@ Cancel
 <!-- FIREBASE ACCOUNT + SECURE MEDIA UPLOAD -->
 <section id="firebaseSection" style="display:none;" tabindex="-1" aria-labelledby="firebaseSectionTitle">
 <h2 id="firebaseSectionTitle">Welcome to Indian</h2>
-<p class="auth-intro" id="authIntroText">Welcome! Create your free Indian account to get started. After you create an account, this welcome page will close and your Home, Posts, Messages and other sections will open.</p>
+<p class="auth-intro" id="authIntroText">Create an account to join Indian.</p>
 
 <div id="firebaseSetupStatus" class="firebaseStatus" aria-live="polite">
 Firebase is not configured yet. Add your Firebase Web App config in the code comments marked FIREBASE CONFIG.
@@ -287,7 +287,7 @@ Firebase is not configured yet. Add your Firebase Web App config in the code com
 <div class="firebaseCard">
 <h3>Account</h3>
 
-<label id="firebaseDisplayNameLabel" for="firebaseDisplayName">Your display name:</label>
+<label id="firebaseDisplayNameLabel" for="firebaseDisplayName">Name</label>
 <input id="firebaseDisplayName" class="firebaseInput" type="text" maxlength="60" autocomplete="name" aria-label="Display name for signup">
 
 <label for="firebaseEmail">Email address:</label>
@@ -303,7 +303,7 @@ Firebase is not configured yet. Add your Firebase Web App config in the code com
 </div>
 
 <button type="button" id="authModeToggle" aria-label="Switch between creating an account and signing in">Already have an account? Sign in</button>
-<div id="firebaseAuthStatus" class="firebaseStatus" aria-live="polite">Create an account or sign in to see Indian.</div>
+<div id="firebaseAuthStatus" class="firebaseStatus" aria-live="polite">Enter your details to continue.</div>
 </div>
 
 <div class="firebaseCard" id="firebaseSecureUploadCard">
@@ -4460,10 +4460,10 @@ function setIndianAuthMode(mode, moveFocus){
     }
     if(title) title.textContent = loggedIn ? "Your Indian Account" : (indianAuthMode === "signup" ? "Welcome to Indian" : "Welcome back to Indian");
     if(intro) intro.textContent = loggedIn
-        ? "You are signed in. Your Indian sections are available from the navigation bar."
+        ? "You are signed in."
         : (indianAuthMode === "signup"
-            ? "Welcome! Create your free Indian account to get started. After you create an account, this welcome page will close and your Home, Posts, Messages and other sections will open."
-            : "Welcome back! Sign in with your existing Indian account to continue to Home, Posts, Messages and all other sections.");
+            ? "Create an account to join Indian."
+            : "Sign in to continue.");
 
     if(moveFocus && !loggedIn) {
         const target = indianAuthMode === "signup" ? displayName : $("firebaseEmail");
@@ -7742,7 +7742,7 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
       var empty=document.createElement('div');empty.className='indian-mixed-empty';empty.textContent='No posts or Uran videos are ready yet. New content will appear here when it loads.';mixedItems.appendChild(empty);
     }else if(entries.length){var oldEmpty=mixedItems.querySelector('.indian-mixed-empty');if(oldEmpty)oldEmpty.remove();}
     var status=byId('indianMixedFeedStatus');
-    if(status)status.textContent=entries.length?('Showing '+entries.length+' loaded items: Uran videos and posts alternate in this feed.'):'Waiting for the first posts and videos…';
+    if(status)status.textContent=entries.length?('Showing '+entries.length+' items.'):'Waiting for posts and videos…';
     var more=byId('indianLoadMoreMixedFeed');
     if(more){
       var postButton=byId('indianLoadMorePostsBtn'),uranButton=byId('indianUranLoadMoreBtn');

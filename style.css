@@ -1270,3 +1270,65 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .live-person-card .live-meta{font-size:.9rem;color:#56677a}
 #liveActionStatus,#helpActionStatus,.voice-entry-status{overflow-wrap:anywhere}
 @media(prefers-reduced-motion:reduce){.voice-entry-tools button{transition:none!important}}
+
+
+/* --- Clear, high-contrast welcome and home screens --- */
+body.auth-required,
+body:not(.auth-required) {
+  background: #f4f6f5 !important;
+  background-attachment: scroll !important;
+}
+.brand-header,
+#indianActionBar,
+#indianBottomNav {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.brand-header,
+#indianActionBar,
+#indianBottomNav {
+  background: #ffffff !important;
+}
+body.auth-required #firebaseSection {
+  background: #ffffff !important;
+  border: 1px solid #d8e2dc !important;
+  border-top: 4px solid #ff9933 !important;
+  border-bottom: 4px solid #138808 !important;
+  box-shadow: 0 4px 14px rgba(20, 45, 32, .08) !important;
+  color: #17251d !important;
+}
+body.auth-required #firebaseSection > h2 {
+  color: #123b2a !important;
+  line-height: 1.25 !important;
+}
+body.auth-required #firebaseSection > p,
+body.auth-required #firebaseSection label,
+body.auth-required #firebaseAuthStatus,
+body.auth-required #firebaseSetupStatus {
+  color: #263a30 !important;
+  opacity: 1 !important;
+  line-height: 1.5 !important;
+}
+body.auth-required #firebaseSection .firebaseInput {
+  background: #ffffff !important;
+  color: #17251d !important;
+  border: 1px solid #9eafa5 !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+body:not(.auth-required) #homeStoriesSection,
+body:not(.auth-required) #homeMixedFeed {
+  background: #ffffff !important;
+  border: 1px solid #d8e2dc !important;
+  box-shadow: 0 2px 10px rgba(20, 45, 32, .06) !important;
+  color: #17251d !important;
+}
+body:not(.auth-required) #homeStoriesTitle,
+body:not(.auth-required) #indianMixedFeedTitle {
+  color: #123b2a !important;
+}
+body:not(.auth-required) .indian-mixed-feed-heading p,
+body:not(.auth-required) #indianMixedFeedStatus {
+  color: #344b3d !important;
+  opacity: 1 !important;
+}

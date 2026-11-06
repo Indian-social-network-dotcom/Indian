@@ -19,12 +19,21 @@
 #indianShortsViewer .isv-controls button{flex:1}
 #indianShortsViewer #isvStatus{margin:0;font-size:.9rem}
 .shortsOpenViewer{display:block;width:100%;margin-top:8px}
+#indianShortsViewer .isv-comments{max-height:20vh;overflow:auto;padding:8px;border-top:1px solid #444}
+#indianShortsViewer .isv-comments .uran-comment-list{max-height:14vh}
 @media(max-width:700px){
  #indianShortsViewer{padding:8px}
  #indianShortsViewer .isv-shell{height:calc(100dvh - 16px)}
- #indianShortsViewer .isv-content{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:8px}
- #indianShortsViewer .isv-social{max-height:30vh}
- #indianShortsViewer .isv-social .uran-comment-list{max-height:12vh}
+ #indianShortsViewer .isv-content{grid-template-columns:minmax(0,1fr) 104px;gap:6px}
+ #indianShortsViewer .isv-social{padding:5px}
+ #indianShortsViewer .isv-social .uran-creator-row{display:flex;flex-direction:column;align-items:center;gap:4px}
+ #indianShortsViewer .isv-social .uran-creator-link{flex-direction:column;align-items:center;gap:4px;font-size:11px;text-align:center;overflow-wrap:anywhere}
+ #indianShortsViewer .isv-social .uran-creator-avatar{width:34px;height:34px;min-width:34px}
+ #indianShortsViewer .isv-social .uran-social-metrics{gap:6px}
+ #indianShortsViewer .isv-social .uran-social-button{font-size:11px;padding:6px 3px;min-height:40px;white-space:normal}
+ #indianShortsViewer .isv-social .uran-social-count{font-size:10px;padding:5px 2px;min-height:34px}
+ #indianShortsViewer .isv-comments{max-height:20vh}
+ #indianShortsViewer .isv-comments .uran-comment-list{max-height:9vh}
  #indianShortsViewer .isv-caption{max-height:12vh}
 }
 @media(min-width:701px){#indianShortsViewer .isv-shell{height:calc(100vh - 30px)}}

@@ -58,7 +58,7 @@
    var view=card.querySelector('[data-uran-views-for="'+id+'"]');if(view)view.textContent=countLabel('Views',data.views);
    var list=card.querySelector('[data-uran-comments-for="'+id+'"]');if(list)renderCommentRows(list,data.comments);
    var uid=creatorUid||data.creatorUid;var follow=card.querySelector('[data-uran-social-action="follow"]');if(follow&&uid&&typeof window.indianUranIsFollowing==='function'&&uid!==String(window.firebaseCurrentUid||'')){var isFollowing=await window.indianUranIsFollowing(uid);follow.textContent=isFollowing?'Following':'Follow';follow.dataset.following=String(isFollowing);}
-   if(uid){var who=card.querySelector('[data-uran-social-action="profile"]');if(who)who.dataset.uranCreatorUid=uid;}
+   if(uid){var who=card.querySelector('[data-uran-social-action="profile"]');if(who){who.dataset.uranCreatorUid=uid;if(typeof window.indianUranGetPublicProfile==='function'){try{var creator=await window.indianUranGetPublicProfile(uid);who.textContent=creator.displayName||data.creatorName||'Indian creator';if(creator.photoURL){var avatar=make('img','uran-creator-avatar');avatar.src=creator.photoURL;avatar.alt=who.textContent+' profile photo';who.prepend(avatar);}}catch(profileError){console.warn('Uran creator photo could not load',profileError);}}}}
    if(typeof window.indianUranRecordView==='function'&&uid&&window.firebaseCurrentUid){var key='indian_uran_viewed_'+window.firebaseCurrentUid+'_'+id;try{if(!sessionStorage.getItem(key)){await window.indianUranRecordView(id);sessionStorage.setItem(key,'1');var updated=await window.indianUranGetSocialData(id);if(view)view.textContent=countLabel('Views',updated.views);}}catch(viewError){console.warn('Uran view could not be recorded',viewError);}}
   }catch(error){var view=card.querySelector('[data-uran-views-for="'+id+'"]');if(view)view.textContent='Views unavailable';console.warn('Uran social data load failed',error);}
  }
@@ -93,7 +93,7 @@
    followers.dataset.profileListTarget='uranProfileList';following.dataset.profileListTarget='uranProfileList';
    var title=make('h3','uran-profile-videos-title','Uran Videos');page.appendChild(title);
    var grid=make('div','uran-profile-video-list');
-   data.videos.forEach(function(v){var row=make('button','uran-profile-video','Uran video: '+safeText(v.caption,'Video'));row.type='button';row.addEventListener('click',function(){page.remove();var card=el('shortsFeed')&&el('shortsFeed').querySelector('[data-uran-video-id="'+v.id+'"]');if(card)card.scrollIntoView({behavior:'smooth',block:'center'});else setStatus('Video list mein hai; Uran feed mein load karein.');});grid.appendChild(row);});
+   data.videos.forEach(function(v,index){var row=make('div','uran-profile-video');var video=make('video','');video.controls=true;video.playsInline=true;video.preload='metadata';video.src=String(v.mediaUrl||'');video.setAttribute('aria-label','Uran video '+(index+1)+' by '+p.displayName);row.appendChild(video);row.appendChild(make('p','',safeText(v.caption,'Uran video')));grid.appendChild(row);});
    if(!data.videos.length)grid.appendChild(make('p','','Is creator ne abhi Uran video upload nahi kiya hai.'));
    page.appendChild(grid);
   }catch(error){page.replaceChildren(back,make('p','uran-profile-error','Profile load nahi ho saki: '+safeText(error.message,'Unknown error')));}
@@ -104,7 +104,9 @@
    var data=await window.indianUranGetCreatorProfile(uid),rows=type==='followers'?data.followers:data.following;
    target.replaceChildren();
    if(!rows.length){target.appendChild(make('p','',type==='followers'?'Abhi koi follower nahi hai.':'Abhi kisi ko follow nahi kiya hai.'));return;}
-   rows.forEach(function(row){var personUid=type==='followers'?row.followerId:row.followingUid;var p=profileFor(personUid);var name=safeText(p&&p.displayName||row.followingName||'Indian user');var b=make('button','uran-connection-row',name);b.type='button';if(p&&p.photoURL){var img=make('img','uran-connection-avatar');img.src=p.photoURL;img.alt=name+' profile photo';b.prepend(img);}b.addEventListener('click',function(){openProfile(personUid);});target.appendChild(b);});
+   var people=await Promise.all(rows.map(async function(row){var personUid=type==='followers'?row.followerId:(row.followingUid||row.followingKey||'');if(!personUid||String(personUid).indexOf('demo_')===0)return null;var p=profileFor(personUid);if(typeof window.indianUranGetPublicProfile==='function'){try{p=await window.indianUranGetPublicProfile(personUid);}catch(e){}}return{uid:personUid,profile:p,row:row};}));
+   people.filter(Boolean).forEach(function(person){var row=person.row,p=person.profile;var fallback=type==='following'?(row.followingName||'Indian user'):'Indian user';var name=safeText(p&&p.displayName||fallback);var b=make('button','uran-connection-row',name);b.type='button';if(p&&p.photoURL){var img=make('img','uran-connection-avatar');img.src=p.photoURL;img.alt=name+' profile photo';b.prepend(img);}b.addEventListener('click',function(){openProfile(person.uid);});target.appendChild(b);});
+   if(!target.children.length)target.appendChild(make('p','',type==='followers'?'Abhi koi follower nahi hai.':'Abhi kisi ko follow nahi kiya hai.'));
   }catch(error){target.replaceChildren(make('p','uran-profile-error','List load nahi hui: '+safeText(error.message,'')));}
  }
  document.addEventListener('click',async function(event){
@@ -127,5 +129,6 @@
   finally{if(send)send.disabled=false;}
  });
  function install(){collect();var feed=el('shortsFeed');if(feed){new MutationObserver(collect).observe(feed,{childList:true,subtree:true});}}
+ window.addEventListener('indian-uran-cloud-ready',function(){collect();Array.from((el('shortsFeed')||document).querySelectorAll('article[data-uran-video-id]')).forEach(function(card){var id=card.dataset.uranVideoId;if(id)loadCardData(card,id,'');});});
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
 })();

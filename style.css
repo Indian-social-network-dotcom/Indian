@@ -1495,3 +1495,5 @@ body:not(.auth-required) #indianMixedFeedStatus {
 .indian-story-back-home{align-self:center;min-width:180px}
 .indian-story-viewer button:focus-visible{outline:3px solid #ffca75!important;outline-offset:3px!important}
 @media(max-width:480px){.indian-story-viewer{padding:8px!important;gap:8px}.indian-story-media-stage img,.indian-story-media-stage video{max-height:calc(100dvh - 250px)}}
+
+.indian-story-owner-fallback,.indian-story-viewer-photo-fallback{width:42px;height:42px;flex:0 0 42px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#34443a;color:#fff;font-size:22px}

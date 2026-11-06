@@ -7630,9 +7630,9 @@ window.openIndianGames=function(){window.location.href='games.html';};
   }
   function openStory(key,trigger){
     deck=allStories();currentIndex=deck.findIndex(function(x){return x.key===key;});if(currentIndex<0)return;
-    ensureOverlay();returnFocus=trigger||document.activeElement;overlay.hidden=false;document.body.classList.add('indian-fullscreen-open');document.body.style.overflow='hidden';renderCurrentStory();overlay.focus();
+    ensureOverlay();returnFocus=trigger||document.activeElement;if(window.indianPushOverlayHistory)window.indianPushOverlayHistory('story');overlay.hidden=false;document.body.classList.add('indian-fullscreen-open');document.body.style.overflow='hidden';renderCurrentStory();overlay.focus();
   }
-  function closeViewer(){if(!overlay||overlay.hidden)return;if(typeof window.stopStoryDemoTone==='function')window.stopStoryDemoTone();overlay.querySelectorAll('audio,video').forEach(function(m){try{m.pause();}catch(e){}});overlay.hidden=true;document.body.classList.remove('indian-fullscreen-open');document.body.style.overflow='';var target=returnFocus&&document.contains(returnFocus)?returnFocus:byId('homeStoriesStrip');if(target&&target.focus)target.focus();}
+  function closeViewer(){if(!overlay||overlay.hidden)return;if(typeof window.stopStoryDemoTone==='function')window.stopStoryDemoTone();overlay.querySelectorAll('audio,video').forEach(function(m){try{m.pause();}catch(e){}});overlay.hidden=true;document.body.classList.remove('indian-fullscreen-open');document.body.style.overflow='';if(window.indianCloseOverlayHistory)window.indianCloseOverlayHistory('story');var target=returnFocus&&document.contains(returnFocus)?returnFocus:byId('homeStoriesStrip');if(target&&target.focus)target.focus();}
   function nextStory(delta){if(!deck.length)return;var next=currentIndex+delta;if(next<0||next>=deck.length){closeViewer();return;}overlay.querySelectorAll('audio,video').forEach(function(m){try{m.pause();}catch(e){}});currentIndex=next;renderCurrentStory();}
   function addStoryCard(strip,item){
     var card=document.createElement('button');card.type='button';card.className='story-preview-card';card.dataset.storyKey=item.key;card.setAttribute('role','listitem');card.setAttribute('aria-label','Open story by '+item.owner+(item.story.caption?': '+safeText(item.story.caption,160):''));
@@ -7766,8 +7766,8 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   if(found<0){status.textContent='This video is not available in the Uran list yet.';return;}
   index=found;open();
  }
- function open(){previousFocus=document.activeElement;viewer.classList.add('open');document.body.classList.add('indian-fullscreen-open');document.body.style.overflow='hidden';show();document.getElementById('isvClose').focus();}
- function close(){viewer.classList.remove('open');document.body.classList.remove('indian-fullscreen-open');document.body.style.overflow='';stage.replaceChildren();social.replaceChildren();if(previousFocus&&previousFocus.focus)previousFocus.focus();}
+ function open(){previousFocus=document.activeElement;if(window.indianPushOverlayHistory)window.indianPushOverlayHistory('uran');viewer.classList.add('open');document.body.classList.add('indian-fullscreen-open');document.body.style.overflow='hidden';show();document.getElementById('isvClose').focus();}
+ function close(){viewer.classList.remove('open');document.body.classList.remove('indian-fullscreen-open');document.body.style.overflow='';stage.replaceChildren();social.replaceChildren();if(window.indianCloseOverlayHistory)window.indianCloseOverlayHistory('uran');if(previousFocus&&previousFocus.focus)previousFocus.focus();}
  function move(n){index+=n;show();}
  document.getElementById('isvClose').addEventListener('click',close);
  document.getElementById('isvPrev').addEventListener('click',function(){move(-1);});
@@ -8411,5 +8411,63 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
 </script>
 
 <script src="uran-social.js" defer></script>
+ 
+<script id="indianNavigationAndBackPolish">
+(function(){
+ 'use strict';
+ function byId(id){return document.getElementById(id);}
+ function activeRoute(){
+  var state=history.state;
+  if(state&&state.indianApp&&state.route)return state.route;
+  return (location.hash||'#home').slice(1).split('-')[0]||'home';
+ }
+ window.indianPushOverlayHistory=function(kind){
+  if(history.state&&history.state.indianOverlay===kind)return;
+  var state=Object.assign({},history.state||{},{indianApp:true,route:activeRoute(),indianOverlay:kind});
+  try{history.pushState(state,'',location.href);}catch(e){}
+ };
+ window.indianCloseOverlayHistory=function(kind){
+  if(history.state&&history.state.indianOverlay===kind){try{history.back();}catch(e){}}
+ };
+ window.addEventListener('popstate',function(){
+  var uran=byId('indianShortsViewer');
+  if(uran&&uran.classList.contains('open')){
+   var close=byId('isvClose');if(close)close.click();
+   return;
+  }
+  var story=byId('indianStoryFullscreen');
+  if(story&&!story.hidden){
+   var storyClose=story.querySelector('.indian-story-close');if(storyClose)storyClose.click();
+  }
+ });
+ var lastY=window.scrollY||0,touchStartY=null;
+ function onFeedMove(direction){
+  if(!document.body.classList.contains('indian-home-route')||document.body.classList.contains('indian-fullscreen-open'))return;
+  if(direction>0)document.body.classList.add('indian-bottom-nav-hidden');
+  else if(direction<0)document.body.classList.remove('indian-bottom-nav-hidden');
+ }
+ window.addEventListener('scroll',function(){
+  var y=window.scrollY||0,delta=y-lastY;
+  if(Math.abs(delta)>5)onFeedMove(delta>0?1:-1);
+  if(y<30)document.body.classList.remove('indian-bottom-nav-hidden');
+  lastY=y;
+ },{passive:true});
+ document.addEventListener('touchstart',function(e){
+  if(e.touches&&e.touches.length)touchStartY=e.touches[0].clientY;
+ },{passive:true});
+ document.addEventListener('touchend',function(e){
+  if(touchStartY===null||!e.changedTouches||!e.changedTouches.length)return;
+  var delta=e.changedTouches[0].clientY-touchStartY;touchStartY=null;
+  if(Math.abs(delta)>35)onFeedMove(delta>0?1:-1);
+ },{passive:true});
+ document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&document.body.classList.contains('indian-fullscreen-open'))return;
+  if(e.key==='Escape'){
+   var dialog=document.querySelector('dialog[open]');
+   if(dialog&&typeof dialog.close==='function')dialog.close();
+  }
+ });
+})();
+</script>
 </body>
 </html>

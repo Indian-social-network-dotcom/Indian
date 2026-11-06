@@ -49,7 +49,12 @@ class MainActivity : Activity() {
                     }
 
                     if (androidPermissions.isEmpty()) {
-                        request.grant(request.resources)
+                        val allowedResources = allowedWebResources(request)
+                        if (allowedResources.isNotEmpty()) {
+                            request.grant(allowedResources)
+                        } else {
+                            request.deny()
+                        }
                     } else {
                         pendingWebPermissionRequest?.deny()
                         pendingWebPermissionRequest = request
@@ -86,6 +91,18 @@ class MainActivity : Activity() {
         }
 
         requestNotificationPermissionIfNeeded()
+    }
+
+    private fun allowedWebResources(request: PermissionRequest): Array<String> {
+        return request.resources.filter { resource ->
+            when (resource) {
+                PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
+                    checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
+                    checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                else -> false
+            }
+        }.toTypedArray()
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -125,18 +142,10 @@ class MainActivity : Activity() {
                 return
             }
 
-            val allowedResources = request.resources.filter { resource ->
-                when (resource) {
-                    PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
-                        checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                    PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
-                        checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-                    else -> false
-                }
-            }
+            val allowedResources = allowedWebResources(request)
 
             if (allowedResources.isNotEmpty()) {
-                request.grant(allowedResources.toTypedArray())
+                request.grant(allowedResources)
             } else {
                 request.deny()
             }

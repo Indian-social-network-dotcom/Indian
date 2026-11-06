@@ -63,7 +63,7 @@
    document.dispatchEvent(new CustomEvent('indian-uran-social-updated',{detail:{videoId:id}}));
   }catch(error){var view=card.querySelector('[data-uran-views-for="'+id+'"]');if(view)view.textContent='Views unavailable';console.warn('Uran social data load failed',error);}
  }
- function collect(){var feed=el('shortsFeed');if(feed)Array.from(feed.querySelectorAll(':scope > article[data-uran-video-id]')).forEach(ensureCard);}
+ function collect(){var selector='#shortsFeed > article[data-uran-video-id], #indianMixedFeedItems article[data-uran-video-id]';Array.from(document.querySelectorAll(selector)).forEach(ensureCard);}
  function findCreatorButton(target){return target&&target.closest?target.closest('[data-uran-social-action]'):null;}
  async function openProfile(uid){
   if(!uid){setStatus('Creator profile abhi available nahi hai.');return;}

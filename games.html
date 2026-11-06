@@ -5,6 +5,23 @@
 <title>Indian Game Zone 🎮</title>
 <style>
 :root{color-scheme:dark;--bg:#121212;--card:#1e1e1e;--accent:#ff9800;--text:#f5f5f5;--muted:#c5c5c5;--line:#383838}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}button,input,select{font:inherit}button{cursor:pointer;border:1px solid #5b5b5b;border-radius:10px;padding:10px 14px;background:#292929;color:#fff}button:hover{border-color:var(--accent)}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.top{position:sticky;top:0;z-index:5;background:#181818;border-bottom:1px solid var(--line);padding:12px max(14px,calc((100vw - 1050px)/2));display:flex;gap:14px;align-items:center}.top h1{font-size:1.15rem;margin:0;color:var(--accent);flex:1}.accent{background:var(--accent);color:#161616;border-color:var(--accent);font-weight:800}.wrap{width:min(1050px,100%);margin:auto;padding:18px 14px 40px}.intro{color:var(--muted)}.status{padding:12px;border-radius:10px;background:#202020;border:1px solid var(--line);margin:12px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:18px 0}.game-card,.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}.game-card h2{margin:0 0 8px;color:var(--accent);font-size:1.1rem}.game-card p{color:var(--muted);min-height:48px}.game-card button{width:100%}.hidden{display:none!important}.row{display:flex;flex-wrap:wrap;gap:9px;align-items:center}.field{display:grid;gap:6px;margin:10px 0}.field input,.field select{width:100%;min-width:0;background:#101010;color:#fff;border:1px solid #555;border-radius:9px;padding:11px}.panel h2{color:var(--accent);margin-top:0}.roomline{overflow-wrap:anywhere;color:#ffd180}.board{display:grid;grid-template-columns:repeat(3,minmax(70px,110px));gap:7px;margin:14px 0}.cell{height:90px;font-size:2rem;font-weight:900;color:var(--accent);padding:0}.quizOptions{display:grid;gap:8px;max-width:500px}.quizOptions button{text-align:left}.canvasWrap{max-width:650px}.canvasWrap canvas{display:block;width:100%;height:auto;aspect-ratio:4/3;background:#fff;border-radius:10px;touch-action:none;border:1px solid #777}.guesslog{max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px}.guesslog p{margin:4px 0}.dice{font-size:3rem;color:var(--accent)}.players{color:var(--muted)}.foot{color:#aaa;font-size:.9rem;margin-top:24px}a{color:#ffd180}@media(max-width:480px){.top{gap:8px;padding:10px}.top h1{font-size:1rem}.wrap{padding:12px 10px 30px}.cell{height:75px}}
+
+/* Fixed main navigation, matching the Indian mobile website. */
+body{padding-bottom:calc(82px + env(safe-area-inset-bottom,0px))}
+.game-bottom-nav{
+ position:fixed;left:0;right:0;bottom:0;z-index:1000;
+ display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;
+ padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));
+ background:#181818;border-top:1px solid #383838;box-shadow:0 -4px 16px rgba(0,0,0,.35)
+}
+.game-bottom-nav a{
+ display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;
+ min-width:0;min-height:54px;padding:4px 2px;border-radius:9px;
+ color:#eee;text-decoration:none;font-size:11px;line-height:1.15;text-align:center
+}
+.game-bottom-nav a[aria-current=page]{background:#3a2b16;color:#ffb74d;font-weight:800}
+.game-bottom-nav a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media(min-width:850px){.game-bottom-nav{left:50%;right:auto;width:min(100%,980px);transform:translateX(-50%);border:1px solid #383838;border-bottom:0;border-radius:14px 14px 0 0}}
 </style>
 </head>
 <body>
@@ -52,4 +69,12 @@ function renderDice(box,s){addText(box,'p','Finish line: 30 spaces. Apni baari p
 async function rollDice(){const roll=1+Math.floor(Math.random()*6);try{await runTransaction(db,async tx=>{const ref=roomRef(activeRoomId),snap=await tx.get(ref),r=snap.data(),s=r.state;if(s.turn!==user.uid||s.winner)throw Error('Abhi aapki baari nahi hai.');const positions={...s.positions,[user.uid]:Math.min(30,(s.positions[user.uid]||0)+roll)};const winner=positions[user.uid]>=30?user.uid:'';tx.update(ref,{state:{...s,positions,dice:roll,rolls:(s.rolls||0)+1,turn:winner?user.uid:(r.players.find(p=>p.uid!==user.uid)?.uid||user.uid),winner},status:winner?'finished':'playing',updatedAt:serverTimestamp()});});}catch(e){gameSay(e.message)}}
 $('createRoomBtn').addEventListener('click',()=>createRoom($('gameType').value));$('joinRoomBtn').addEventListener('click',()=>joinRoom($('roomIdInput').value));document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>{$('gameType').value=b.dataset.game;createRoom(b.dataset.game)}));$('copyRoomBtn').addEventListener('click',async()=>{if(!activeRoomId)return;try{await navigator.clipboard.writeText(activeRoomId);gameSay('Room ID copied: '+activeRoomId)}catch(e){gameSay('Room ID: '+activeRoomId+' — ise select karke copy karein.')}});$('leaveRoomBtn').addEventListener('click',()=>{if(unsub)unsub();unsub=null;activeRoomId='';activeRoom=null;$('gamePanel').classList.add('hidden');gameSay('Room se nikal gaye. Room doosre player ke liye available reh sakta hai.');});
 </script>
+
+<nav class="game-bottom-nav" aria-label="Indian main navigation">
+ <a href="./index.html#home" aria-label="Home"><span aria-hidden="true">⌂</span><span>Home</span></a>
+ <a href="./index.html#live" aria-label="Live Zone"><span aria-hidden="true">◉</span><span>Live</span></a>
+ <a href="./index.html#help" aria-label="Help"><span aria-hidden="true">♡</span><span>Help</span></a>
+ <a href="./games.html" aria-current="page" aria-label="Games"><span aria-hidden="true">🎮</span><span>Games</span></a>
+ <a href="./index.html#messages" aria-label="Messages"><span aria-hidden="true">✉</span><span>Messages</span></a>
+</nav>
 </body></html>

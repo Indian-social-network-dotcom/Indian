@@ -443,16 +443,11 @@ Search registered users, places, posts or help requests:
 <section id="messagesSection" class="messagesPage" style="display:none;" tabindex="-1">
 <h2>Messages</h2>
 <div id="firebaseMessageStatus" class="messagesConnectionStatus" aria-live="polite" style="display:none!important;">Messages ready.</div>
-<div class="messageConversationSearch messagesTopSearch">
+<div class="messageConversationSearch messagesTopSearch" id="indianUnifiedMessageSearch">
 <label for="conversationSearchBox">Search chats</label>
-<input id="conversationSearchBox" type="search" placeholder="Search chats or people..." aria-label="Search chats or people" oninput="filterConversationList()">
+<input id="conversationSearchBox" type="search" placeholder="Search chats" aria-label="Search chats" oninput="filterConversationList()">
 </div>
-<div id="messageUserDiscovery" class="messageUserDiscovery">
-<h3>New chat</h3>
-<label for="messageUserSearch">Find a person</label>
-<input id="messageUserSearch" type="search" placeholder="Search by name..." aria-label="Find a person to message" oninput="searchRegisteredUsersForMessages()">
-<div id="messageUserResults" aria-live="polite">Search for someone to start a chat.</div>
-</div>
+<div id="messageUserResults" class="messageUserResults" aria-live="polite" hidden></div>
 <div id="messagesLayout">
 <div class="messagesSidebar">
 <h3>Chats</h3>
@@ -515,11 +510,7 @@ Search registered users, places, posts or help requests:
 <button type="button" class="chatIconButton" onclick="startIndianVideoCall()" aria-label="Video call" title="Video call">📹 Video call</button>
 </div>
 <div id="indianCallStatus" class="chatCallStatus" role="status" aria-live="polite"></div>
-<div class="messageSearchBar" id="messageSearchBar" style="display:block;">
-<label for="messageSearchBox">Search previous messages</label>
-<input id="messageSearchBox" type="search" placeholder="Search previous messages..." aria-label="Search previous messages in this chat" oninput="filterCurrentChatMessages()">
-<div id="messageSearchInfo" class="messageSearchInfo" aria-live="polite"></div>
-</div>
+
 </div>
 </div>
 </div>
@@ -1649,7 +1640,18 @@ function renderConversationList(){
 function filterConversationList(){
     const input = document.getElementById("conversationSearchBox");
     conversationSearchQuery = input ? input.value : "";
-    renderConversationList();
+    const query = conversationSearchQuery.trim();
+    const layout = document.getElementById("messagesLayout");
+    const results = document.getElementById("messageUserResults");
+    if(query){
+        if(layout) layout.style.display = "none";
+        if(results){ results.hidden = false; }
+        if(typeof window.searchRegisteredUsersForMessages === "function") window.searchRegisteredUsersForMessages();
+    }else{
+        if(layout) layout.style.display = "";
+        if(results){ results.hidden = true; results.replaceChildren(); }
+        renderConversationList();
+    }
 }
 
 async function indianOpenMessageFromNotification(messageId){
@@ -1689,6 +1691,13 @@ function openConversation(personId){
 
     const searchBox = document.getElementById("messageSearchBox");
     if(searchBox) searchBox.value = "";
+    const unifiedSearch = document.getElementById("conversationSearchBox");
+    if(unifiedSearch) unifiedSearch.value = "";
+    conversationSearchQuery = "";
+    const searchResults = document.getElementById("messageUserResults");
+    if(searchResults){ searchResults.hidden = true; searchResults.replaceChildren(); }
+    const messagesLayout = document.getElementById("messagesLayout");
+    if(messagesLayout) messagesLayout.style.display = "";
 
     markConversationRead(personId);
 
@@ -6537,30 +6546,30 @@ else{
   function findPerson(profile){return people().find(function(p){return p.firebaseUid===profile.uid;})||null;}
   function actionButton(label,aria,handler){var b=document.createElement('button');b.type='button';b.className='action';b.textContent=label;b.setAttribute('aria-label',aria);b.addEventListener('click',handler);return b;}
   window.searchRegisteredUsersForMessages=function(){
-    var box=el('messageUserSearch'),out=el('messageUserResults');if(!box||!out)return;
+    var box=el('conversationSearchBox'),out=el('messageUserResults');if(!box||!out)return;
     var q=box.value.trim().toLowerCase();out.replaceChildren();
-    if(!q){out.textContent='Type a registered user name to search.';return;}
-    var list=profiles().filter(function(p){return p.uid && String(p.displayName||'').toLowerCase().includes(q);});
-    if(!list.length){out.textContent='No registered users found. Sign in and make sure the other user has saved a public profile.';return;}
+    if(!q){out.hidden=true;return;}
+    out.hidden=false;
+    var list=profiles().filter(function(p){return p.uid && p.uid!==window.firebaseCurrentUid && String(p.displayName||'').toLowerCase().includes(q);});
+    if(!list.length){out.textContent='No users found.';return;}
     list.forEach(function(profile){
-      var card=document.createElement('article');card.style.cssText='border:1px solid #ddd;border-radius:8px;padding:10px;margin:8px 0;';
-      var name=document.createElement('h4');name.textContent=String(profile.displayName||'Indian User');card.appendChild(name);
-      if(profile.bio){var bio=document.createElement('p');bio.textContent=String(profile.bio);card.appendChild(bio);}
-      if(profile.photoURL){var img=document.createElement('img');img.src=String(profile.photoURL);img.alt=String(profile.displayName||'User')+' profile photo';img.style.cssText='max-width:90px;max-height:90px;border-radius:50%;';card.appendChild(img);}
-      card.appendChild(actionButton('View Profile','View profile of '+name.textContent,function(){showRegisteredProfile(profile);}));
       var person=findPerson(profile);
-      if(person){
-        card.appendChild(actionButton(person.isFollowing?'Unfollow':'Follow',(person.isFollowing?'Unfollow ':'Follow ')+name.textContent,function(){
-          if(profile.uid===window.firebaseCurrentUid){alert('You cannot follow your own account.');return;}
-          if(typeof window.togglePersonFollow==='function'){window.togglePersonFollow(person.id);setTimeout(window.searchRegisteredUsersForMessages,100);}else{alert('Please sign in to use Follow.');}
-        }));
-        card.appendChild(actionButton('Message','Message '+name.textContent,function(){
-          if(typeof window.openConversation==='function'){window.openConversation(person.id);}else{alert('The messaging panel is not ready.');}
-        }));
-      }else{
-        var note=document.createElement('p');note.textContent='This profile is visible, but its messaging connection is not ready yet.';card.appendChild(note);
+      if(!person && typeof window.addFirebasePeopleToIndian==='function'){
+        window.addFirebasePeopleToIndian([profile]);
+        person=findPerson(profile);
       }
-      out.appendChild(card);
+      var row=document.createElement('button');row.type='button';row.className='indian-message-search-result';
+      row.setAttribute('aria-label','Open chat with '+String(profile.displayName||'Indian user'));
+      var avatar=document.createElement('span');avatar.className='indian-message-search-avatar';
+      if(profile.photoURL){var img=document.createElement('img');img.src=String(profile.photoURL);img.alt='';img.loading='lazy';avatar.appendChild(img);}
+      else{avatar.textContent='👤';}
+      var name=document.createElement('span');name.className='indian-message-search-name';name.textContent=String(profile.displayName||'Indian user');
+      row.append(avatar,name);
+      row.addEventListener('click',function(){
+        if(person && typeof window.openConversation==='function'){window.openConversation(person.id);}
+        else{out.textContent='This user chat is not ready yet. Please try again in a moment.';}
+      });
+      out.appendChild(row);
     });
   };
   function showRegisteredProfile(profile){
@@ -6853,7 +6862,9 @@ window.openIndianGames=function(){window.location.href='games.html';};
     return true;
   }
   function showSignedInLanding(){
-    applyRoute(shouldShowNotificationSetup() ? 'notificationSetup' : 'home', false, true);
+    var requestedRoute=(location.hash||'').replace(/^#/,'');
+    var initialRoute=shouldShowNotificationSetup() ? 'notificationSetup' : (routeSections[requestedRoute] ? requestedRoute : 'home');
+    applyRoute(initialRoute, false, true);
   }
   window.finishIndianNotificationSetup = function(){
     applyRoute('home', false, true);
@@ -6881,6 +6892,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
       try{history.replaceState({indianApp:true,route:route},'', '#'+route);}catch(e){}
     }
     currentRoute=route;
+    if(document.body){document.body.classList.toggle('indian-home-route',route==='home');document.body.classList.remove('indian-bottom-nav-hidden');}
     var visible=routeSections[route]||routeSections.home;
     sectionIds.forEach(function(id){
       var el=byId(id); if(!el)return;
@@ -6945,6 +6957,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
   window.addEventListener('popstate',function(event){
     if(appIsSignedOut())return;
     var target=event.state && event.state.indianApp && routeSections[event.state.route] ? event.state.route : 'home';
+    if(target===currentRoute)return;
     applyRoute(target,false,true);
   });
   var observer = new MutationObserver(function(){
@@ -7620,9 +7633,9 @@ window.openIndianGames=function(){window.location.href='games.html';};
   }
   function openStory(key,trigger){
     deck=allStories();currentIndex=deck.findIndex(function(x){return x.key===key;});if(currentIndex<0)return;
-    ensureOverlay();returnFocus=trigger||document.activeElement;overlay.hidden=false;document.body.style.overflow='hidden';renderCurrentStory();overlay.focus();
+    ensureOverlay();returnFocus=trigger||document.activeElement;if(window.indianPushOverlayHistory)window.indianPushOverlayHistory('story');overlay.hidden=false;document.body.classList.add('indian-fullscreen-open');document.body.style.overflow='hidden';renderCurrentStory();overlay.focus();
   }
-  function closeViewer(){if(!overlay||overlay.hidden)return;if(typeof window.stopStoryDemoTone==='function')window.stopStoryDemoTone();overlay.querySelectorAll('audio,video').forEach(function(m){try{m.pause();}catch(e){}});overlay.hidden=true;document.body.style.overflow='';var target=returnFocus&&document.contains(returnFocus)?returnFocus:byId('homeStoriesStrip');if(target&&target.focus)target.focus();}
+  function closeViewer(){if(!overlay||overlay.hidden)return;if(typeof window.stopStoryDemoTone==='function')window.stopStoryDemoTone();overlay.querySelectorAll('audio,video').forEach(function(m){try{m.pause();}catch(e){}});overlay.hidden=true;document.body.classList.remove('indian-fullscreen-open');document.body.style.overflow='';if(window.indianCloseOverlayHistory)window.indianCloseOverlayHistory('story');var target=returnFocus&&document.contains(returnFocus)?returnFocus:byId('homeStoriesStrip');if(target&&target.focus)target.focus();}
   function nextStory(delta){if(!deck.length)return;var next=currentIndex+delta;if(next<0||next>=deck.length){closeViewer();return;}overlay.querySelectorAll('audio,video').forEach(function(m){try{m.pause();}catch(e){}});currentIndex=next;renderCurrentStory();}
   function addStoryCard(strip,item){
     var card=document.createElement('button');card.type='button';card.className='story-preview-card';card.dataset.storyKey=item.key;card.setAttribute('role','listitem');card.setAttribute('aria-label','Open story by '+item.owner+(item.story.caption?': '+safeText(item.story.caption,160):''));
@@ -7756,8 +7769,8 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   if(found<0){status.textContent='This video is not available in the Uran list yet.';return;}
   index=found;open();
  }
- function open(){previousFocus=document.activeElement;viewer.classList.add('open');document.body.style.overflow='hidden';show();document.getElementById('isvClose').focus();}
- function close(){viewer.classList.remove('open');document.body.style.overflow='';stage.replaceChildren();social.replaceChildren();if(previousFocus&&previousFocus.focus)previousFocus.focus();}
+ function open(){previousFocus=document.activeElement;if(window.indianPushOverlayHistory)window.indianPushOverlayHistory('uran');viewer.classList.add('open');document.body.classList.add('indian-fullscreen-open');document.body.style.overflow='hidden';show();document.getElementById('isvClose').focus();}
+ function close(){viewer.classList.remove('open');document.body.classList.remove('indian-fullscreen-open');document.body.style.overflow='';stage.replaceChildren();social.replaceChildren();if(window.indianCloseOverlayHistory)window.indianCloseOverlayHistory('uran');if(previousFocus&&previousFocus.focus)previousFocus.focus();}
  function move(n){index+=n;show();}
  document.getElementById('isvClose').addEventListener('click',close);
  document.getElementById('isvPrev').addEventListener('click',function(){move(-1);});
@@ -8401,5 +8414,63 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
 </script>
 
 <script src="uran-social.js" defer></script>
+ 
+<script id="indianNavigationAndBackPolish">
+(function(){
+ 'use strict';
+ function byId(id){return document.getElementById(id);}
+ function activeRoute(){
+  var state=history.state;
+  if(state&&state.indianApp&&state.route)return state.route;
+  return (location.hash||'#home').slice(1).split('-')[0]||'home';
+ }
+ window.indianPushOverlayHistory=function(kind){
+  if(history.state&&history.state.indianOverlay===kind)return;
+  var state=Object.assign({},history.state||{},{indianApp:true,route:activeRoute(),indianOverlay:kind});
+  try{history.pushState(state,'',location.href);}catch(e){}
+ };
+ window.indianCloseOverlayHistory=function(kind){
+  if(history.state&&history.state.indianOverlay===kind){try{history.back();}catch(e){}}
+ };
+ window.addEventListener('popstate',function(){
+  var uran=byId('indianShortsViewer');
+  if(uran&&uran.classList.contains('open')){
+   var close=byId('isvClose');if(close)close.click();
+   return;
+  }
+  var story=byId('indianStoryFullscreen');
+  if(story&&!story.hidden){
+   var storyClose=story.querySelector('.indian-story-close');if(storyClose)storyClose.click();
+  }
+ });
+ var lastY=window.scrollY||0,touchStartY=null;
+ function onFeedMove(direction){
+  if(!document.body.classList.contains('indian-home-route')||document.body.classList.contains('indian-fullscreen-open'))return;
+  if(direction>0)document.body.classList.add('indian-bottom-nav-hidden');
+  else if(direction<0)document.body.classList.remove('indian-bottom-nav-hidden');
+ }
+ window.addEventListener('scroll',function(){
+  var y=window.scrollY||0,delta=y-lastY;
+  if(Math.abs(delta)>5)onFeedMove(delta>0?1:-1);
+  if(y<30)document.body.classList.remove('indian-bottom-nav-hidden');
+  lastY=y;
+ },{passive:true});
+ document.addEventListener('touchstart',function(e){
+  if(e.touches&&e.touches.length)touchStartY=e.touches[0].clientY;
+ },{passive:true});
+ document.addEventListener('touchend',function(e){
+  if(touchStartY===null||!e.changedTouches||!e.changedTouches.length)return;
+  var delta=e.changedTouches[0].clientY-touchStartY;touchStartY=null;
+  if(Math.abs(delta)>35)onFeedMove(delta<0?1:-1);
+ },{passive:true});
+ document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&document.body.classList.contains('indian-fullscreen-open'))return;
+  if(e.key==='Escape'){
+   var dialog=document.querySelector('dialog[open]');
+   if(dialog&&typeof dialog.close==='function')dialog.close();
+  }
+ });
+})();
+</script>
 </body>
 </html>

@@ -51,3 +51,20 @@
 .indian-story-viewer-details{display:flex;flex-direction:column;gap:3px;min-width:0}
 .indian-story-viewer-details strong,.indian-story-viewer-details span{color:#fff;overflow-wrap:anywhere}
 .indian-story-controls button:last-child{background:#28533b;border-color:#78b88f}
+
+
+/* Accessible story creation editor */
+.indian-story-editor{margin:14px 0;padding:14px;border:1px solid #68707b;border-radius:12px;background:#111820;color:#fff}
+.indian-story-editor legend{padding:0 8px;font-weight:800}
+.indian-story-editor p{line-height:1.5;color:#e2e8f0}
+.indian-story-editor-preview{display:flex;flex-direction:column;align-items:center;gap:10px;margin:10px 0}
+.indian-story-editor-preview img,.indian-story-editor-preview video{display:block;max-width:100%;max-height:360px;object-fit:contain;border-radius:10px}
+.indian-story-editor-preview audio{width:100%;max-width:540px}
+.indian-story-editor-control{display:grid;grid-template-columns:1fr;gap:6px;margin:12px 0}
+.indian-story-editor-control label{font-weight:700}
+.indian-story-editor-control input[type=range]{width:100%;min-height:34px;accent-color:#ff9933}
+.indian-story-editor-control output{font-weight:700;color:#ffd08a}
+.indian-story-editor-control select{min-height:42px;padding:8px;border-radius:8px;background:#202a35;color:#fff;border:1px solid #8793a1}
+.indian-story-editor button{min-height:44px;padding:8px 14px}
+.indian-story-editor [hidden]{display:none!important}
+@media(min-width:650px){.indian-story-editor-control{grid-template-columns:minmax(180px,1fr) minmax(180px,2fr) auto;align-items:center}}

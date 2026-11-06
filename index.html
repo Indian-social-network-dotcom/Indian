@@ -7385,7 +7385,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
   }
   async function uploadStoryAudio15s(file){
     // Upload the original audio file instead of converting it to WAV. The preset
-    // previously rejected WAV; Cloudinary applies a 15-second delivery trim.
+    // previously rejected WAV; Cloudinary applies a 30-second delivery trim.
     var form=new FormData();
     var safeName=String(file.name||'story-song.mp3').replace(/[^a-zA-Z0-9._-]/g,'_');
     form.append('file',file,safeName);
@@ -7396,7 +7396,8 @@ window.openIndianGames=function(){window.location.href='games.html';};
     if(!response.ok||!result.secure_url)throw new Error((result.error&&result.error.message)||'Cloudinary ne audio file reject kar di. Upload preset mein original audio format allow hona chahiye.');
     var url=String(result.secure_url);
     // Cloudinary video/audio delivery transformation: start at 0, deliver 15 seconds.
-    return url.replace('/upload/','/upload/so_0,du_15/');
+    var start=Math.max(0,Math.floor(Number(window.indianStoryMusicStartSeconds)||0));
+    return url.replace('/upload/','/upload/so_'+start+',du_30/');
   }
   async function uploadStoryVideoToCloudinary(file){
     if(!file)throw new Error('Please choose a video first.');
@@ -7406,7 +7407,9 @@ window.openIndianGames=function(){window.location.href='games.html';};
     var response=await fetch('https://api.cloudinary.com/v1_1/k4cyxxet/video/upload',{method:'POST',body:form});
     var result={};try{result=await response.json();}catch(e){}
     if(!response.ok||!result.secure_url)throw new Error((result.error&&result.error.message)||'Cloudinary par story video upload nahi ho saka.');
-    return String(result.secure_url);
+    var start=Math.max(0,Math.floor(Number(window.indianStoryVideoStartSeconds)||0));
+    var effects=String(window.indianStoryVideoEffects||'');
+    return String(result.secure_url).replace('/upload/','/upload/so_'+start+',du_30'+(effects?','+effects:'')+'/');
   }
   var basePublishStory=window.publishLocalStory;
   if(typeof basePublishStory==='function'){
@@ -7416,7 +7419,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
       var audioUrl='',audioData='',audioError='',videoUrl='',videoError='';
       var status=byId('storiesStatus');
       if(audio){
-        if(status)status.textContent='Your song is uploading. The online story link will play the first 15 seconds. Please wait.';
+        if(status)status.textContent='Your song is uploading. The online story link will play up to 30 seconds from your selected start time. Please wait.';
         try{audioUrl=await uploadStoryAudio15s(audio);}catch(e){audioError=String(e&&e.message||e);}
       }
       if(file&&String(file.type||'').startsWith('video/')){
@@ -7431,7 +7434,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
       try{
         await basePublishStory();
         if(videoUrl&&window.saveIndianStoryToFirestore){
-          await window.saveIndianStoryToFirestore({id:'story-'+Date.now(),caption:String(byId('storyCaption')&&byId('storyCaption').value||'').slice(0,300),mediaType:'video',mediaUrl:videoUrl});
+          await window.saveIndianStoryToFirestore({id:'story-'+Date.now(),caption:String(byId('storyCaption')&&byId('storyCaption').value||'').slice(0,300),mediaType:'video',mediaUrl:videoUrl,audioUrl:audioUrl,musicChoice:musicChoice});
           if(typeof window.renderIndianOnlineStories==='function')window.renderIndianOnlineStories();
           if(typeof window.renderIndianHomeStories==='function')window.renderIndianHomeStories();
         }
@@ -7440,13 +7443,13 @@ window.openIndianGames=function(){window.location.href='games.html';};
       if(file&&(String(file.type||'').startsWith('image/')||String(file.type||'').startsWith('video/'))){
         var after=[];try{after=JSON.parse(localStorage.getItem('indian_local_stories_v1')||'[]');}catch(e){}
         var created=after.find(function(item){return !before.some(function(old){return old.id===item.id;});})||after[after.length-1];
-        if(created){created.musicChoice=musicChoice;created.audioUrl=audioUrl;try{localStorage.setItem('indian_local_stories_v1',JSON.stringify(after));}catch(e){}if(audio){localAudioUrls.set(created.id,URL.createObjectURL(audio));}setupStoryCardDataset();if(typeof window.renderLocalStories==='function')window.renderLocalStories();enrichLocalStoryCards();}
+        if(created){created.musicChoice=musicChoice;created.audioUrl=audioUrl;created.musicStartSeconds=Math.max(0,Number(window.indianStoryMusicStartSeconds)||0);created.videoStartSeconds=Math.max(0,Number(window.indianStoryVideoStartSeconds)||0);try{localStorage.setItem('indian_local_stories_v1',JSON.stringify(after));}catch(e){}if(audio){localAudioUrls.set(created.id,URL.createObjectURL(audio));}setupStoryCardDataset();if(typeof window.renderLocalStories==='function')window.renderLocalStories();enrichLocalStoryCards();}
       }
       if(status){
         if(videoError)status.textContent='Video story is saved on this device, but online sharing failed: '+videoError;
-        else if(file&&String(file.type||'').startsWith('video/'))status.textContent='Video story shared with Indian users. On another phone, tap Play on the video; mobile browsers may block automatic sound.'+(audioUrl?' The selected song is also attached for up to 15 seconds.':'');
+        else if(file&&String(file.type||'').startsWith('video/'))status.textContent='Video story shared with Indian users. It is trimmed to a maximum of 30 seconds. On another phone, tap Play if needed.'+(audioUrl?' The selected song is also attached for up to 30 seconds.':'');
         else if(audioError)status.textContent='Story may be shared, but its music was not uploaded: '+audioError+'. The Cloudinary upload preset must allow the selected audio format.';
-        else if(audioUrl)status.textContent='Story song uploaded for up to 15 seconds. On another phone, open the story and press Play if sound does not start.';
+        else if(audioUrl)status.textContent='Story song uploaded for up to 30 seconds from your selected start time. On another phone, open the story and press Play if sound does not start.';
         else if(audio)status.textContent='Story publish was attempted. No online song link was created, so the story may not have music on other phones.';
       }
     };
@@ -7526,13 +7529,13 @@ window.openIndianGames=function(){window.location.href='games.html';};
   function playSelectedSound(item){
     if(item.kind==='online'){
       var story=item.story||{};
-      if(story.audioUrl&&String(story.audioUrl).indexOf('https://res.cloudinary.com/')===0){var remoteAudio=document.createElement('audio');remoteAudio.className='indian-story-audio';remoteAudio.controls=true;remoteAudio.preload='auto';remoteAudio.src=story.audioUrl;remoteAudio.setAttribute('aria-label','Play 15-second story music');audioBox.appendChild(remoteAudio);var rp=remoteAudio.play();if(rp&&rp.catch)rp.catch(function(){var msg=document.createElement('p');msg.textContent='If the song did not start automatically, use the Play control. Some mobile browsers block automatic sound.';audioBox.appendChild(msg);});return;}
+      if(story.audioUrl&&String(story.audioUrl).indexOf('https://res.cloudinary.com/')===0){var remoteAudio=document.createElement('audio');remoteAudio.className='indian-story-audio';remoteAudio.controls=true;remoteAudio.preload='auto';remoteAudio.src=story.audioUrl;remoteAudio.setAttribute('aria-label','Play story music, maximum 30 seconds');audioBox.appendChild(remoteAudio);var rp=remoteAudio.play();if(rp&&rp.catch)rp.catch(function(){var msg=document.createElement('p');msg.textContent='If the song did not start automatically, use the Play control. Some mobile browsers block automatic sound.';audioBox.appendChild(msg);});return;}
       if(story.audioData&&String(story.audioData).indexOf('data:audio/')===0){var audio=document.createElement('audio');audio.className='indian-story-audio';audio.controls=true;audio.preload='auto';audio.src=story.audioData;audio.setAttribute('aria-label','Story music');audioBox.appendChild(audio);var p=audio.play();if(p&&p.catch)p.catch(function(){});return;}
       if(story.musicChoice&&story.musicChoice!=='none'&&typeof window.playStoryDemoTone==='function'){
         var b=document.createElement('button');b.type='button';b.className='indian-story-audio-button';b.textContent='Play music';b.setAttribute('aria-label','Play story music');b.addEventListener('click',function(){window.playStoryDemoTone(story.musicChoice);});audioBox.appendChild(b);return;
       }
     }else{
-      if(item.audioUrl){var a=document.createElement('audio');a.className='indian-story-audio';a.controls=true;a.preload='none';a.src=item.audioUrl;a.setAttribute('aria-label','Story music');audioBox.appendChild(a);var p2=a.play();if(p2&&p2.catch)p2.catch(function(){});return;}
+      if(item.audioUrl){var a=document.createElement('audio');a.className='indian-story-audio';a.controls=true;a.preload='none';a.src=item.audioUrl;a.setAttribute('aria-label','Story music, maximum 30 seconds');var musicStart=Math.max(0,Number((item.story||{}).musicStartSeconds)||0);a.addEventListener('loadedmetadata',function(){try{a.currentTime=Math.min(musicStart,Math.max(0,a.duration-0.1));}catch(e){}});a.addEventListener('timeupdate',function(){if(a.currentTime>=musicStart+30){a.pause();a.currentTime=musicStart;}});audioBox.appendChild(a);var p2=a.play();if(p2&&p2.catch)p2.catch(function(){});return;}
       var localStory=item.story||{};var choice=localStory.musicChoice||'none';
       if(choice!=='none'&&typeof window.playStoryDemoTone==='function'){
         var b2=document.createElement('button');b2.type='button';b2.className='indian-story-audio-button';b2.textContent='Play music';b2.setAttribute('aria-label','Play story music');b2.addEventListener('click',function(){window.playStoryDemoTone(choice);});audioBox.appendChild(b2);
@@ -7556,7 +7559,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
     }else{
       media=document.createElement('img');media.src=item.mediaUrl;media.alt='Story photo by '+item.owner;media.draggable=false;
     }
-    stage.appendChild(media);playSelectedSound(item);
+    if(item.kind==='local'&&item.story&&item.story.kind==='video'){var localVideoStart=Math.max(0,Number(item.story.videoStartSeconds)||0);media.addEventListener('loadedmetadata',function(){try{media.currentTime=Math.min(localVideoStart,Math.max(0,media.duration-0.1));}catch(e){}});media.addEventListener('timeupdate',function(){if(media.currentTime>=localVideoStart+30){media.pause();media.currentTime=localVideoStart;}});}stage.appendChild(media);playSelectedSound(item);
     if(item.kind==='online'&&storyOwnerUid&&storyId&&window.recordIndianStoryView&&window.setIndianStoryInteraction){
       var isOwner=!!(window.firebaseCurrentUid&&String(window.firebaseCurrentUid)===storyOwnerUid);
       var metrics=document.createElement('div');metrics.className='indian-story-metrics';
@@ -8084,5 +8087,154 @@ window.indianUranCloudRemove=async function(id){if(!currentUser)throw Error('Sig
   window.updateIndianNotificationSetupUI();
 })();
 </script>
+
+<script id="indianStoryEditor30s">
+(function(){
+  'use strict';
+  var byId=function(id){return document.getElementById(id);};
+  var mediaInput=byId('storyMediaInput'),audioInput=byId('storyAudioInput'),form=byId('storyForm');
+  if(!mediaInput||!audioInput||!form)return;
+  var editor=document.createElement('fieldset');editor.id='indianStoryEditor';editor.className='indian-story-editor';editor.hidden=true;
+  var legend=document.createElement('legend');legend.textContent='Story Editor';editor.appendChild(legend);
+  var help=document.createElement('p');help.textContent='Video aur music maximum 30 seconds. Lamba media ho to apna pasandida hissa chunein. Photo par filters aur crop bhi laga sakte hain.';editor.appendChild(help);
+  var preview=document.createElement('div');preview.className='indian-story-editor-preview';preview.id='indianStoryEditorPreview';editor.appendChild(preview);
+  function makeRange(id,label,min,max,value,step){
+    var wrap=document.createElement('div');wrap.className='indian-story-editor-control';
+    var lab=document.createElement('label');lab.htmlFor=id;lab.textContent=label;wrap.appendChild(lab);
+    var input=document.createElement('input');input.type='range';input.id=id;input.min=min;input.max=max;input.value=value;input.step=step||1;wrap.appendChild(input);
+    var output=document.createElement('output');output.id=id+'Value';output.setAttribute('aria-live','polite');output.textContent=String(value);wrap.appendChild(output);
+    editor.appendChild(wrap);return input;
+  }
+  function makeSelect(id,label,options){
+    var wrap=document.createElement('div');wrap.className='indian-story-editor-control';
+    var lab=document.createElement('label');lab.htmlFor=id;lab.textContent=label;wrap.appendChild(lab);
+    var select=document.createElement('select');select.id=id;
+    options.forEach(function(item){var op=document.createElement('option');op.value=item[0];op.textContent=item[1];select.appendChild(op);});
+    wrap.appendChild(select);editor.appendChild(wrap);return select;
+  }
+  var videoNote=document.createElement('p');videoNote.id='indianStoryVideoDuration';videoNote.textContent='Video trim: choose a video to see its duration.';editor.appendChild(videoNote);
+  var videoStart=makeRange('indianStoryVideoStart','Video start time (seconds)',0,0,0,1);videoNote.hidden=true;videoStart.closest('.indian-story-editor-control').hidden=true;
+  var musicNote=document.createElement('p');musicNote.id='indianStoryMusicDuration';musicNote.textContent='Music trim: choose a song to see its duration.';editor.appendChild(musicNote);
+  var musicStart=makeRange('indianStoryMusicStart','Music start time (seconds)',0,0,0,1);musicNote.hidden=true;musicStart.closest('.indian-story-editor-control').hidden=true;
+  var filter=makeSelect('indianStoryFilter','Filter',[['original','Original'],['vivid','Vivid'],['warm','Warm'],['cool','Cool'],['mono','Black and white'],['sepia','Sepia']]);
+  var crop=makeSelect('indianStoryCrop','Photo crop',[['original','Original size'],['square','Square crop']]);
+  var brightness=makeRange('indianStoryBrightness','Brightness',50,150,100,5);
+  var contrast=makeRange('indianStoryContrast','Contrast',50,150,100,5);
+  var saturation=makeRange('indianStorySaturation','Saturation',0,200,100,5);
+  var rotate=document.createElement('button');rotate.type='button';rotate.id='indianStoryRotate';rotate.textContent='Rotate photo 90 degrees';rotate.className='action';editor.appendChild(rotate);
+  mediaInput.parentNode.insertBefore(editor,mediaInput.nextSibling);
+  var videoPreview=null,imagePreview=null,audioPreview=null,videoDuration=0,musicDuration=0,rotation=0;
+  var mediaObjectUrl='',audioObjectUrl='';
+  window.indianStoryVideoStartSeconds=0;window.indianStoryMusicStartSeconds=0;window.indianStoryVideoEffects='';
+  function filterValues(){
+    var preset=filter.value,b=Number(brightness.value),ct=Number(contrast.value),sat=Number(saturation.value);
+    if(preset==='vivid')sat=Math.min(200,sat+35);
+    if(preset==='warm')return 'brightness('+b+'%) contrast('+ct+'%) saturate('+sat+'%) sepia(18%)';
+    if(preset==='cool')return 'brightness('+b+'%) contrast('+ct+'%) saturate('+sat+'%) hue-rotate(12deg)';
+    if(preset==='mono')return 'brightness('+b+'%) contrast('+ct+'%) grayscale(1)';
+    if(preset==='sepia')return 'brightness('+b+'%) contrast('+ct+'%) sepia(1)';
+    return 'brightness('+b+'%) contrast('+ct+'%) saturate('+sat+'%)';
+  }
+  function updateFilter(){var cssFilter=filterValues();if(imagePreview)imagePreview.style.filter=cssFilter;if(videoPreview)videoPreview.style.filter=cssFilter;}
+  [filter,brightness,contrast,saturation,crop].forEach(function(el){el.addEventListener('input',updateFilter);el.addEventListener('change',updateFilter);});
+  function setOutput(input){var out=byId(input.id+'Value');if(out)out.textContent=input.value+(input.id.indexOf('Start')>=0?' seconds':'');}
+  [videoStart,musicStart,brightness,contrast,saturation].forEach(function(el){el.addEventListener('input',function(){setOutput(el);});setOutput(el);});
+  function setupDuration(file,isAudio){
+    var probe=document.createElement(isAudio?'audio':'video'),url=URL.createObjectURL(file);
+    probe.preload='metadata';probe.src=url;
+    probe.addEventListener('loadedmetadata',function(){
+      var duration=Number(probe.duration);if(!isFinite(duration)||duration<=0)duration=0;
+      if(isAudio)musicDuration=duration;else videoDuration=duration;
+      var range=isAudio?musicStart:videoStart,max=Math.max(0,Math.floor(duration-30));
+      range.max=String(max);range.value='0';range.disabled=max===0;setOutput(range);
+      var note=byId(isAudio?'indianStoryMusicDuration':'indianStoryVideoDuration');
+      note.textContent=(isAudio?'Music':'Video')+' duration: '+Math.floor(duration)+' seconds. Story will use '+Math.min(30,Math.floor(duration))+' seconds maximum. '+(max>0?'Choose start time from 0 to '+max+' seconds.':'No trimming needed.');
+      if(isAudio)window.indianStoryMusicStartSeconds=0;else window.indianStoryVideoStartSeconds=0;
+      URL.revokeObjectURL(url);
+    });
+    probe.addEventListener('error',function(){URL.revokeObjectURL(url);});
+  }
+  videoStart.addEventListener('input',function(){window.indianStoryVideoStartSeconds=Number(videoStart.value)||0;if(videoPreview&&videoPreview.readyState>=1){try{videoPreview.currentTime=window.indianStoryVideoStartSeconds;}catch(e){}}});
+  musicStart.addEventListener('input',function(){window.indianStoryMusicStartSeconds=Number(musicStart.value)||0;if(audioPreview&&audioPreview.readyState>=1){try{audioPreview.currentTime=window.indianStoryMusicStartSeconds;}catch(e){}}});
+  mediaInput.addEventListener('change',function(){
+    preview.replaceChildren();videoPreview=null;imagePreview=null;videoDuration=0;rotation=0;
+    var file=mediaInput.files&&mediaInput.files[0];if(!file){editor.hidden=true;return;}editor.hidden=false;
+    if(mediaObjectUrl)URL.revokeObjectURL(mediaObjectUrl);mediaObjectUrl=URL.createObjectURL(file);
+    if(file.type.indexOf('video/')===0){
+      videoNote.hidden=false;videoStart.hidden=false;videoStart.closest('.indian-story-editor-control').hidden=false;
+      videoPreview=document.createElement('video');videoPreview.controls=true;videoPreview.playsInline=true;videoPreview.preload='metadata';videoPreview.src=mediaObjectUrl;videoPreview.setAttribute('aria-label','Story video editing preview');preview.appendChild(videoPreview);setupDuration(file,false);videoPreview.addEventListener('timeupdate',function(){var start=Number(videoStart.value)||0;if(videoPreview.currentTime>=start+30){videoPreview.pause();videoPreview.currentTime=start;}});videoPreview.addEventListener('play',function(){var start=Number(videoStart.value)||0;if(videoPreview.currentTime<start||videoPreview.currentTime>=start+30)videoPreview.currentTime=start;});
+    }else if(file.type.indexOf('image/')===0){
+      videoNote.hidden=true;videoStart.closest('.indian-story-editor-control').hidden=true;
+      imagePreview=document.createElement('img');imagePreview.src=mediaObjectUrl;imagePreview.alt='Story photo editing preview';preview.appendChild(imagePreview);
+    }
+    if(audioPreview&&audioPreview.src)preview.appendChild(audioPreview);
+    updateFilter();
+  });
+  audioInput.addEventListener('change',function(){
+    var file=audioInput.files&&audioInput.files[0];if(!file){if(audioObjectUrl)URL.revokeObjectURL(audioObjectUrl);audioObjectUrl='';if(audioPreview&&audioPreview.parentNode)audioPreview.parentNode.removeChild(audioPreview);audioPreview=null;musicDuration=0;musicNote.hidden=true;musicStart.closest('.indian-story-editor-control').hidden=true;return;}
+    editor.hidden=false;musicNote.hidden=false;musicStart.closest('.indian-story-editor-control').hidden=false;
+    if(audioObjectUrl)URL.revokeObjectURL(audioObjectUrl);audioObjectUrl=URL.createObjectURL(file);
+    if(!audioPreview){audioPreview=document.createElement('audio');audioPreview.controls=true;audioPreview.preload='metadata';audioPreview.setAttribute('aria-label','Music trim preview');}
+    if(audioPreview.parentNode!==preview)preview.appendChild(audioPreview);
+    audioPreview.src=audioObjectUrl;setupDuration(file,true);
+    audioPreview.addEventListener('timeupdate',function(){var start=Number(musicStart.value)||0;if(audioPreview.currentTime>=start+30){audioPreview.pause();audioPreview.currentTime=start;}});
+    audioPreview.addEventListener('play',function(){var start=Number(musicStart.value)||0;if(audioPreview.currentTime<start||audioPreview.currentTime>=start+30)audioPreview.currentTime=start;});
+  });
+  rotate.addEventListener('click',function(){rotation=(rotation+90)%360;if(imagePreview)imagePreview.style.transform='rotate('+rotation+'deg)';});
+  function cloudinaryEffects(){
+    var bits=[],b=Number(brightness.value)-100,ct=Number(contrast.value)-100,sat=Number(saturation.value)-100;
+    if(b)bits.push('e_brightness:'+Math.round(b));
+    if(ct)bits.push('e_contrast:'+Math.round(ct));
+    if(sat)bits.push('e_saturation:'+Math.round(sat));
+    if(filter.value==='mono')bits.push('e_grayscale');
+    if(filter.value==='cool')bits.push('e_hue:12');
+    if(filter.value==='sepia'||filter.value==='warm')bits.push('e_sepia:70');
+    if(filter.value==='vivid')bits.push('e_saturation:40');
+    return bits.join(',');
+  }
+  function makeEditedImage(file){
+    return new Promise(function(resolve,reject){
+      var bitmapFactory=window.createImageBitmap;
+      if(!bitmapFactory){reject(new Error('Photo editor is not supported by this browser.'));return;}
+      bitmapFactory(file).then(function(bitmap){
+        var sx=0,sy=0,sw=bitmap.width,sh=bitmap.height;
+        if(crop.value==='square'){sw=sh=Math.min(bitmap.width,bitmap.height);sx=(bitmap.width-sw)/2;sy=(bitmap.height-sh)/2;}
+        var swapped=rotation%180!==0,w=swapped?sh:sw,h=swapped?sw:sh,canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+        var ctx=canvas.getContext('2d');if(!ctx){bitmap.close&&bitmap.close();reject(new Error('Photo editing canvas is unavailable.'));return;}
+        ctx.filter=filterValues();ctx.translate(w/2,h/2);ctx.rotate(rotation*Math.PI/180);ctx.drawImage(bitmap,sx,sy,sw,sh,-sw/2,-sh/2,sw,sh);bitmap.close&&bitmap.close();
+        canvas.toBlob(function(blob){if(!blob){reject(new Error('Could not prepare the edited photo.'));return;}resolve(new File([blob],(file.name||'story-photo').replace(/\.[^.]+$/,'')+'-edited.webp',{type:'image/webp'}));},'image/webp',0.88);
+      }).catch(reject);
+    });
+  }
+  var originalPublish=window.publishLocalStory;
+  if(typeof originalPublish==='function'){
+    window.publishLocalStory=async function(){
+      var selected=mediaInput.files&&mediaInput.files[0];
+      if(!selected){return originalPublish.apply(this,arguments);}
+      var oldFiles=mediaInput.files;
+      try{
+        if(selected.type.indexOf('image/')===0){
+          var edited=await makeEditedImage(selected),transfer=new DataTransfer();transfer.items.add(edited);mediaInput.files=transfer.files;
+        }
+        window.indianStoryVideoStartSeconds=Number(videoStart.value)||0;
+        window.indianStoryMusicStartSeconds=Number(musicStart.value)||0;
+        window.indianStoryVideoEffects=cloudinaryEffects();
+        return await originalPublish.apply(this,arguments);
+      }catch(error){
+        var status=byId('storiesStatus');if(status)status.textContent='Story editor error: '+String(error&&error.message||error);
+      }
+    };
+  }
+  var priorPublish=window.publishLocalStory;
+  window.publishLocalStory=async function(){
+    var result=await priorPublish.apply(this,arguments);
+    var status=byId('storiesStatus');
+    if(mediaInput.files&&mediaInput.files.length===0&&audioInput.files&&audioInput.files.length===0){editor.hidden=true;preview.replaceChildren();videoPreview=null;imagePreview=null;audioPreview=null;}
+    if(status&&mediaInput.files&&mediaInput.files.length===0){status.textContent=status.textContent||'Story editing applied.';}
+    return result;
+  };
+})();
+</script>
+
 </body>
 </html>

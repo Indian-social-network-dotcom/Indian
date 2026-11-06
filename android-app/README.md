@@ -7,13 +7,13 @@ This is a separate native Android application project. The existing Indian websi
 - App display name: Indian
 - Android application ID / package name: `indian.socialnetwork.app`
 - Firebase project to connect: `indian-84a86`
-- Existing OneSignal App ID: `019d756d-8ff5-4c09-bcab-75ace208d8da` (do not initialize native push until the Android platform is configured in OneSignal)
+- Existing OneSignal App ID: `019d756d-8ff5-4c09-bcab-75ace208d8da` (Google Android FCM credentials were configured in the existing OneSignal app on 2026-11-06)
 
 The application ID is now selected for this project. Register this exact, case-sensitive ID in Firebase before downloading `google-services.json`. Firebase does not allow changing the package name of an already registered Android app.
 
 ## Current project status
 
-The first native Android scaffold is being added. It is not yet a finished app or installable APK. Firebase configuration, native OneSignal platform setup, authentication screens, call handling, and real-device testing are still pending.
+The native Android scaffold is in progress. Native OneSignal initialization and Firebase-user identity linking have now been added on the `feature/native-onesignal-2026-11-06` branch. A successful build and real-device push test are still required. This work does not change the production website or Cloudflare Worker.
 
 ## Existing website integration facts
 
@@ -30,7 +30,7 @@ The first native Android scaffold is being added. It is not yet a finished app o
 1. Keep the web app and native app as separate clients of the same Indian service.
 2. Use Firebase Authentication for the signed-in user's identity.
 3. Use Cloud Firestore to observe and update the existing call documents.
-4. Configure the Android platform in the existing OneSignal app only after checking its current web-push setup and Android credentials.
+4. Initialize the native OneSignal SDK with the existing Indian OneSignal App ID. The Android app reads the signed-in Firebase UID from the existing WebView page's `window.firebaseCurrentUid` value and logs in to OneSignal using the same `indian_firebase_<UID>` external ID as the website. On sign-out, it logs out of OneSignal.
 5. Create a dedicated Android notification channel for incoming calls and package the ringtone as `app/src/main/res/raw/incoming_ringtone.mp3`.
 6. Open the native app's incoming-call screen when the notification is tapped.
 7. Accept/decline must update and observe the same Firestore call document used by the website.
@@ -40,8 +40,7 @@ The first native Android scaffold is being added. It is not yet a finished app o
 - Open the `android-app` folder in Android Studio.
 - Use JDK 17 and Android Gradle Plugin 8.13.2 (Gradle 8.13).
 - The starter app uses minSdk 24 and targetSdk 35.
-- Register `indian.socialnetwork.app` in Firebase Console under project `indian-84a86`, then place the downloaded `google-services.json` inside `app/`.
-- Only after that config file is present should the Google Services Gradle plugin be applied to the app module.
+- Register `indian.socialnetwork.app` in Firebase Console under project `indian-84a86`, then place the downloaded `google-services.json` inside `app/`. The existing file is already present in this repository.
 - Add the ringtone file at `app/src/main/res/raw/incoming_ringtone.mp3`. Android resource filenames must be lowercase with underscores.
 
 ## Safety boundaries

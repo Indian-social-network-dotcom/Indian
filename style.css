@@ -1447,3 +1447,17 @@ body:not(.auth-required) #indianMixedFeedStatus {
 #messagesSection .chatMessage{max-width:91%}
 }
 @media(min-width:761px){.messagesSidebar{max-height:760px;overflow-y:auto}}
+
+
+/* Messages layout refinement: search directly below heading; calls and history search inside open chat. */
+#messagesSection .messagesTopSearch{margin:0 0 14px;padding:0;border:0;background:transparent}
+#messagesSection .messagesTopSearch label{display:block;margin:0 0 6px;color:#17324d;font-weight:600}
+#messagesSection .messageUserDiscovery{margin-top:0}
+#messagesSection .messageCallActions{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0 8px}
+#messagesSection .messageCallActions .chatIconButton{width:auto;min-width:132px;height:44px;padding:0 14px;border-radius:10px;font-size:14px;font-weight:600}
+#messagesSection .chatCallStatus{padding:4px 0;min-height:18px}
+#messagesSection .messageSearchBar{margin:10px 0 0;padding:12px 0;border-top:1px solid #dbe5ec}
+#messagesSection .messageSearchBar label{display:block;margin:0 0 6px;color:#17324d;font-weight:600}
+@media(max-width:760px){
+  #messagesSection .messageCallActions .chatIconButton{flex:1 1 130px}
+}

@@ -434,7 +434,11 @@ Search registered users, places, posts or help requests:
 <!-- MESSAGES / CHAT -->
 <section id="messagesSection" class="messagesPage" style="display:none;" tabindex="-1">
 <h2>Messages</h2>
-<div id="firebaseMessageStatus" class="messagesConnectionStatus" aria-live="polite">Messages ready.</div>
+<div id="firebaseMessageStatus" class="messagesConnectionStatus" aria-live="polite" style="display:none!important;">Messages ready.</div>
+<div class="messageConversationSearch messagesTopSearch">
+<label for="conversationSearchBox">Search chats</label>
+<input id="conversationSearchBox" type="search" placeholder="Search chats or people..." aria-label="Search chats or people" oninput="filterConversationList()">
+</div>
 <div id="messageUserDiscovery" class="messageUserDiscovery">
 <h3>New chat</h3>
 <label for="messageUserSearch">Find a person</label>
@@ -444,10 +448,6 @@ Search registered users, places, posts or help requests:
 <div id="messagesLayout">
 <div class="messagesSidebar">
 <h3>Chats</h3>
-<div class="messageConversationSearch">
-<label for="conversationSearchBox">Search chats</label>
-<input id="conversationSearchBox" type="search" placeholder="Search chats..." aria-label="Search chats" oninput="filterConversationList()">
-</div>
 <div id="conversationList" aria-label="Conversation list"></div>
 </div>
 <div class="chatPanel">
@@ -459,13 +459,10 @@ Search registered users, places, posts or help requests:
 <div id="chatPresence" class="messageConversationMeta" aria-live="polite">Choose a person to start chatting.</div>
 </div>
 </div>
-<div class="chatHeaderActions" aria-label="Call options">
-<button type="button" class="chatIconButton" onclick="startIndianVoiceCall()" aria-label="Voice call" title="Voice call">📞</button>
-<button type="button" class="chatIconButton" onclick="startIndianVideoCall()" aria-label="Video call" title="Video call">📹</button>
+<div class="chatHeaderActions" aria-label="Chat actions">
 <details class="chatHeaderMore">
 <summary aria-label="More chat actions" title="More chat actions">⋮</summary>
 <div class="messageConversationTools">
-<button type="button" class="action" onclick="toggleMessageSearch()" aria-label="Search chat">Search chat</button>
 <button type="button" class="action" id="markUnreadButton" onclick="markCurrentConversationUnread()">Mark unread</button>
 <button type="button" class="action" id="muteConversationButton" onclick="toggleCurrentConversationMute()">Mute chat</button>
 <button type="button" class="action" id="pinConversationButton" onclick="toggleCurrentConversationPin()">Pin chat</button>
@@ -474,13 +471,7 @@ Search registered users, places, posts or help requests:
 </details>
 </div>
 </div>
-<div id="indianCallStatus" class="chatCallStatus" role="status" aria-live="polite">Voice and video calls are available for connected accounts.</div>
 <div id="chatTypingStatus" class="messageTypingStatus" aria-live="polite"></div>
-<div class="messageSearchBar" id="messageSearchBar" style="display:none;">
-<label for="messageSearchBox">Search messages</label>
-<input id="messageSearchBox" type="search" placeholder="Search this chat..." aria-label="Search messages in this chat" oninput="filterCurrentChatMessages()">
-<div id="messageSearchInfo" class="messageSearchInfo" aria-live="polite"></div>
-</div>
 <div id="chatMessages" class="chatMessages" aria-live="polite"><p class="chatEmpty">Select a chat to see messages.</p></div>
 <div id="messageComposer" style="display:none;">
 <div id="messageEditNotice" class="messageEditNotice" aria-live="polite" style="display:none;">
@@ -510,6 +501,16 @@ Search registered users, places, posts or help requests:
 <div class="messageSendRow">
 <button type="button" id="sendMessageButton" class="action" onclick="sendMessage()">Send</button>
 <button type="button" class="action messageClearDraftButton" onclick="clearMessageDraft()">Clear draft</button>
+</div>
+<div class="messageCallActions" aria-label="Voice and video call options">
+<button type="button" class="chatIconButton" onclick="startIndianVoiceCall()" aria-label="Voice call" title="Voice call">📞 Voice call</button>
+<button type="button" class="chatIconButton" onclick="startIndianVideoCall()" aria-label="Video call" title="Video call">📹 Video call</button>
+</div>
+<div id="indianCallStatus" class="chatCallStatus" role="status" aria-live="polite"></div>
+<div class="messageSearchBar" id="messageSearchBar" style="display:block;">
+<label for="messageSearchBox">Search previous messages</label>
+<input id="messageSearchBox" type="search" placeholder="Search previous messages..." aria-label="Search previous messages in this chat" oninput="filterCurrentChatMessages()">
+<div id="messageSearchInfo" class="messageSearchInfo" aria-live="polite"></div>
 </div>
 </div>
 </div>

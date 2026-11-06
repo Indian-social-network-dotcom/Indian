@@ -54,6 +54,7 @@
   if(typeof window.indianUranGetSocialData!=='function')return;
   try{
    var data=await window.indianUranGetSocialData(id);
+   document.dispatchEvent(new CustomEvent('indian-uran-social-updated',{detail:{videoId:id}}));
    var like=card.querySelector('[data-uran-social-action="like"]');if(like){like.textContent='♡ Like · '+data.likes;like.setAttribute('aria-pressed',String(!!(JSON.parse(localStorage.getItem('indian_uran_youtube_links_v1')||'[]').find(function(x){return String(x.id)===id;})||{}).liked));}
    var view=card.querySelector('[data-uran-views-for="'+id+'"]');if(view)view.textContent=countLabel('Views',data.views);
    var list=card.querySelector('[data-uran-comments-for="'+id+'"]');if(list)renderCommentRows(list,data.comments);
@@ -124,7 +125,7 @@
   if(!window.firebaseCurrentUid){setStatus('Comment karne ke liye sign in karein.');return;}
   if(!input||!input.value.trim())return;
   if(send)send.disabled=true;
-  try{await window.indianUranAddComment(id,input.value);input.value='';var card=form.closest('article[data-uran-video-id]');if(card){var data=await window.indianUranGetSocialData(id);renderCommentRows(card.querySelector('[data-uran-comments-for="'+id+'"]'),data.comments);}setStatus('Comment publish ho gaya.');}
+  try{await window.indianUranAddComment(id,input.value);input.value='';var data=await window.indianUranGetSocialData(id);document.querySelectorAll('[data-uran-comments-for]').forEach(function(list){if(String(list.dataset.uranCommentsFor)===String(id))renderCommentRows(list,data.comments);});setStatus('Comment publish ho gaya.');}
   catch(error){setStatus('Comment save nahi hua: '+safeText(error.message,''));}
   finally{if(send)send.disabled=false;}
  });

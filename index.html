@@ -6862,7 +6862,9 @@ window.openIndianGames=function(){window.location.href='games.html';};
     return true;
   }
   function showSignedInLanding(){
-    applyRoute(shouldShowNotificationSetup() ? 'notificationSetup' : 'home', false, true);
+    var requestedRoute=(location.hash||'').replace(/^#/,'');
+    var initialRoute=shouldShowNotificationSetup() ? 'notificationSetup' : (routeSections[requestedRoute] ? requestedRoute : 'home');
+    applyRoute(initialRoute, false, true);
   }
   window.finishIndianNotificationSetup = function(){
     applyRoute('home', false, true);

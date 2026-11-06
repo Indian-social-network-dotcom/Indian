@@ -11,3 +11,38 @@
 #indianShortsViewer .isv-controls{display:flex;gap:8px;justify-content:space-between}
 .shortsOpenViewer{display:block;width:100%;margin-top:8px}
 @media(min-width:700px){#indianShortsViewer .isv-shell{height:calc(100vh - 30px)}}
+
+
+/* Uran creator and engagement controls */
+.uran-creator-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;min-width:0}
+.uran-creator-link{display:flex;align-items:center;gap:10px;min-width:0;border:0;background:transparent;color:#fff;text-align:left;font-weight:700;font-size:1rem;padding:4px;cursor:pointer}
+.uran-creator-avatar{width:42px;height:42px;min-width:42px;border-radius:50%;object-fit:cover;border:2px solid #ff9800}
+.uran-creator-initial{display:inline-flex;align-items:center;justify-content:center;background:#333;color:#fff;font-weight:800}
+.uran-follow-button{background:#ff9800!important;color:#171717!important;border-color:#ff9800!important;font-weight:800}
+.uran-social-panel{margin-top:12px;padding-top:12px;border-top:1px solid #444;color:#fff}
+.uran-social-metrics{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.uran-social-button{min-height:42px}
+.uran-social-button[aria-pressed=true]{background:#ff9800;color:#111;border-color:#ff9800}
+.uran-social-count{display:inline-flex;align-items:center;min-height:40px;padding:7px 10px;border:1px solid #555;border-radius:9px;font-weight:700}
+.uran-comments-heading{margin:14px 0 8px;color:#ffb74d}
+.uran-comment-list{display:grid;gap:8px;max-height:240px;overflow:auto}
+.uran-comment-row{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid #333}
+.uran-comment-avatar,.uran-connection-avatar{width:34px;height:34px;min-width:34px;border-radius:50%;object-fit:cover}
+.uran-comment-body{min-width:0}
+.uran-comment-body p{margin:3px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.uran-no-comments{color:#ccc}
+.uran-comment-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}
+.uran-comment-form textarea{width:100%;min-height:44px;max-height:120px;resize:vertical;padding:10px;border:1px solid #777;border-radius:9px;background:#222;color:#fff;font:inherit}
+.uran-comment-send{background:#ff9800!important;color:#111!important;border-color:#ff9800!important}
+.uran-profile-page{position:fixed;inset:0;z-index:6000;overflow:auto;background:#101010;color:#fff;padding:18px;outline:none}
+.uran-profile-back{position:sticky;top:0;z-index:2;background:#fff;color:#111}
+.uran-profile-hero{max-width:680px;margin:20px auto;padding:22px;text-align:center;background:#1d1d1d;border:1px solid #444;border-radius:16px}
+.uran-profile-photo{width:112px;height:112px;border-radius:50%;object-fit:cover;border:3px solid #ff9800}
+.uran-profile-counts{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin:14px 0}
+.uran-profile-counts button,.uran-profile-hero>button{background:#ff9800;color:#111;border-color:#ff9800;font-weight:800}
+.uran-profile-video-count{font-weight:700}
+.uran-profile-list,.uran-profile-video-list{max-width:680px;margin:12px auto;display:grid;gap:8px}
+.uran-connection-row,.uran-profile-video{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:1px solid #555;border-radius:10px;background:#222;color:#fff;text-align:left;font:inherit}
+.uran-profile-videos-title{max-width:680px;margin:24px auto 8px}
+.uran-profile-loading,.uran-profile-error{max-width:680px;margin:24px auto}
+@media(max-width:480px){.uran-comment-form{grid-template-columns:1fr}.uran-comment-send{width:100%}.uran-profile-page{padding:12px}}

@@ -114,6 +114,7 @@ async function getOneSignalUser(env, uid) {
     headers: { "Authorization": `Key ${env.ONESIGNAL_REST_API_KEY}` }
   });
   const result = await response.json().catch(() => ({}));
+  if (response.status === 404) return null;
   if (!response.ok) {
     const errors = result && result.errors;
     const detail = Array.isArray(errors) ? errors.map(x => typeof x === "string" ? x : (x.title || x.code || JSON.stringify(x))).join("; ") : (result.message || response.statusText);
@@ -276,6 +277,19 @@ export default {
     const action = typeof body.action === "string" ? body.action.trim() : "";
     if (action) {
       try {
+        if (action === "getHelpLocationStatus") {
+          const oneSignalUser = await getOneSignalUser(env, callerUid);
+          const tags = oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.tags || {};
+          const pushActive = hasActivePushSubscription(oneSignalUser);
+          const locationOptIn = tags.indian_help_location_optin === "1";
+          return json({
+            success: true,
+            enabled: locationOptIn && pushActive,
+            locationOptIn: locationOptIn,
+            pushActive: pushActive
+          }, 200, origin);
+        }
+
         if (action === "setHelpLocation") {
           const latitude = Number(body.latitude);
           const longitude = Number(body.longitude);
@@ -284,7 +298,7 @@ export default {
             return json({ error: "Valid latitude and longitude are required." }, 400, origin);
           }
           const currentOneSignalUser = await getOneSignalUser(env, callerUid);
-          if (!hasActivePushSubscription(currentOneSignalUser)) {
+          if (!currentOneSignalUser || !hasActivePushSubscription(currentOneSignalUser)) {
             return json({ error: "Enable push notifications on this Indian account before turning on Nearby Help Alerts." }, 403, origin);
           }
           await updateOneSignalUser(env, callerUid, {
@@ -335,7 +349,7 @@ export default {
           }
           const oneSignalUser = await getOneSignalUser(env, callerUid);
           const tags = oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.tags || {};
-          if (tags.indian_help_location_optin !== "1") {
+          if (!oneSignalUser || tags.indian_help_location_optin !== "1") {
             return json({ error: "Enable Nearby Help Alerts and allow location before posting a request." }, 403, origin);
           }
           if (!hasActivePushSubscription(oneSignalUser)) {

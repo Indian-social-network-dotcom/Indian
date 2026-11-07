@@ -19,6 +19,18 @@
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer onerror="window.__indianOneSignalSdkLoadFailed = true; window.addEventListener('DOMContentLoaded', function(){ var e=document.getElementById('indianNotificationSetupStatus'); if(e) e.textContent='Notifications are temporarily unavailable. You can continue to Indian.'; });"></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.linkIndianOneSignalUser = async function(OneSignal, uid) {
+    var expected = "indian_firebase_" + String(uid || "");
+    if (!expected || expected === "indian_firebase_") return;
+    try {
+      var previous = OneSignal && OneSignal.User ? OneSignal.User.externalId : "";
+      if (previous && previous !== expected && OneSignal.User && typeof OneSignal.User.removeTags === "function") {
+        await OneSignal.User.removeTags(["indian_help_location_optin", "indian_firebase_uid"]);
+      }
+    } catch (tagCleanupError) { console.warn("Old Nearby Help preference cleanup skipped", tagCleanupError); }
+    await OneSignal.login(expected);
+    await OneSignal.User.addTag("indian_firebase_uid", String(uid));
+  };
   window.__indianOneSignalReady = false;
   window.__indianOneSignalInstance = null;
   function setIndianOneSignalStatus(message) {
@@ -51,10 +63,8 @@
         });
       } catch (clickHookError) { console.warn("OneSignal click handler unavailable", clickHookError); }
       if (window.firebaseCurrentUid) {
-        try {
-          await OneSignal.login("indian_firebase_" + String(window.firebaseCurrentUid));
-          await OneSignal.User.addTag("indian_firebase_uid", String(window.firebaseCurrentUid));
-        } catch (identityError) { console.warn("OneSignal user link pending", identityError); }
+        try { await window.linkIndianOneSignalUser(OneSignal, window.firebaseCurrentUid); }
+        catch (identityError) { console.warn("OneSignal user link pending", identityError); }
       }
       setIndianOneSignalStatus(OneSignal.User.PushSubscription.optedIn
         ? "Notifications are already enabled on this device."
@@ -426,7 +436,7 @@ Search registered users, places, posts or help requests:
 
 <div id="indianNearbyHelpSettings" class="firebaseCard" aria-label="Nearby Help Alerts settings">
   <h3>Nearby Help Alerts</h3>
-  <p>Enable this to receive Help Requests from within 5 kilometres. Indian uses your location only for nearby matching. Your exact location is not shown to other users. You need to allow both notifications and location.</p>
+  <p>Enable this to receive Help Requests from within 5 kilometres. Your browser shares your current location with OneSignal, Indian's notification provider, only for nearby matching. Your exact location is not shown to other Indian users. You need to allow both notifications and location, and you can turn this off at any time.</p>
   <button class="action" type="button" id="indianEnableNearbyHelpBtn">Enable Nearby Help Alerts</button>
   <button class="action" type="button" id="indianDisableNearbyHelpBtn" hidden>Turn Off Nearby Help Alerts</button>
   <p id="indianNearbyHelpStatus" role="status" aria-live="polite">Nearby Help Alerts are off.</p>
@@ -674,6 +684,7 @@ Live viewers: 0
 <p>
 Need help? Submit a request. Want to help someone? Open another person's request and choose "Offer Help". The requester can accept one helper. The accepted helper chooses "Start helping" and then "Submit completed work". The requester finishes by choosing "Confirm completed help". A request is not marked Resolved until the requester confirms completion.
 </p>
+<p>To send a mobile alert to people nearby, first enable Nearby Help Alerts in the Notifications section and allow both notifications and location.</p>
 <label for="helpStatusFilter">Filter help requests by status:</label>
 <select id="helpStatusFilter" aria-label="Filter help requests by status" style="display:block;width:100%;padding:10px;margin:8px 0 12px;border:1px solid #b9c9d6;border-radius:11px;background:#fff;color:#172b3a;">
   <option value="all">All requests</option>
@@ -6343,7 +6354,15 @@ else{
          const pushResult=await window.callIndianNearbyHelpWorker("sendHelpRequest",{helpRequestId:requestRef.id,latitude:position.coords.latitude,longitude:position.coords.longitude});
          nearbyPushStatus=pushResult.sent===true?"sent":"no_recipients";
        }
-     }catch(pushError){console.warn("Nearby Help push was not sent:",pushError);}
+     }catch(pushError){
+       console.warn("Nearby Help push was not sent:",pushError);
+       if(pushError&&pushError.code===1){
+         try{
+           await window.callIndianNearbyHelpWorker("clearHelpLocation");
+           await window.__indianOneSignalInstance?.User?.addTag("indian_help_location_optin","0");
+         }catch(clearError){console.warn("Revoked Nearby Help location could not be cleared yet",clearError);}
+       }
+     }
      return {requestId:requestRef.id,nearbyPushStatus:nearbyPushStatus};
    }
    catch(e){alertSave("Help request",e);throw e;}
@@ -6806,8 +6825,7 @@ else{
      try{
        const OneSignal=window.__indianOneSignalInstance;
        if(OneSignal&&window.__indianOneSignalReady){
-         await OneSignal.login("indian_firebase_"+u.uid);
-         await OneSignal.User.addTag("indian_firebase_uid",u.uid);
+         await window.linkIndianOneSignalUser(OneSignal,u.uid);
        }
      }catch(identityError){console.warn("OneSignal Firebase identity update pending",identityError);}
      await window.loadIndianProfileFromFirestore?.();wrap();listeners();

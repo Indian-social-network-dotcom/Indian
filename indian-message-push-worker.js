@@ -328,14 +328,8 @@ export default {
 
         if (action === "sendHelpRequest") {
           const helpRequestId = typeof body.helpRequestId === "string" ? body.helpRequestId.trim() : "";
-          const latitude = Number(body.latitude);
-          const longitude = Number(body.longitude);
           if (!/^[A-Za-z0-9_-]{10,40}$/.test(helpRequestId)) {
             return json({ error: "Invalid Help Request ID." }, 400, origin);
-          }
-          if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
-              !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-            return json({ error: "Valid location is required to send nearby Help alerts." }, 400, origin);
           }
           const helpRequest = await getFirestoreHelpRequest(helpRequestId, idToken);
           if (!helpRequest) return json({ error: "Help Request not found." }, 404, origin);
@@ -357,14 +351,12 @@ export default {
           if (!hasActivePushSubscription(oneSignalUser)) {
             return json({ success: true, sent: false, message: "No active push subscription is available for this account." }, 200, origin);
           }
-          await updateOneSignalUser(env, callerUid, {
-            lat: latitude,
-            long: longitude,
-            tags: {
-              indian_help_location_optin: "1",
-              indian_firebase_uid: callerUid
-            }
-          });
+          const latitude = Number(oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.lat);
+          const longitude = Number(oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.long);
+          if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
+              !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            return json({ error: "Your saved nearby location is missing. Enable Nearby Help Alerts again." }, 403, origin);
+          }
           const pushResult = await sendNearbyHelpPush(env, helpRequestId, helpRequest, callerUid, latitude, longitude);
           const recipientCount = Number(pushResult && pushResult.recipients);
           if (!pushResult || !pushResult.id || (Number.isFinite(recipientCount) && recipientCount === 0)) {

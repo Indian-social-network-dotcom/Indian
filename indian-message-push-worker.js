@@ -122,6 +122,16 @@ async function getOneSignalUser(env, uid) {
   return result;
 }
 
+function hasActivePushSubscription(user) {
+  const subscriptions = user && Array.isArray(user.subscriptions) ? user.subscriptions : [];
+  return subscriptions.some(subscription => {
+    if (!subscription || !/Push$/i.test(String(subscription.type || ""))) return false;
+    if (subscription.enabled === false) return false;
+    if (subscription.enabled === true) return true;
+    return Number(subscription.notification_types) > 0;
+  });
+}
+
 async function sendNearbyHelpPush(env, requestId, requestData, senderUid, latitude, longitude) {
   const safeName = String(stringField(requestData, "displayName") || "An Indian user")
     .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "An Indian user";
@@ -273,6 +283,10 @@ export default {
               !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
             return json({ error: "Valid latitude and longitude are required." }, 400, origin);
           }
+          const currentOneSignalUser = await getOneSignalUser(env, callerUid);
+          if (!hasActivePushSubscription(currentOneSignalUser)) {
+            return json({ error: "Enable push notifications on this Indian account before turning on Nearby Help Alerts." }, 403, origin);
+          }
           await updateOneSignalUser(env, callerUid, {
             lat: latitude,
             long: longitude,
@@ -323,6 +337,9 @@ export default {
           const tags = oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.tags || {};
           if (tags.indian_help_location_optin !== "1") {
             return json({ error: "Enable Nearby Help Alerts and allow location before posting a request." }, 403, origin);
+          }
+          if (!hasActivePushSubscription(oneSignalUser)) {
+            return json({ success: true, sent: false, message: "No active push subscription is available for this account." }, 200, origin);
           }
           await updateOneSignalUser(env, callerUid, {
             lat: latitude,

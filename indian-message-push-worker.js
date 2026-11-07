@@ -366,10 +366,16 @@ export default {
             }
           });
           const pushResult = await sendNearbyHelpPush(env, helpRequestId, helpRequest, callerUid, latitude, longitude);
-          if (!pushResult || !pushResult.id) {
-            return json({ success: true, sent: false, message: "No eligible nearby subscribers were found." }, 200, origin);
+          const recipientCount = Number(pushResult && pushResult.recipients);
+          if (!pushResult || !pushResult.id || (Number.isFinite(recipientCount) && recipientCount === 0)) {
+            return json({ success: true, sent: false, recipients: 0, message: "No eligible nearby subscribers were found." }, 200, origin);
           }
-          return json({ success: true, sent: true, notificationId: pushResult.id }, 200, origin);
+          return json({
+            success: true,
+            sent: true,
+            recipients: Number.isFinite(recipientCount) ? recipientCount : null,
+            notificationId: pushResult.id
+          }, 200, origin);
         }
 
         return json({ error: "Unknown action." }, 400, origin);

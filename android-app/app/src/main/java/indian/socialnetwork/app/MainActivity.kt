@@ -154,7 +154,16 @@ class MainActivity : Activity() {
         super.onNewIntent(intent)
         setIntent(intent)
         val incomingCallUrl = incomingCallUrlFrom(intent) ?: return
-        if (::webView.isInitialized) webView.loadUrl(incomingCallUrl)
+
+        // If the WebView is already showing Indian, keep its live Firebase and
+        // WebRTC session intact. The existing Firestore call listener will
+        // display the incoming call without reloading the page.
+        if (::webView.isInitialized) {
+            val currentUrl = webView.url
+            if (currentUrl.isNullOrBlank() || currentUrl == "about:blank") {
+                webView.loadUrl(incomingCallUrl)
+            }
+        }
     }
 
     private fun requestStartupMediaPermissionsIfNeeded() {

@@ -42,8 +42,8 @@ class IndianCallNotificationServiceExtension : INotificationServiceExtension {
                 .setChannelId(IncomingCallNotificationChannel.CHANNEL_ID)
                 .setFullScreenIntent(openCallPendingIntent, true)
                 .setContentIntent(openCallPendingIntent)
-                .setOngoing(true)
-                .setAutoCancel(false)
+                .setAutoCancel(true)
+                .setTimeoutAfter(60_000)
         }
     }
 }

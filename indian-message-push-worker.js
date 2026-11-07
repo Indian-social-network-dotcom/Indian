@@ -99,6 +99,26 @@ async function updateOneSignalUser(env, uid, properties) {
     body: JSON.stringify({ properties })
   });
   const result = await response.json().catch(() => ({}));
+  if (response.status === 404) {
+    const createResponse = await fetch(`https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/users`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${env.ONESIGNAL_REST_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        identity: { external_id: externalId },
+        properties: properties
+      })
+    });
+    const created = await createResponse.json().catch(() => ({}));
+    if (!createResponse.ok) {
+      const createErrors = created && created.errors;
+      const createDetail = Array.isArray(createErrors) ? createErrors.map(x => typeof x === "string" ? x : (x.title || x.code || JSON.stringify(x))).join("; ") : (created.message || createResponse.statusText);
+      throw new Error(`OneSignal user create failed (${createResponse.status}): ${String(createDetail || "Unknown error").slice(0, 220)}`);
+    }
+    return created;
+  }
   if (!response.ok) {
     const errors = result && result.errors;
     const detail = Array.isArray(errors) ? errors.map(x => typeof x === "string" ? x : (x.title || x.code || JSON.stringify(x))).join("; ") : (result.message || response.statusText);

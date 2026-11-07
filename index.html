@@ -5885,7 +5885,7 @@ function indianFinishActiveCall(message){
   indianUpdateCallControls();
   setIndianCallStatus(message || "Call ended.");
 }
-async async function indianSaveCallChatLog(call){
+async function indianSaveCallChatLog(call){
   if(!call || call.role !== "caller" || !firebaseDb || !firebaseCurrentUser || !call.remoteUid) return null;
   try{
     const callText = call.callType === "video" ? "📹 Video call" : "📞 Voice call";
@@ -5906,7 +5906,7 @@ async async function indianSaveCallChatLog(call){
   }
 }
 
-function startIndianCall(callType){
+async function startIndianCall(callType){
   if(indianActiveCall){ setIndianCallStatus("A call is already active. End it before starting another call."); return; }
   if(!firebaseDb || !firebaseCurrentUser){ setIndianCallStatus("Sign in to Indian before making a call."); return; }
   if(selectedConversationPersonId === null){ setIndianCallStatus("Open a chat with the person you want to call first."); return; }

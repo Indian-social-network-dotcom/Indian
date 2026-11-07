@@ -19,6 +19,18 @@
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer onerror="window.__indianOneSignalSdkLoadFailed = true; window.addEventListener('DOMContentLoaded', function(){ var e=document.getElementById('indianNotificationSetupStatus'); if(e) e.textContent='Notifications are temporarily unavailable. You can continue to Indian.'; });"></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.linkIndianOneSignalUser = async function(OneSignal, uid) {
+    var expected = "indian_firebase_" + String(uid || "");
+    if (!expected || expected === "indian_firebase_") return;
+    try {
+      var previous = OneSignal && OneSignal.User ? OneSignal.User.externalId : "";
+      if (previous && previous !== expected && OneSignal.User && typeof OneSignal.User.removeTags === "function") {
+        await OneSignal.User.removeTags(["indian_help_location_optin", "indian_firebase_uid"]);
+      }
+    } catch (tagCleanupError) { console.warn("Old Nearby Help preference cleanup skipped", tagCleanupError); }
+    await OneSignal.login(expected);
+    await OneSignal.User.addTag("indian_firebase_uid", String(uid));
+  };
   window.__indianOneSignalReady = false;
   window.__indianOneSignalInstance = null;
   function setIndianOneSignalStatus(message) {
@@ -42,14 +54,16 @@
           var target = extra.type === "call" && extra.callId
             ? "/Indian/?indianCallId=" + encodeURIComponent(extra.callId)
             : extra.type === "message" && extra.messageId
-              ? "/Indian/?indianMessageId=" + encodeURIComponent(extra.messageId) : "";
+              ? "/Indian/?indianMessageId=" + encodeURIComponent(extra.messageId)
+            : extra.type === "help_request" && extra.helpRequestId
+              ? "/Indian/?indianHelpRequestId=" + encodeURIComponent(extra.helpRequestId) + "#help" : "";
           if (target) {
             try { window.location.assign(target); } catch (e) {}
           }
         });
       } catch (clickHookError) { console.warn("OneSignal click handler unavailable", clickHookError); }
       if (window.firebaseCurrentUid) {
-        try { await OneSignal.login("indian_firebase_" + String(window.firebaseCurrentUid)); }
+        try { await window.linkIndianOneSignalUser(OneSignal, window.firebaseCurrentUid); }
         catch (identityError) { console.warn("OneSignal user link pending", identityError); }
       }
       setIndianOneSignalStatus(OneSignal.User.PushSubscription.optedIn
@@ -57,6 +71,8 @@
         : "Ready. Select Allow Notifications to continue.");
       if (typeof window.updateIndianNotificationSetupUI === "function") window.updateIndianNotificationSetupUI();
       if (typeof window.updateIndianPushSettingsUI === "function") window.updateIndianPushSettingsUI();
+      if (typeof window.updateIndianNearbyHelpSettingsUI === "function") window.updateIndianNearbyHelpSettingsUI();
+      if (typeof window.refreshIndianNearbyHelpLocation === "function") window.refreshIndianNearbyHelpLocation();
       if (typeof window.resolveIndianNotificationRoute === "function") window.resolveIndianNotificationRoute();
     } catch (error) {
       console.error("OneSignal init failed", error);
@@ -418,6 +434,14 @@ Search registered users, places, posts or help requests:
   <button class="action" type="button" id="indianEnablePushFromNotificationsBtn">Enable Push Notifications</button>
 </div>
 
+<div id="indianNearbyHelpSettings" class="firebaseCard" aria-label="Nearby Help Alerts settings">
+  <h3>Nearby Help Alerts</h3>
+  <p>Enable this to receive Help Requests from within 5 kilometres. Indian shares your current location with OneSignal, its notification provider, only for nearby matching. Your exact location is not shown to other Indian users. Location is refreshed when you use Indian; the app does not track you continuously in the background. You need to allow both notifications and location, and you can turn this off at any time.</p>
+  <button class="action" type="button" id="indianEnableNearbyHelpBtn">Enable Nearby Help Alerts</button>
+  <button class="action" type="button" id="indianDisableNearbyHelpBtn" hidden>Turn Off Nearby Help Alerts</button>
+  <p id="indianNearbyHelpStatus" role="status" aria-live="polite">Nearby Help Alerts are off.</p>
+</div>
+
 <button class="action" onclick="markAllNotificationsAsRead()">Mark All as Read</button>
 
 <div id="notificationsContainer" aria-live="polite" style="margin-top:15px;">
@@ -660,6 +684,7 @@ Live viewers: 0
 <p>
 Need help? Submit a request. Want to help someone? Open another person's request and choose "Offer Help". The requester can accept one helper. The accepted helper chooses "Start helping" and then "Submit completed work". The requester finishes by choosing "Confirm completed help". A request is not marked Resolved until the requester confirms completion.
 </p>
+<p>To send a mobile alert to people nearby, first enable Nearby Help Alerts in the Notifications section and allow both notifications and location.</p>
 <label for="helpStatusFilter">Filter help requests by status:</label>
 <select id="helpStatusFilter" aria-label="Filter help requests by status" style="display:block;width:100%;padding:10px;margin:8px 0 12px;border:1px solid #b9c9d6;border-radius:11px;background:#fff;color:#172b3a;">
   <option value="all">All requests</option>
@@ -6299,14 +6324,45 @@ else{
    if(!response.ok || !result.secure_url || !String(result.secure_url).startsWith("https://res.cloudinary.com/")) throw new Error((result.error&&result.error.message)||"Cloudinary par Help media upload nahi ho saka.");
    return {type:isVideo?"video":"image",name:clean(file.name|| (isVideo?"help-video":"help-photo"),180),url:result.secure_url,publicId:clean(result.public_id||"",240)};
  }
+ window.callIndianNearbyHelpWorker=async function(action,details){
+   if(!currentUser) throw new Error("Please sign in to Indian first.");
+   const idToken=await currentUser.getIdToken();
+   const response=await fetch("https://indian-message-push.sadrealam892075.workers.dev/",{
+     method:"POST",
+     headers:{"Authorization":"Bearer "+idToken,"Content-Type":"application/json"},
+     body:JSON.stringify(Object.assign({action:action},details||{}))
+   });
+   const result=await response.json().catch(function(){return {};});
+   if(!response.ok || result.success!==true) throw new Error(result.detail||result.error||"Nearby Help service is not available right now.");
+   return result;
+ };
  async function saveHelp(text,count,id,media){
-   if(!currentUser)return;
+   if(!currentUser)return {nearbyPushSent:false};
    try{
      const category=clean(document.getElementById("helpCategory")?.value||"General",50);
      const safeMedia=(Array.isArray(media)?media:[]).slice(0,10).filter(m=>m&&typeof m.url==="string"&&m.url.startsWith("https://res.cloudinary.com/")).map(m=>({type:m.type==="video"?"video":"image",name:clean(m.name||"help-media",180),url:m.url,publicId:clean(m.publicId||"",240)}));
      const payload={uid:currentUser.uid,displayName:name(),category:category,text:clean(text,3000),status:"Open",mediaCount:Math.min(Number(count)||0,10),clientId:id,createdAt:serverTimestamp(),createdAtMs:now()};
      if(safeMedia.length) payload.media=safeMedia;
-     await addDoc(collection(db,"helpRequests"),payload);
+     const requestRef=await addDoc(collection(db,"helpRequests"),payload);
+     let nearbyPushStatus="not_enabled";
+     try{
+       const nearbyState=await window.callIndianNearbyHelpWorker("getHelpLocationStatus");
+       if(nearbyState.enabled===true && navigator.geolocation){
+         nearbyPushStatus="failed";
+         const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,timeout:12000,maximumAge:60000}));
+         await window.callIndianNearbyHelpWorker("setHelpLocation",{latitude:position.coords.latitude,longitude:position.coords.longitude});
+         const pushResult=await window.callIndianNearbyHelpWorker("sendHelpRequest",{helpRequestId:requestRef.id});
+         nearbyPushStatus=pushResult.sent===true?"sent":"no_recipients";
+       }
+     }catch(pushError){
+       nearbyPushStatus="failed";
+       console.warn("Nearby Help push was not sent:",pushError);
+       if(pushError&&pushError.code===1){
+         try{await window.callIndianNearbyHelpWorker("clearHelpLocation");}
+         catch(clearError){console.warn("Revoked Nearby Help location could not be cleared yet",clearError);}
+       }
+     }
+     return {requestId:requestRef.id,nearbyPushStatus:nearbyPushStatus};
    }
    catch(e){alertSave("Help request",e);throw e;}
  }
@@ -6745,8 +6801,15 @@ else{
        ah?.();
        const created=[...document.querySelectorAll("#helpContainer .helpRequest")].find(x=>!before.has(x.id));
        if(!created) throw new Error("Help request ka local card nahi mila. Please dobara check karein.");
-       await saveHelp(text,files.length,created.id,media);
-       const status=document.getElementById("helpActionStatus");if(status)status.textContent="Help request and its media were shared with Indian users.";
+       const saveResult=await saveHelp(text,files.length,created.id,media);
+       const status=document.getElementById("helpActionStatus");
+       if(status)status.textContent=saveResult?.nearbyPushStatus==="sent"
+         ?"Help request shared. Nearby users who enabled Help Alerts have been notified."
+         :saveResult?.nearbyPushStatus==="no_recipients"
+           ?"Help request shared. No eligible nearby users were found."
+           :saveResult?.nearbyPushStatus==="failed"
+             ?"Help request shared. Nearby notification could not be sent right now."
+             :"Help request shared with Indian users. Enable Nearby Help Alerts in Notifications to send local alerts.";
      }catch(e){
        alert("Help request submit nahi hui: "+String(e?.message||e).slice(0,250)+". Files dobara check karke try karein.");
      }finally{if(button){button.disabled=false;button.textContent=originalLabel;}}
@@ -6755,7 +6818,21 @@ else{
    const af=window.togglePersonFollow;window.togglePersonFollow=async function(id){af?.(id);const p=window.peopleData?.find(x=>x.id===id);if(p){ await saveFollow(p); if(p.isFollowing && p.firebaseUid) await saveRemoteNotification(p.firebaseUid, name()+" started following you.", "follow", p.id); }};
    const lb=window.createLikeButton;window.createLikeButton=function(type,id){const b=lb(type,id),old=b.onclick;b.onclick=async function(){old?.();await saveLike(type,id,b.classList.contains("liked"));};return b;};
  }
- onAuthStateChanged(auth,async u=>{currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";if(u){await window.loadIndianProfileFromFirestore?.();wrap();listeners();const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Your chats are ready.";}else clear();});
+ onAuthStateChanged(auth,async u=>{
+   currentUser=u||null;window.firebaseCurrentUid=u?.uid||"";
+   if(u){
+     try{
+       const OneSignal=window.__indianOneSignalInstance;
+       if(OneSignal&&window.__indianOneSignalReady){
+         await window.linkIndianOneSignalUser(OneSignal,u.uid);
+       }
+     }catch(identityError){console.warn("OneSignal Firebase identity update pending",identityError);}
+     await window.loadIndianProfileFromFirestore?.();wrap();listeners();
+     window.updateIndianNearbyHelpSettingsUI?.();
+     window.refreshIndianNearbyHelpLocation?.();
+     const st=document.getElementById("firebaseMessageStatus");if(st)st.textContent="Your chats are ready.";
+   }else clear();
+ });
 }
 </script>
 
@@ -8440,6 +8517,107 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
     }
   });
   window.updateIndianPushSettingsUI();
+
+  var nearbyEnableButton=document.getElementById("indianEnableNearbyHelpBtn");
+  var nearbyDisableButton=document.getElementById("indianDisableNearbyHelpBtn");
+  var nearbyStatus=document.getElementById("indianNearbyHelpStatus");
+  var nearbyStatusRequest=0;
+  function setNearbyStatus(message){if(nearbyStatus)nearbyStatus.textContent=String(message||"");}
+  function getCurrentNearbyPosition(){
+    return new Promise(function(resolve,reject){
+      if(!navigator.geolocation){reject(new Error("Location is not supported by this browser or app."));return;}
+      navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,timeout:15000,maximumAge:60000});
+    });
+  }
+  window.updateIndianNearbyHelpSettingsUI=async function(){
+    var requestNumber=++nearbyStatusRequest;
+    if(!window.firebaseCurrentUid||!window.callIndianNearbyHelpWorker){
+      if(nearbyEnableButton)nearbyEnableButton.disabled=true;
+      if(nearbyDisableButton)nearbyDisableButton.hidden=true;
+      setNearbyStatus("Waiting for your Indian account to load.");
+      return;
+    }
+    if(nearbyEnableButton)nearbyEnableButton.disabled=true;
+    try{
+      var state=await window.callIndianNearbyHelpWorker("getHelpLocationStatus");
+      if(requestNumber!==nearbyStatusRequest)return;
+      var enabled=state.enabled===true;
+      if(nearbyEnableButton){nearbyEnableButton.hidden=enabled;nearbyEnableButton.disabled=false;}
+      if(nearbyDisableButton){nearbyDisableButton.hidden=!enabled;nearbyDisableButton.disabled=false;}
+      setNearbyStatus(enabled
+        ?"Nearby Help Alerts are enabled. Your location is used only for 5 kilometre matching."
+        :"Nearby Help Alerts are off. Turn them on to receive nearby requests.");
+    }catch(error){
+      if(requestNumber!==nearbyStatusRequest)return;
+      if(nearbyEnableButton){nearbyEnableButton.hidden=false;nearbyEnableButton.disabled=false;}
+      if(nearbyDisableButton)nearbyDisableButton.hidden=true;
+      setNearbyStatus("Could not check Nearby Help settings. Please try again.");
+      console.warn("Nearby Help status check failed",error);
+    }
+  };
+  if(nearbyEnableButton)nearbyEnableButton.addEventListener("click",async function(){
+    nearbyEnableButton.disabled=true;
+    setNearbyStatus("Checking notification permission…");
+    try{
+      var OneSignal=window.__indianOneSignalInstance;
+      var browserPushSupported=false;
+      try{browserPushSupported=!!(OneSignal&&window.__indianOneSignalReady&&OneSignal.Notifications&&OneSignal.Notifications.isPushSupported());}catch(e){}
+      if(browserPushSupported){
+        if(typeof Notification!=="undefined"&&Notification.permission==="denied")throw new Error("Notifications are blocked. Allow notifications for Indian in your browser or phone settings first.");
+        if(!OneSignal.Notifications.permission)await OneSignal.Notifications.requestPermission();
+        if(!OneSignal.Notifications.permission)throw new Error("Notification permission was not allowed.");
+        await OneSignal.User.PushSubscription.optIn();
+        for(var attempt=0;attempt<10&&!OneSignal.User.PushSubscription.optedIn;attempt++)await new Promise(function(resolve){window.setTimeout(resolve,500);});
+        if(!OneSignal.User.PushSubscription.optedIn)throw new Error("Push notifications are not ready yet. Please try again.");
+      }
+      setNearbyStatus("Please allow location when your browser or phone asks.");
+      var position=await getCurrentNearbyPosition();
+      if(!window.callIndianNearbyHelpWorker)throw new Error("Indian account connection is still loading. Please try again.");
+      await window.callIndianNearbyHelpWorker("setHelpLocation",{latitude:position.coords.latitude,longitude:position.coords.longitude});
+      await window.updateIndianNearbyHelpSettingsUI();
+      setNearbyStatus("Nearby Help Alerts enabled. You can turn them off here at any time.");
+    }catch(error){
+      setNearbyStatus(String(error&&error.message||error).slice(0,260));
+      console.warn("Nearby Help opt-in failed",error);
+    }finally{
+      if(nearbyEnableButton)nearbyEnableButton.disabled=false;
+      window.updateIndianNearbyHelpSettingsUI();
+    }
+  });
+  if(nearbyDisableButton)nearbyDisableButton.addEventListener("click",async function(){
+    nearbyDisableButton.disabled=true;
+    setNearbyStatus("Turning off Nearby Help Alerts…");
+    try{
+      if(!window.callIndianNearbyHelpWorker)throw new Error("Indian account connection is still loading. Please try again.");
+      await window.callIndianNearbyHelpWorker("clearHelpLocation");
+      await window.updateIndianNearbyHelpSettingsUI();
+      setNearbyStatus("Nearby Help Alerts are now off. Your previous location has been removed from nearby matching.");
+    }catch(error){setNearbyStatus(String(error&&error.message||error).slice(0,240));}
+    finally{nearbyDisableButton.disabled=false;}
+  });
+  window.refreshIndianNearbyHelpLocation=async function(){
+    if(!window.firebaseCurrentUid||!window.callIndianNearbyHelpWorker)return;
+    if(!navigator.geolocation||!navigator.permissions||typeof navigator.permissions.query!=="function")return;
+    try{
+      var state=await window.callIndianNearbyHelpWorker("getHelpLocationStatus");
+      if(!state.locationOptIn)return;
+      if(!state.pushActive){
+        await window.callIndianNearbyHelpWorker("clearHelpLocation");
+        await window.updateIndianNearbyHelpSettingsUI();
+        return;
+      }
+      var permission=await navigator.permissions.query({name:"geolocation"});
+      if(permission.state==="denied"){
+        await window.callIndianNearbyHelpWorker("clearHelpLocation");
+        await window.updateIndianNearbyHelpSettingsUI();
+        return;
+      }
+      if(permission.state!=="granted")return;
+      var position=await getCurrentNearbyPosition();
+      await window.callIndianNearbyHelpWorker("setHelpLocation",{latitude:position.coords.latitude,longitude:position.coords.longitude});
+    }catch(error){console.warn("Nearby Help location refresh skipped",error);}
+  };
+  window.updateIndianNearbyHelpSettingsUI();
   window.updateIndianNotificationSetupUI = function () {
     var OneSignal = window.__indianOneSignalInstance;
     if (OneSignal && window.__indianOneSignalReady) {
@@ -8499,6 +8677,37 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
     if (typeof window.finishIndianNotificationSetup === "function") window.finishIndianNotificationSetup();
   });
   window.updateIndianNotificationSetupUI();
+  window.updateIndianNearbyHelpSettingsUI();
+})();
+</script>
+
+<script id="indianHelpNotificationDeepLink">
+(function(){
+  var requestId="";
+  try{requestId=new URLSearchParams(window.location.search).get("indianHelpRequestId")||"";}catch(e){}
+  if(!requestId)return;
+  function focusRequest(){
+    var container=document.getElementById("helpContainer");
+    if(!container)return false;
+    var target=Array.from(container.querySelectorAll(".helpRequest")).find(function(item){return item.dataset.firestoreId===requestId;});
+    if(!target)return false;
+    target.setAttribute("tabindex","-1");
+    target.scrollIntoView({behavior:"auto",block:"center"});
+    try{target.focus({preventScroll:true});}catch(e){target.focus();}
+    var status=document.getElementById("helpActionStatus");
+    if(status)status.textContent="Opened the Help Request from your notification.";
+    return true;
+  }
+  function start(){
+    if(focusRequest())return;
+    var attempts=0;
+    var timer=window.setInterval(function(){
+      attempts++;
+      if(focusRequest()||attempts>=40)window.clearInterval(timer);
+    },500);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});
+  else start();
 })();
 </script>
 

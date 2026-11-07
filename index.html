@@ -436,7 +436,7 @@ Search registered users, places, posts or help requests:
 
 <div id="indianNearbyHelpSettings" class="firebaseCard" aria-label="Nearby Help Alerts settings">
   <h3>Nearby Help Alerts</h3>
-  <p>Enable this to receive Help Requests from within 5 kilometres. Indian shares your current location with OneSignal, its notification provider, only for nearby matching. Your exact location is not shown to other Indian users. Location is refreshed when you use Indian; the app does not track you continuously in the background. You need to allow both notifications and location, and you can turn this off at any time.</p>
+  <p>Allow location to send Help Requests to users within 5 kilometres. To receive alerts yourself, also enable Push Notifications above. Indian shares your current location with OneSignal, its notification provider, only for nearby matching. Your exact location is not shown to other Indian users. Location refreshes when you use Indian; the app does not track you continuously in the background. You can turn this off at any time.</p>
   <button class="action" type="button" id="indianEnableNearbyHelpBtn">Enable Nearby Help Alerts</button>
   <button class="action" type="button" id="indianDisableNearbyHelpBtn" hidden>Turn Off Nearby Help Alerts</button>
   <p id="indianNearbyHelpStatus" role="status" aria-live="polite">Nearby Help Alerts are off.</p>
@@ -684,7 +684,7 @@ Live viewers: 0
 <p>
 Need help? Submit a request. Want to help someone? Open another person's request and choose "Offer Help". The requester can accept one helper. The accepted helper chooses "Start helping" and then "Submit completed work". The requester finishes by choosing "Confirm completed help". A request is not marked Resolved until the requester confirms completion.
 </p>
-<p>To send a mobile alert to people nearby, first enable Nearby Help Alerts in the Notifications section and allow both notifications and location.</p>
+<p>To send a mobile alert to people nearby, first enable Nearby Help Alerts in the Notifications section and allow location. To receive alerts yourself, also enable Push Notifications.</p>
 <label for="helpStatusFilter">Filter help requests by status:</label>
 <select id="helpStatusFilter" aria-label="Filter help requests by status" style="display:block;width:100%;padding:10px;margin:8px 0 12px;border:1px solid #b9c9d6;border-radius:11px;background:#fff;color:#172b3a;">
   <option value="all">All requests</option>
@@ -8545,8 +8545,10 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
       if(nearbyEnableButton){nearbyEnableButton.hidden=enabled;nearbyEnableButton.disabled=false;}
       if(nearbyDisableButton){nearbyDisableButton.hidden=!enabled;nearbyDisableButton.disabled=false;}
       setNearbyStatus(enabled
-        ?"Nearby Help Alerts are enabled. Your location is used only for 5 kilometre matching."
-        :"Nearby Help Alerts are off. Turn them on to receive nearby requests.");
+        ?(state.pushActive
+          ?"Nearby Help Alerts are enabled. This device can send and receive nearby Help alerts."
+          :"Location sharing is enabled. You can send nearby alerts, but this device will not receive them until Push Notifications are enabled.")
+        :"Nearby Help Alerts are off. Turn them on to send nearby requests.");
     }catch(error){
       if(requestNumber!==nearbyStatusRequest)return;
       if(nearbyEnableButton){nearbyEnableButton.hidden=false;nearbyEnableButton.disabled=false;}
@@ -8559,17 +8561,6 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
     nearbyEnableButton.disabled=true;
     setNearbyStatus("Checking notification permission…");
     try{
-      var OneSignal=window.__indianOneSignalInstance;
-      var browserPushSupported=false;
-      try{browserPushSupported=!!(OneSignal&&window.__indianOneSignalReady&&OneSignal.Notifications&&OneSignal.Notifications.isPushSupported());}catch(e){}
-      if(browserPushSupported){
-        if(typeof Notification!=="undefined"&&Notification.permission==="denied")throw new Error("Notifications are blocked. Allow notifications for Indian in your browser or phone settings first.");
-        if(!OneSignal.Notifications.permission)await OneSignal.Notifications.requestPermission();
-        if(!OneSignal.Notifications.permission)throw new Error("Notification permission was not allowed.");
-        await OneSignal.User.PushSubscription.optIn();
-        for(var attempt=0;attempt<10&&!OneSignal.User.PushSubscription.optedIn;attempt++)await new Promise(function(resolve){window.setTimeout(resolve,500);});
-        if(!OneSignal.User.PushSubscription.optedIn)throw new Error("Push notifications are not ready yet. Please try again.");
-      }
       setNearbyStatus("Please allow location when your browser or phone asks.");
       var position=await getCurrentNearbyPosition();
       if(!window.callIndianNearbyHelpWorker)throw new Error("Indian account connection is still loading. Please try again.");
@@ -8601,11 +8592,6 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
     try{
       var state=await window.callIndianNearbyHelpWorker("getHelpLocationStatus");
       if(!state.locationOptIn)return;
-      if(!state.pushActive){
-        await window.callIndianNearbyHelpWorker("clearHelpLocation");
-        await window.updateIndianNearbyHelpSettingsUI();
-        return;
-      }
       var permission=await navigator.permissions.query({name:"geolocation"});
       if(permission.state==="denied"){
         await window.callIndianNearbyHelpWorker("clearHelpLocation");

@@ -50,6 +50,7 @@
   card.appendChild(social);
   var oldActions=card.querySelector(':scope > div[style*="display:flex"]');
   if(oldActions){Array.from(oldActions.querySelectorAll('button')).forEach(function(b){if(!/Remove from Uran/.test(b.textContent)){b.hidden=true;b.setAttribute('aria-hidden','true');}});}
+  Array.from(card.querySelectorAll(':scope > div button')).forEach(function(b){var label=String(b.textContent||'').trim();if(/^(Share video link|♡ Like|♥ Liked|Like|Liked)$/.test(label)){b.hidden=true;b.setAttribute('aria-hidden','true');}});
   loadCardData(card,id,creatorUid);
  }
  async function loadCardData(card,id,creatorUid){

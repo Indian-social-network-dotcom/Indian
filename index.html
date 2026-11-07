@@ -6333,17 +6333,18 @@ else{
      const payload={uid:currentUser.uid,displayName:name(),category:category,text:clean(text,3000),status:"Open",mediaCount:Math.min(Number(count)||0,10),clientId:id,createdAt:serverTimestamp(),createdAtMs:now()};
      if(safeMedia.length) payload.media=safeMedia;
      const requestRef=await addDoc(collection(db,"helpRequests"),payload);
-     let nearbyPushSent=false;
+     let nearbyPushStatus="not_enabled";
      try{
        const OneSignal=window.__indianOneSignalInstance;
        const tags=OneSignal?.User?.getTags?.()||{};
        if(tags.indian_help_location_optin==="1" && OneSignal?.User?.PushSubscription?.optedIn && typeof Notification!=="undefined" && Notification.permission==="granted" && navigator.geolocation){
+         nearbyPushStatus="failed";
          const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,timeout:12000,maximumAge:60000}));
          const pushResult=await window.callIndianNearbyHelpWorker("sendHelpRequest",{helpRequestId:requestRef.id,latitude:position.coords.latitude,longitude:position.coords.longitude});
-         nearbyPushSent=pushResult.sent===true;
+         nearbyPushStatus=pushResult.sent===true?"sent":"no_recipients";
        }
      }catch(pushError){console.warn("Nearby Help push was not sent:",pushError);}
-     return {requestId:requestRef.id,nearbyPushSent:nearbyPushSent};
+     return {requestId:requestRef.id,nearbyPushStatus:nearbyPushStatus};
    }
    catch(e){alertSave("Help request",e);throw e;}
  }
@@ -6784,9 +6785,13 @@ else{
        if(!created) throw new Error("Help request ka local card nahi mila. Please dobara check karein.");
        const saveResult=await saveHelp(text,files.length,created.id,media);
        const status=document.getElementById("helpActionStatus");
-       if(status)status.textContent=saveResult?.nearbyPushSent
+       if(status)status.textContent=saveResult?.nearbyPushStatus==="sent"
          ?"Help request shared. Nearby users who enabled Help Alerts have been notified."
-         :"Help request shared with Indian users. Nearby push was not sent from this device; enable Nearby Help Alerts in Notifications to use it.";
+         :saveResult?.nearbyPushStatus==="no_recipients"
+           ?"Help request shared. No eligible nearby users were found."
+           :saveResult?.nearbyPushStatus==="failed"
+             ?"Help request shared. Nearby notification could not be sent right now."
+             :"Help request shared with Indian users. Enable Nearby Help Alerts in Notifications to send local alerts.";
      }catch(e){
        alert("Help request submit nahi hui: "+String(e?.message||e).slice(0,250)+". Files dobara check karke try karein.");
      }finally{if(button){button.disabled=false;button.textContent=originalLabel;}}

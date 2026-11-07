@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -19,6 +20,8 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private var pendingWebPermissionRequest: PermissionRequest? = null
     private var pendingAndroidPermissions: Array<String> = emptyArray()
+    private var pendingGeolocationCallback: GeolocationPermissions.Callback? = null
+    private var pendingGeolocationOrigin: String? = null
     private val authSyncHandler = Handler(Looper.getMainLooper())
     private var lastOneSignalUid: String? = null
 
@@ -58,6 +61,7 @@ class MainActivity : Activity() {
         private const val REQUEST_WEB_MEDIA_PERMISSIONS = 4101
         private const val REQUEST_NOTIFICATION_PERMISSION = 4102
         private const val REQUEST_STARTUP_MEDIA_PERMISSIONS = 4103
+        private const val REQUEST_WEB_GEOLOCATION_PERMISSION = 4104
         private const val INDIAN_HOST = "indian-social-network-dotcom.github.io"
     }
 
@@ -112,12 +116,46 @@ class MainActivity : Activity() {
                     pendingAndroidPermissions = emptyArray()
                 }
             }
+
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String,
+                callback: GeolocationPermissions.Callback
+            ) {
+                runOnUiThread {
+                    val originUri = Uri.parse(origin)
+                    if (originUri.scheme != "https" || originUri.host != INDIAN_HOST) {
+                        callback.invoke(origin, false, false)
+                        return@runOnUiThread
+                    }
+
+                    if (hasLocationPermission()) {
+                        callback.invoke(origin, true, true)
+                        return@runOnUiThread
+                    }
+
+                    pendingGeolocationCallback?.invoke(
+                        pendingGeolocationOrigin ?: origin,
+                        false,
+                        false
+                    )
+                    pendingGeolocationCallback = callback
+                    pendingGeolocationOrigin = origin
+                    requestPermissions(
+                        arrayOf(
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ),
+                        REQUEST_WEB_GEOLOCATION_PERMISSION
+                    )
+                }
+            }
         }
 
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
+            geolocationEnabled = true
             mediaPlaybackRequiresUserGesture = true
         }
 
@@ -131,6 +169,11 @@ class MainActivity : Activity() {
 
         requestStartupMediaPermissionsIfNeeded()
         authSyncHandler.post(oneSignalIdentitySync)
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun requestStartupMediaPermissionsIfNeeded() {
@@ -181,6 +224,18 @@ class MainActivity : Activity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == REQUEST_WEB_GEOLOCATION_PERMISSION) {
+            val callback = pendingGeolocationCallback
+            val origin = pendingGeolocationOrigin
+            pendingGeolocationCallback = null
+            pendingGeolocationOrigin = null
+            if (callback != null && origin != null) {
+                val allowed = hasLocationPermission()
+                callback.invoke(origin, allowed, allowed)
+            }
+            return
+        }
 
         if (requestCode == REQUEST_STARTUP_MEDIA_PERMISSIONS) {
             requestNotificationPermissionIfNeeded()
@@ -233,6 +288,11 @@ class MainActivity : Activity() {
         authSyncHandler.removeCallbacks(oneSignalIdentitySync)
         pendingWebPermissionRequest?.deny()
         pendingWebPermissionRequest = null
+        pendingGeolocationCallback?.let { callback ->
+            pendingGeolocationOrigin?.let { origin -> callback.invoke(origin, false, false) }
+        }
+        pendingGeolocationCallback = null
+        pendingGeolocationOrigin = null
         if (::webView.isInitialized) {
             webView.destroy()
         }

@@ -761,7 +761,7 @@ Explore places and their local communities.
 
 </section>
 
-<div id="indianIncomingCallPanel" role="dialog" aria-modal="true" aria-labelledby="indianIncomingCallTitle" aria-describedby="indianIncomingCallText" tabindex="-1" style="display:none;position:fixed;z-index:10040;inset:0;width:100%;height:100vh;height:100dvh;box-sizing:border-box;overflow:auto;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:calc(28px + env(safe-area-inset-top,0px)) 20px calc(28px + env(safe-area-inset-bottom,0px));background:#101820;color:#fff;text-align:center;">
+<div id="indianIncomingCallPanel" role="dialog" aria-modal="true" aria-labelledby="indianIncomingCallTitle" aria-describedby="indianIncomingCallText" tabindex="-1" onkeydown="indianIncomingCallDialogKeydown(event)" style="display:none;position:fixed;z-index:10040;inset:0;width:100%;height:100vh;height:100dvh;box-sizing:border-box;overflow:auto;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:calc(28px + env(safe-area-inset-top,0px)) 20px calc(28px + env(safe-area-inset-bottom,0px));background:#101820;color:#fff;text-align:center;">
   <h2 id="indianIncomingCallTitle" tabindex="-1" style="margin:0;font-size:clamp(1.5rem,5vw,2rem);">Incoming Indian Call</h2>
   <img id="indianIncomingCallPhoto" alt="Caller profile photo" hidden style="width:clamp(112px,25vw,180px);height:clamp(112px,25vw,180px);border-radius:50%;object-fit:cover;border:3px solid #fff;">
   <p id="indianIncomingCallText" role="status" aria-live="assertive" style="margin:0;font-size:1.25rem;font-weight:600;">Someone is calling.</p>
@@ -5663,13 +5663,47 @@ function indianSetIncomingPanel(callData, callId){
     else { photo.removeAttribute("src"); photo.hidden = true; }
     photo.alt = "Profile photo of " + callerName;
   }
-  if(panel){ panel.style.display = "flex"; const title = $("indianIncomingCallTitle"); if(title) title.focus(); }
+  if(panel){
+    if(typeof window.__indianIncomingCallPreviousFocus === "undefined") window.__indianIncomingCallPreviousFocus = document.activeElement;
+    panel.style.display = "flex";
+    if(document.body){
+      if(typeof window.__indianIncomingCallPreviousOverflow === "undefined") window.__indianIncomingCallPreviousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+    const acceptButton = panel.querySelector('button[aria-label="Accept incoming call"]');
+    if(acceptButton) acceptButton.focus();
+    else panel.focus();
+  }
   indianStartCallTone("incoming");
 }
+function indianIncomingCallDialogKeydown(event){
+  if(!event || event.key !== "Tab") return;
+  const panel = $("indianIncomingCallPanel");
+  if(!panel || panel.style.display === "none") return;
+  const items = Array.from(panel.querySelectorAll("button:not([disabled])"))
+    .filter(function(el){ return el.getClientRects().length > 0; });
+  if(!items.length) return;
+  const first = items[0], last = items[items.length - 1];
+  if(event.shiftKey && (document.activeElement === first || document.activeElement === panel || document.activeElement === $("indianIncomingCallTitle"))){
+    event.preventDefault(); last.focus();
+  }else if(!event.shiftKey && document.activeElement === last){
+    event.preventDefault(); first.focus();
+  }
+}
+window.indianIncomingCallDialogKeydown = indianIncomingCallDialogKeydown;
 function hideIndianIncomingPanel(){
   indianStopCallTone();
   const panel = $("indianIncomingCallPanel");
   if(panel) panel.style.display = "none";
+  const previousFocus = window.__indianIncomingCallPreviousFocus;
+  delete window.__indianIncomingCallPreviousFocus;
+  if(previousFocus && previousFocus !== document.body && previousFocus.isConnected && typeof previousFocus.focus === "function"){
+    try{ previousFocus.focus(); }catch(e){}
+  }
+  if(document.body && typeof window.__indianIncomingCallPreviousOverflow !== "undefined"){
+    document.body.style.overflow = window.__indianIncomingCallPreviousOverflow;
+    delete window.__indianIncomingCallPreviousOverflow;
+  }
 }
 function stopIndianCallInbox(){
   if(indianCallInboxUnsubscribe){ try{indianCallInboxUnsubscribe();}catch(e){} indianCallInboxUnsubscribe=null; }

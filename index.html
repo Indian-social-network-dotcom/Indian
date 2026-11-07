@@ -6658,6 +6658,25 @@ else{
          }).catch(error=>setHelpMessage("Your help offer could not load: "+clean(error?.message||error,160)));
        }else if(x.uid && x.acceptedHelperUid===uid){
          const note=document.createElement("p");note.textContent="You are the accepted helper for this request.";actionArea.appendChild(note);
+         getDocs(query(collection(db,"helpOffers"),where("requestId","==",d.id),where("helperUid","==",uid))).then(snapshot=>{
+           if(!actionArea.isConnected)return;
+           const own=snapshot.docs.find(item=>["accepted","in_progress","submitted"].includes(String(item.data()?.status||"")));
+           if(!own){setHelpMessage("Your accepted help offer could not be be found.");return;}
+           const offer=own.data()||{};
+           if(offer.status==="accepted"){
+             makeHelpButton("Start helping","Mark that you have started helping",async()=>{
+               try{await updateDoc(doc(db,"helpOffers",own.id),{status:"in_progress",startedAt:serverTimestamp(),updatedAt:serverTimestamp()});setHelpMessage("Help marked In Progress.");}
+               catch(error){setHelpMessage("Could not update help status: "+clean(error?.message||error,180));}
+             });
+           }else if(offer.status==="in_progress"){
+             makeHelpButton("Submit completed work","Tell the requester that the help is completed",async()=>{
+               try{await updateDoc(doc(db,"helpOffers",own.id),{status:"submitted",submittedAt:serverTimestamp(),updatedAt:serverTimestamp()});await saveRemoteNotification(String(x.uid),"Your accepted helper submitted the work as completed. Please review it.","help_submitted",d.id);setHelpMessage("Completion submitted. The requester must confirm it.");}
+               catch(error){setHelpMessage("Could not submit completion: "+clean(error?.message||error,180));}
+             });
+           }else if(offer.status==="submitted"){
+             const waiting=document.createElement("p");waiting.textContent="You submitted the completed help. Waiting for requester confirmation.";actionArea.appendChild(waiting);
+           }
+         }).catch(error=>setHelpMessage("Your accepted help offer could not load: "+clean(error?.message||error,160)));
        }else if(x.uid){
          const offer=makeHelpButton("Offer Help in Messages","Offer help to "+(clean(x.displayName,60)||"this user")+" by message",()=>window.startHelpConversation&&window.startHelpConversation(String(x.uid),String(x.displayName||"Indian User"),"Hello, I would like to help with your "+clean(x.category||"General",50)+" request."));
          offer.disabled=status!=="Open"||!!x.acceptedHelperUid;

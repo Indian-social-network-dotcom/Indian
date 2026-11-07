@@ -71,6 +71,105 @@ function stringField(document, name) {
   return field && typeof field.stringValue === "string" ? field.stringValue : "";
 }
 
+function numberField(document, name) {
+  const field = document && document.fields && document.fields[name];
+  if (!field) return NaN;
+  if (field.doubleValue !== undefined) return Number(field.doubleValue);
+  if (field.integerValue !== undefined) return Number(field.integerValue);
+  return NaN;
+}
+
+async function getFirestoreHelpRequest(requestId, idToken) {
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/helpRequests/${encodeURIComponent(requestId)}`;
+  const response = await fetch(url, { headers: { "Authorization": `Bearer ${idToken}` } });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Firestore Help Request read failed (${response.status})`);
+  return response.json();
+}
+
+async function updateOneSignalUser(env, uid, properties) {
+  const externalId = `indian_firebase_${uid}`;
+  const url = `https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/users/by/external_id/${encodeURIComponent(externalId)}`;
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Key ${env.ONESIGNAL_REST_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ properties })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const errors = result && result.errors;
+    const detail = Array.isArray(errors) ? errors.map(x => typeof x === "string" ? x : (x.title || x.code || JSON.stringify(x))).join("; ") : (result.message || response.statusText);
+    throw new Error(`OneSignal user update failed (${response.status}): ${String(detail || "Unknown error").slice(0, 220)}`);
+  }
+  return result;
+}
+
+async function getOneSignalUser(env, uid) {
+  const externalId = `indian_firebase_${uid}`;
+  const url = `https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/users/by/external_id/${encodeURIComponent(externalId)}`;
+  const response = await fetch(url, {
+    headers: { "Authorization": `Key ${env.ONESIGNAL_REST_API_KEY}` }
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const errors = result && result.errors;
+    const detail = Array.isArray(errors) ? errors.map(x => typeof x === "string" ? x : (x.title || x.code || JSON.stringify(x))).join("; ") : (result.message || response.statusText);
+    throw new Error(`OneSignal user lookup failed (${response.status}): ${String(detail || "Unknown error").slice(0, 220)}`);
+  }
+  return result;
+}
+
+async function sendNearbyHelpPush(env, requestId, requestData, senderUid, latitude, longitude) {
+  const safeName = String(stringField(requestData, "displayName") || "An Indian user")
+    .replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, 60) || "An Indian user";
+  const category = String(stringField(requestData, "category") || "General help")
+    .replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, 50);
+  const problem = String(stringField(requestData, "text") || "A person nearby needs help.")
+    .replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, 220);
+  const idempotencyKey = await stableIdempotencyKey(`help-request:${requestId}`);
+  const payload = {
+    app_id: ONESIGNAL_APP_ID,
+    target_channel: "push",
+    filters: [
+      { field: "location", relation: "=", radius: 5000, lat: latitude, long: longitude },
+      { field: "tag", key: "indian_help_location_optin", relation: "=", value: "1" },
+      { field: "tag", key: "indian_firebase_uid", relation: "!=", value: senderUid }
+    ],
+    headings: { en: `Help Request Nearby — ${category}` },
+    contents: { en: `${safeName}: ${problem}`.slice(0, 240) },
+    web_url: `${INDIAN_SITE_URL}?indianHelpRequestId=${encodeURIComponent(requestId)}#help`,
+    idempotency_key: idempotencyKey,
+    data: { type: "help_request", helpRequestId: requestId, category: category }
+  };
+  const response = await fetch("https://api.onesignal.com/notifications", {
+    method: "POST",
+    headers: {
+      "Authorization": `Key ${env.ONESIGNAL_REST_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const responseText = await response.text();
+  let result = {};
+  try { result = responseText ? JSON.parse(responseText) : {}; } catch {}
+  if (!response.ok) {
+    const providerError = result && (result.errors || result.error || result.message);
+    const detail = (typeof providerError === "string"
+      ? providerError
+      : Array.isArray(providerError)
+        ? providerError.join("; ")
+        : providerError
+          ? JSON.stringify(providerError)
+          : response.statusText) || "Unknown OneSignal error";
+    console.error("OneSignal nearby Help push failed:", response.status, detail.slice(0, 240));
+    throw new Error(`OneSignal nearby Help push HTTP ${response.status}: ${detail.slice(0, 240)}`);
+  }
+  return result;
+}
+
 async function stableIdempotencyKey(messageId) {
   const data = new TextEncoder().encode(`indian-message-push:${FIREBASE_PROJECT_ID}:${messageId}`);
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
@@ -163,6 +262,91 @@ export default {
     let body;
     try { body = await request.json(); }
     catch { return json({ error: "Invalid JSON." }, 400, origin); }
+
+    const action = typeof body.action === "string" ? body.action.trim() : "";
+    if (action) {
+      try {
+        if (action === "setHelpLocation") {
+          const latitude = Number(body.latitude);
+          const longitude = Number(body.longitude);
+          if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
+              !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            return json({ error: "Valid latitude and longitude are required." }, 400, origin);
+          }
+          await updateOneSignalUser(env, callerUid, {
+            lat: latitude,
+            long: longitude,
+            tags: {
+              indian_help_location_optin: "1",
+              indian_firebase_uid: callerUid
+            }
+          });
+          return json({ success: true, locationShared: true }, 200, origin);
+        }
+
+        if (action === "clearHelpLocation") {
+          await updateOneSignalUser(env, callerUid, {
+            lat: 0,
+            long: 0,
+            tags: {
+              indian_help_location_optin: "0",
+              indian_firebase_uid: callerUid
+            }
+          });
+          return json({ success: true, locationShared: false }, 200, origin);
+        }
+
+        if (action === "sendHelpRequest") {
+          const helpRequestId = typeof body.helpRequestId === "string" ? body.helpRequestId.trim() : "";
+          const latitude = Number(body.latitude);
+          const longitude = Number(body.longitude);
+          if (!/^[A-Za-z0-9_-]{10,40}$/.test(helpRequestId)) {
+            return json({ error: "Invalid Help Request ID." }, 400, origin);
+          }
+          if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
+              !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            return json({ error: "Valid location is required to send nearby Help alerts." }, 400, origin);
+          }
+          const helpRequest = await getFirestoreHelpRequest(helpRequestId, idToken);
+          if (!helpRequest) return json({ error: "Help Request not found." }, 404, origin);
+          if (stringField(helpRequest, "uid") !== callerUid) {
+            return json({ error: "You can only send nearby alerts for your own Help Request." }, 403, origin);
+          }
+          if (stringField(helpRequest, "status") !== "Open") {
+            return json({ error: "Only an open Help Request can send nearby alerts." }, 400, origin);
+          }
+          const createdAtMs = numberField(helpRequest, "createdAtMs");
+          if (!Number.isFinite(createdAtMs) || Date.now() - createdAtMs > 10 * 60 * 1000) {
+            return json({ error: "Nearby alerts can only be sent when the Help Request is first created." }, 400, origin);
+          }
+          const oneSignalUser = await getOneSignalUser(env, callerUid);
+          const tags = oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.tags || {};
+          if (tags.indian_help_location_optin !== "1") {
+            return json({ error: "Enable Nearby Help Alerts and allow location before posting a request." }, 403, origin);
+          }
+          await updateOneSignalUser(env, callerUid, {
+            lat: latitude,
+            long: longitude,
+            tags: {
+              indian_help_location_optin: "1",
+              indian_firebase_uid: callerUid
+            }
+          });
+          const pushResult = await sendNearbyHelpPush(env, helpRequestId, helpRequest, callerUid, latitude, longitude);
+          if (!pushResult || !pushResult.id) {
+            return json({ success: true, sent: false, message: "No eligible nearby subscribers were found." }, 200, origin);
+          }
+          return json({ success: true, sent: true, notificationId: pushResult.id }, 200, origin);
+        }
+
+        return json({ error: "Unknown action." }, 400, origin);
+      } catch (error) {
+        const detail = String(error && error.message ? error.message : "Unknown nearby Help error").slice(0, 300);
+        console.error("Indian nearby Help action failed:", detail);
+        return json({ error: "Nearby Help action failed.", detail: detail }, 502, origin);
+      }
+    }
+
     const messageId = typeof body.messageId === "string" ? body.messageId.trim() : "";
     const callId = typeof body.callId === "string" ? body.callId.trim() : "";
     if (messageId && callId) {

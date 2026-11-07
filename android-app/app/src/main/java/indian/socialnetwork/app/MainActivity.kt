@@ -1,9 +1,6 @@
 package indian.socialnetwork.app
 
 import android.Manifest
-import android.app.AlertDialog
-import android.app.NotificationManager
-import android.content.Intent
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -11,7 +8,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -63,7 +59,6 @@ class MainActivity : Activity() {
         private const val REQUEST_NOTIFICATION_PERMISSION = 4102
         private const val REQUEST_STARTUP_MEDIA_PERMISSIONS = 4103
         private const val INDIAN_HOST = "indian-social-network-dotcom.github.io"
-        private const val INDIAN_HOME_URL = "https://indian-social-network-dotcom.github.io/Indian/"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -128,42 +123,14 @@ class MainActivity : Activity() {
 
         setContentView(webView)
 
-        val incomingCallUrl = incomingCallUrlFrom(intent)
-        if (savedInstanceState != null && incomingCallUrl == null) {
+        if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
         } else {
-            webView.loadUrl(incomingCallUrl ?: INDIAN_HOME_URL)
+            webView.loadUrl("https://indian-social-network-dotcom.github.io/Indian/")
         }
 
         requestStartupMediaPermissionsIfNeeded()
         authSyncHandler.post(oneSignalIdentitySync)
-    }
-
-    private fun incomingCallUrlFrom(sourceIntent: Intent?): String? {
-        val uri = sourceIntent?.data ?: return null
-        if (uri.scheme != "https" || uri.host != INDIAN_HOST ||
-            uri.path != "/Indian/" && uri.path != "/Indian"
-        ) return null
-
-        val callId = uri.getQueryParameter("indianCallId") ?: return null
-        if (!callId.matches(Regex("[A-Za-z0-9_-]{10,40}"))) return null
-        return "$INDIAN_HOME_URL?indianCallId=${Uri.encode(callId)}"
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        val incomingCallUrl = incomingCallUrlFrom(intent) ?: return
-
-        // If the WebView is already showing Indian, keep its live Firebase and
-        // WebRTC session intact. The existing Firestore call listener will
-        // display the incoming call without reloading the page.
-        if (::webView.isInitialized) {
-            val currentUrl = webView.url
-            if (currentUrl.isNullOrBlank() || currentUrl == "about:blank") {
-                webView.loadUrl(incomingCallUrl)
-            }
-        }
     }
 
     private fun requestStartupMediaPermissionsIfNeeded() {
@@ -204,33 +171,7 @@ class MainActivity : Activity() {
                 arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 REQUEST_NOTIFICATION_PERMISSION
             )
-        } else {
-            requestFullScreenCallPermissionIfNeeded()
         }
-    }
-
-    private fun requestFullScreenCallPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < 34) return
-        val manager = getSystemService(NotificationManager::class.java)
-        if (manager.canUseFullScreenIntent()) return
-
-        AlertDialog.Builder(this)
-            .setTitle("Allow full-screen incoming calls")
-            .setMessage("Indian needs permission to show incoming voice and video calls on the full screen. On the next screen, allow full-screen notifications for Indian.")
-            .setPositiveButton("Open settings") { _, _ ->
-                try {
-                    startActivity(
-                        Intent(
-                            Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
-                            Uri.parse("package:$packageName")
-                        )
-                    )
-                } catch (_: Exception) {
-                    // The normal notification remains available if this settings page is unsupported.
-                }
-            }
-            .setNegativeButton("Not now", null)
-            .show()
     }
 
     @Deprecated("Deprecated in Android 6.0; kept for compatibility with the app's Activity base class")
@@ -243,11 +184,6 @@ class MainActivity : Activity() {
 
         if (requestCode == REQUEST_STARTUP_MEDIA_PERMISSIONS) {
             requestNotificationPermissionIfNeeded()
-            return
-        }
-
-        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
-            requestFullScreenCallPermissionIfNeeded()
             return
         }
 

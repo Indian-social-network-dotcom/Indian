@@ -1448,6 +1448,16 @@ function getTotalUnreadMessages(){
     }, 0);
 }
 
+function indianFormatCallLogText(text, senderIsMe){
+    const value = String(text || "").trim();
+    const match = value.match(/^(📞\s*Voice call|📹\s*Video call)(?:\s*[·-]\s*(.*))?$/i);
+    if(!match) return "";
+    const kind = /^📹/.test(match[1]) ? "video call" : "voice call";
+    const direction = senderIsMe ? "Outgoing " : "Incoming ";
+    const status = String(match[2] || "").trim();
+    return direction + kind + (status ? " · " + status : "");
+}
+
 function renderMessageBadge(){
     const badge = document.getElementById("navMessageBadge");
     if(!badge) return;
@@ -1499,8 +1509,10 @@ function renderConversationList(){
         if(aMeta.pinned !== bMeta.pinned) return aMeta.pinned ? -1 : 1;
         const aMessages = getMessagesForPerson(a.id);
         const bMessages = getMessagesForPerson(b.id);
-        const aTime = aMessages.length ? aMessages[aMessages.length-1].timestampValue || 0 : 0;
-        const bTime = bMessages.length ? bMessages[bMessages.length-1].timestampValue || 0 : 0;
+        const aLocalTime = aMessages.length ? aMessages[aMessages.length-1].timestampValue || 0 : 0;
+        const bLocalTime = bMessages.length ? bMessages[bMessages.length-1].timestampValue || 0 : 0;
+        const aTime = Math.max(aLocalTime, Number(a.latestMessageAtMs) || 0);
+        const bTime = Math.max(bLocalTime, Number(b.latestMessageAtMs) || 0);
         return bTime - aTime;
     });
 
@@ -1558,16 +1570,21 @@ function renderConversationList(){
 
         const preview = document.createElement("div");
         preview.className = "conversationPreview";
-        if(latest){
+        const localLatestAt = latest ? Number(latest.timestampValue) || 0 : 0;
+        const hasNewerRecentMessage = Number(person.latestMessageAtMs || 0) > localLatestAt;
+        if(hasNewerRecentMessage){
+            preview.textContent = indianFormatCallLogText(person.latestMessageText, person.latestMessageSenderId === (window.firebaseCurrentUid || "")) || person.latestMessageText || "New activity";
+        } else if(latest){
             if(latest.text){
-                preview.textContent = latest.attachment ? latest.text + " [" + (latest.attachment.type === "image" ? "Photo attached" : "Video attached") + "]" : latest.text;
+                const callPreview = indianFormatCallLogText(latest.text, latest.sender === "me");
+                preview.textContent = callPreview || (latest.attachment ? latest.text + " [" + (latest.attachment.type === "image" ? "Photo attached" : "Video attached") + "]" : latest.text);
             } else if(latest.attachment){
                 preview.textContent = latest.attachment.type === "image" ? "Photo attached: " + latest.attachment.name : "Video attached: " + latest.attachment.name;
             } else {
                 preview.textContent = "Message";
             }
         } else {
-            preview.textContent = person.latestMessageText || "No messages yet.";
+            preview.textContent = indianFormatCallLogText(person.latestMessageText, person.latestMessageSenderId === (window.firebaseCurrentUid || "")) || person.latestMessageText || "No messages yet.";
         }
 
         const presence = document.createElement("div");
@@ -1811,8 +1828,10 @@ function renderChat(personId){
             }
 
             const text = document.createElement("div");
-            text.textContent = message.text || "";
+            const formattedCallLog = indianFormatCallLogText(message.text, message.sender === "me");
+            text.textContent = formattedCallLog || message.text || "";
             if(message.text){
+                if(formattedCallLog) text.className = "callLogMessage";
                 bubble.appendChild(text);
             }
 
@@ -5206,7 +5225,7 @@ function startRecentFirebaseMessages(){
       (window.indianFirebaseAllProfiles||[]).forEach(profile=>{
         if(!profile||!profile.uid||profile.uid===uid)return;
         const person=(window.getIndianPersonByFirebaseUid?window.getIndianPersonByFirebaseUid(profile.uid):null);
-        if(person){person.latestMessageAtMs=0;person.latestMessageText="";person.latestMessageId="";}
+        if(person){person.latestMessageAtMs=0;person.latestMessageText="";person.latestMessageId="";person.latestMessageSenderId="";}
       });
       const records=Array.from(recentFirebaseMessagesById.values());
       records.forEach(data=>{
@@ -5219,6 +5238,7 @@ function startRecentFirebaseMessages(){
           person.latestMessageAtMs=stamp;
           person.latestMessageText=String(data.text|| (data.attachment?"Attachment":"Message")).slice(0,180);
           person.latestMessageId=data.id||"";
+          person.latestMessageSenderId=String(data.senderId||"");
         }
       });
       if(typeof window.renderConversationList==="function")window.renderConversationList();
@@ -5865,7 +5885,28 @@ function indianFinishActiveCall(message){
   indianUpdateCallControls();
   setIndianCallStatus(message || "Call ended.");
 }
-async function startIndianCall(callType){
+async async function indianSaveCallChatLog(call){
+  if(!call || call.role !== "caller" || !firebaseDb || !firebaseCurrentUser || !call.remoteUid) return null;
+  try{
+    const callText = call.callType === "video" ? "📹 Video call" : "📞 Voice call";
+    const messageRef = await addDoc(collection(firebaseDb, "messages"), {
+      senderId: firebaseCurrentUser.uid,
+      receiverId: call.remoteUid,
+      text: callText,
+      edited: false,
+      read: false,
+      createdAt: serverTimestamp(),
+      createdAtMs: Date.now()
+    });
+    call.chatLogMessageId = messageRef.id;
+    return messageRef.id;
+  }catch(error){
+    console.warn("Indian call history could not be saved to chat:", error);
+    return null;
+  }
+}
+
+function startIndianCall(callType){
   if(indianActiveCall){ setIndianCallStatus("A call is already active. End it before starting another call."); return; }
   if(!firebaseDb || !firebaseCurrentUser){ setIndianCallStatus("Sign in to Indian before making a call."); return; }
   if(selectedConversationPersonId === null){ setIndianCallStatus("Open a chat with the person you want to call first."); return; }
@@ -5894,6 +5935,9 @@ async function startIndianCall(callType){
       status: "preparing",
       createdAtMs: Date.now()
     });
+    // One shared chat entry is created by the caller and appears in both users' chats.
+    // The recent-message listener updates the conversation preview and order.
+    indianSaveCallChatLog(call);
     indianWatchRemoteCandidates(call);
     indianWatchActiveCallDoc(call);
     const offer = await call.pc.createOffer();

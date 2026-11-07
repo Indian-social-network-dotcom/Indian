@@ -6571,7 +6571,7 @@ else{
        if(isOwner){
          const actions=document.createElement("div");actions.className="help-status-actions";actions.setAttribute("aria-label","Update status of your help request");
          [["Open","Mark as Open"],["In Progress","Mark In Progress"]].forEach(([value,label])=>{
-           const b=document.createElement("button");b.type="button";b.className="action";b.textContent=label;b.disabled=value===status;b.setAttribute("aria-pressed",String(value===status));
+           const b=document.createElement("button");b.type="button";b.className="action";b.textContent=label;b.disabled=value===status||!!x.acceptedHelperUid;b.setAttribute("aria-pressed",String(value===status));
            b.addEventListener("click",async()=>{setHelpMessage("Updating help request status…");try{await setDoc(doc(db,"helpRequests",d.id),{status:value,statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()},{merge:true});setHelpMessage("Your help request is now marked "+value+".");}catch(error){setHelpMessage("Status could not be updated: "+clean(error?.message||error,180));}});
            actions.appendChild(b);
          });

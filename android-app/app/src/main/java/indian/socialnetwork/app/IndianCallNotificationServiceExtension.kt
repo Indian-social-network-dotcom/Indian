@@ -23,7 +23,7 @@ class IndianCallNotificationServiceExtension : INotificationServiceExtension {
         )
         val openCallIntent = Intent(event.context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
-            data = callUrl
+            this.data = callUrl
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP

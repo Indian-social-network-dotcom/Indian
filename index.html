@@ -6346,21 +6346,19 @@ else{
      const requestRef=await addDoc(collection(db,"helpRequests"),payload);
      let nearbyPushStatus="not_enabled";
      try{
-       const OneSignal=window.__indianOneSignalInstance;
-       const tags=OneSignal?.User?.getTags?.()||{};
-       if(tags.indian_help_location_optin==="1" && navigator.geolocation){
+       const nearbyState=await window.callIndianNearbyHelpWorker("getHelpLocationStatus");
+       if(nearbyState.enabled===true && navigator.geolocation){
          nearbyPushStatus="failed";
          const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,timeout:12000,maximumAge:60000}));
          const pushResult=await window.callIndianNearbyHelpWorker("sendHelpRequest",{helpRequestId:requestRef.id,latitude:position.coords.latitude,longitude:position.coords.longitude});
          nearbyPushStatus=pushResult.sent===true?"sent":"no_recipients";
        }
      }catch(pushError){
+       nearbyPushStatus="failed";
        console.warn("Nearby Help push was not sent:",pushError);
        if(pushError&&pushError.code===1){
-         try{
-           await window.callIndianNearbyHelpWorker("clearHelpLocation");
-           await window.__indianOneSignalInstance?.User?.addTag("indian_help_location_optin","0");
-         }catch(clearError){console.warn("Revoked Nearby Help location could not be cleared yet",clearError);}
+         try{await window.callIndianNearbyHelpWorker("clearHelpLocation");}
+         catch(clearError){console.warn("Revoked Nearby Help location could not be cleared yet",clearError);}
        }
      }
      return {requestId:requestRef.id,nearbyPushStatus:nearbyPushStatus};
@@ -8522,39 +8520,47 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   var nearbyEnableButton=document.getElementById("indianEnableNearbyHelpBtn");
   var nearbyDisableButton=document.getElementById("indianDisableNearbyHelpBtn");
   var nearbyStatus=document.getElementById("indianNearbyHelpStatus");
+  var nearbyStatusRequest=0;
   function setNearbyStatus(message){if(nearbyStatus)nearbyStatus.textContent=String(message||"");}
-  function getNearbyTags(){
-    var OneSignal=window.__indianOneSignalInstance;
-    try{return OneSignal&&OneSignal.User&&typeof OneSignal.User.getTags==="function"?OneSignal.User.getTags()||{}:{};}catch(e){return {};}
-  }
-  window.updateIndianNearbyHelpSettingsUI=function(){
-    var OneSignal=window.__indianOneSignalInstance;
-    if(!window.__indianOneSignalReady||!OneSignal||!OneSignal.User){
-      if(nearbyEnableButton)nearbyEnableButton.disabled=true;
-      if(nearbyDisableButton)nearbyDisableButton.hidden=true;
-      setNearbyStatus("Nearby Help settings are loading. Please wait.");
-      return;
-    }
-    var enabled=getNearbyTags().indian_help_location_optin==="1";
-    if(nearbyEnableButton){nearbyEnableButton.hidden=enabled;nearbyEnableButton.disabled=false;}
-    if(nearbyDisableButton){nearbyDisableButton.hidden=!enabled;nearbyDisableButton.disabled=false;}
-    setNearbyStatus(enabled
-      ?"Nearby Help Alerts are enabled on this device. Your location is used only for 5 kilometre matching."
-      :"Nearby Help Alerts are off. Turn them on to receive nearby requests.");
-  };
   function getCurrentNearbyPosition(){
     return new Promise(function(resolve,reject){
-      if(!navigator.geolocation){reject(new Error("Location is not supported by this browser."));return;}
+      if(!navigator.geolocation){reject(new Error("Location is not supported by this browser or app."));return;}
       navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,timeout:15000,maximumAge:60000});
     });
   }
+  window.updateIndianNearbyHelpSettingsUI=async function(){
+    var requestNumber=++nearbyStatusRequest;
+    if(!window.firebaseCurrentUid||!window.callIndianNearbyHelpWorker){
+      if(nearbyEnableButton)nearbyEnableButton.disabled=true;
+      if(nearbyDisableButton)nearbyDisableButton.hidden=true;
+      setNearbyStatus("Waiting for your Indian account to load.");
+      return;
+    }
+    if(nearbyEnableButton)nearbyEnableButton.disabled=true;
+    try{
+      var state=await window.callIndianNearbyHelpWorker("getHelpLocationStatus");
+      if(requestNumber!==nearbyStatusRequest)return;
+      var enabled=state.enabled===true;
+      if(nearbyEnableButton){nearbyEnableButton.hidden=enabled;nearbyEnableButton.disabled=false;}
+      if(nearbyDisableButton){nearbyDisableButton.hidden=!enabled;nearbyDisableButton.disabled=false;}
+      setNearbyStatus(enabled
+        ?"Nearby Help Alerts are enabled. Your location is used only for 5 kilometre matching."
+        :"Nearby Help Alerts are off. Turn them on to receive nearby requests.");
+    }catch(error){
+      if(requestNumber!==nearbyStatusRequest)return;
+      if(nearbyEnableButton){nearbyEnableButton.hidden=false;nearbyEnableButton.disabled=false;}
+      if(nearbyDisableButton)nearbyDisableButton.hidden=true;
+      setNearbyStatus("Could not check Nearby Help settings. Please try again.");
+      console.warn("Nearby Help status check failed",error);
+    }
+  };
   if(nearbyEnableButton)nearbyEnableButton.addEventListener("click",async function(){
-    var OneSignal=window.__indianOneSignalInstance;
     nearbyEnableButton.disabled=true;
     setNearbyStatus("Checking notification permission…");
     try{
-      if(!OneSignal||!window.__indianOneSignalReady)throw new Error("Please wait for Indian notification settings to finish loading.");
-      var browserPushSupported=OneSignal.Notifications.isPushSupported();
+      var OneSignal=window.__indianOneSignalInstance;
+      var browserPushSupported=false;
+      try{browserPushSupported=!!(OneSignal&&window.__indianOneSignalReady&&OneSignal.Notifications&&OneSignal.Notifications.isPushSupported());}catch(e){}
       if(browserPushSupported){
         if(typeof Notification!=="undefined"&&Notification.permission==="denied")throw new Error("Notifications are blocked. Allow notifications for Indian in your browser or phone settings first.");
         if(!OneSignal.Notifications.permission)await OneSignal.Notifications.requestPermission();
@@ -8563,49 +8569,46 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
         for(var attempt=0;attempt<10&&!OneSignal.User.PushSubscription.optedIn;attempt++)await new Promise(function(resolve){window.setTimeout(resolve,500);});
         if(!OneSignal.User.PushSubscription.optedIn)throw new Error("Push notifications are not ready yet. Please try again.");
       }
-      setNearbyStatus("Please allow location when your browser asks.");
+      setNearbyStatus("Please allow location when your browser or phone asks.");
       var position=await getCurrentNearbyPosition();
       if(!window.callIndianNearbyHelpWorker)throw new Error("Indian account connection is still loading. Please try again.");
       await window.callIndianNearbyHelpWorker("setHelpLocation",{latitude:position.coords.latitude,longitude:position.coords.longitude});
-      await OneSignal.User.addTag("indian_help_location_optin","1");
-      await OneSignal.User.addTag("indian_firebase_uid",String(window.firebaseCurrentUid||""));
-      window.updateIndianNearbyHelpSettingsUI();
+      await window.updateIndianNearbyHelpSettingsUI();
       setNearbyStatus("Nearby Help Alerts enabled. You can turn them off here at any time.");
     }catch(error){
       setNearbyStatus(String(error&&error.message||error).slice(0,260));
       console.warn("Nearby Help opt-in failed",error);
-    }finally{window.updateIndianNearbyHelpSettingsUI();if(nearbyEnableButton&&!nearbyDisableButton?.hidden)nearbyEnableButton.hidden=true;else if(nearbyEnableButton)nearbyEnableButton.disabled=false;}
+    }finally{
+      if(nearbyEnableButton)nearbyEnableButton.disabled=false;
+      window.updateIndianNearbyHelpSettingsUI();
+    }
   });
   if(nearbyDisableButton)nearbyDisableButton.addEventListener("click",async function(){
-    var OneSignal=window.__indianOneSignalInstance;
     nearbyDisableButton.disabled=true;
     setNearbyStatus("Turning off Nearby Help Alerts…");
     try{
       if(!window.callIndianNearbyHelpWorker)throw new Error("Indian account connection is still loading. Please try again.");
       await window.callIndianNearbyHelpWorker("clearHelpLocation");
-      if(OneSignal&&OneSignal.User)await OneSignal.User.addTag("indian_help_location_optin","0");
-      window.updateIndianNearbyHelpSettingsUI();
-      setNearbyStatus("Nearby Help Alerts are now off. Your previous location has been cleared from matching.");
+      await window.updateIndianNearbyHelpSettingsUI();
+      setNearbyStatus("Nearby Help Alerts are now off. Your previous location has been removed from nearby matching.");
     }catch(error){setNearbyStatus(String(error&&error.message||error).slice(0,240));}
     finally{nearbyDisableButton.disabled=false;}
   });
   window.refreshIndianNearbyHelpLocation=async function(){
-    var OneSignal=window.__indianOneSignalInstance;
-    if(!OneSignal||!OneSignal.User||!OneSignal.User.PushSubscription)return;
-    if(getNearbyTags().indian_help_location_optin!=="1")return;
-    var browserPushSupported=false;
-    try{browserPushSupported=!!(OneSignal.Notifications&&OneSignal.Notifications.isPushSupported());}catch(e){}
-    if(browserPushSupported && (typeof Notification==="undefined"||Notification.permission!=="granted"||!OneSignal.User.PushSubscription.optedIn)){
-      try{await window.callIndianNearbyHelpWorker("clearHelpLocation");await OneSignal.User.addTag("indian_help_location_optin","0");}catch(e){console.warn("Could not clear inactive nearby location",e);}
-      return;
-    }
+    if(!window.firebaseCurrentUid||!window.callIndianNearbyHelpWorker)return;
     if(!navigator.geolocation||!navigator.permissions||typeof navigator.permissions.query!=="function")return;
     try{
+      var state=await window.callIndianNearbyHelpWorker("getHelpLocationStatus");
+      if(!state.locationOptIn)return;
+      if(!state.pushActive){
+        await window.callIndianNearbyHelpWorker("clearHelpLocation");
+        await window.updateIndianNearbyHelpSettingsUI();
+        return;
+      }
       var permission=await navigator.permissions.query({name:"geolocation"});
       if(permission.state==="denied"){
         await window.callIndianNearbyHelpWorker("clearHelpLocation");
-        await OneSignal.User.addTag("indian_help_location_optin","0");
-        window.updateIndianNearbyHelpSettingsUI();
+        await window.updateIndianNearbyHelpSettingsUI();
         return;
       }
       if(permission.state!=="granted")return;

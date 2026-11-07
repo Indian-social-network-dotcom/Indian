@@ -6101,7 +6101,7 @@ import { getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   getFirestore, collection, addDoc, deleteDoc, doc, query, where, orderBy, limit, startAfter,
-  onSnapshot, serverTimestamp, getDocs, getDoc, setDoc, updateDoc
+  onSnapshot, serverTimestamp, getDocs, getDoc, setDoc, updateDoc, runTransaction
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
@@ -6549,8 +6549,8 @@ else{
        const title=document.createElement("h3");title.className="helpTitle";title.textContent=(clean(x.displayName,60)||"Indian User")+" — "+clean(x.category||"General",50);el.appendChild(title);
        const body=document.createElement("p");body.textContent=clean(x.text,3000)||"Media help request";el.appendChild(body);
        const badge=document.createElement("p");badge.className="help-status-badge";badge.textContent="Status: "+status;badge.setAttribute("aria-label","Help request status: "+status);el.appendChild(badge);
+       if(x.acceptedHelperName){const accepted=document.createElement("p");accepted.textContent="Accepted helper: "+clean(x.acceptedHelperName,60);el.appendChild(accepted);}
        const meta=document.createElement("p");meta.className="helpTime";meta.textContent="Help request shared with Indian users.";el.appendChild(meta);
-       // Shared Help media: render only permanent Cloudinary HTTPS URLs, never local blob URLs.
        if(Array.isArray(x.media) && x.media.length){
          const mediaBox=document.createElement("div");mediaBox.className="helpMedia";mediaBox.setAttribute("aria-label","Photos and videos attached to this help request");
          x.media.slice(0,10).forEach(m=>{
@@ -6564,18 +6564,122 @@ else{
          });
          if(mediaBox.childElementCount) el.appendChild(mediaBox);
        }
-       if(x.uid && x.uid===currentUser?.uid){
+       const actionArea=document.createElement("div");actionArea.className="help-tracking-actions";actionArea.setAttribute("aria-label","Help request tracking actions");el.appendChild(actionArea);
+       const setHelpMessage=(message)=>{const state=document.getElementById("helpActionStatus");if(state)state.textContent=message;};
+       const makeHelpButton=(label,aria,handler)=>{const b=document.createElement("button");b.type="button";b.className="action";b.textContent=label;b.setAttribute("aria-label",aria||label);b.addEventListener("click",handler);actionArea.appendChild(b);return b;};
+       const isOwner=String(x.uid||"")===uid;
+       if(isOwner){
          const actions=document.createElement("div");actions.className="help-status-actions";actions.setAttribute("aria-label","Update status of your help request");
-         [["Open","Mark as Open"],["In Progress","Mark In Progress"],["Resolved","Mark Resolved"]].forEach(([value,label])=>{
-           const b=document.createElement("button");b.type="button";b.className="action";b.textContent=label;b.disabled=value===status;b.setAttribute("aria-pressed",String(value===status));
-           b.addEventListener("click",async()=>{
-             const state=document.getElementById("helpActionStatus");if(state)state.textContent="Updating help request status…";
-             try{await setDoc(doc(db,"helpRequests",d.id),{status:value,statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()},{merge:true});if(state)state.textContent="Your help request is now marked "+value+".";}
-             catch(error){if(state)state.textContent="Status could not be updated. Firebase Rules may need to allow the request owner to update status. Details: "+clean(error?.message||error,180);}
-           });actions.appendChild(b);
-         });el.appendChild(actions);
+         [["Open","Mark as Open"],["In Progress","Mark In Progress"]].forEach(([value,label])=>{
+           const b=document.createElement("button");b.type="button";b.className="action";b.textContent=label;b.disabled=value===status||!!x.acceptedHelperUid;b.setAttribute("aria-pressed",String(value===status));
+           b.addEventListener("click",async()=>{setHelpMessage("Updating help request status…");try{await setDoc(doc(db,"helpRequests",d.id),{status:value,statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()},{merge:true});setHelpMessage("Your help request is now marked "+value+".");}catch(error){setHelpMessage("Status could not be updated: "+clean(error?.message||error,180));}});
+           actions.appendChild(b);
+         });
+         actionArea.appendChild(actions);
+         getDocs(query(collection(db,"helpOffers"),where("requestId","==",d.id),where("requesterUid","==",uid))).then(snapshot=>{
+           if(!document.getElementById(id)||!actionArea.isConnected)return;
+           const heading=document.createElement("h4");heading.textContent="People offering help";actionArea.appendChild(heading);
+           if(snapshot.empty){const none=document.createElement("p");none.textContent="No one has offered help yet.";actionArea.appendChild(none);return;}
+           snapshot.docs.forEach(offerDoc=>{
+             const offer=offerDoc.data()||{},line=document.createElement("p");
+             line.textContent=clean(offer.helperName,60)+" — "+String(offer.status||"pending");actionArea.appendChild(line);
+             if(offer.status==="pending" && !x.acceptedHelperUid && status==="Open"){
+               makeHelpButton("Accept "+clean(offer.helperName,40),"Accept help offer from "+clean(offer.helperName,60),async()=>{
+                 setHelpMessage("Accepting helper…");
+                 try{
+                   await runTransaction(db,async transaction=>{
+                     const requestRef=doc(db,"helpRequests",d.id),offerRef=doc(db,"helpOffers",offerDoc.id);
+                     const requestSnap=await transaction.get(requestRef),offerSnap=await transaction.get(offerRef);
+                     if(!requestSnap.exists()||!offerSnap.exists())throw new Error("Help request or offer no longer exists.");
+                     const requestData=requestSnap.data()||{},offerData=offerSnap.data()||{};
+                     if(requestData.uid!==uid)throw new Error("Only the requester can accept an offer.");
+                     if(requestData.status!=="Open"||requestData.acceptedHelperUid)throw new Error("Another helper was already accepted or this request is closed.");
+                     if(offerData.requesterUid!==uid||offerData.status!=="pending")throw new Error("This offer is no longer pending.");
+                     transaction.update(requestRef,{acceptedHelperUid:offerData.helperUid,acceptedHelperName:offerData.helperName,acceptedOfferId:offerDoc.id,status:"In Progress",statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()});
+                     transaction.update(offerRef,{status:"accepted",acceptedAt:serverTimestamp(),updatedAt:serverTimestamp()});
+                   });
+                   await saveRemoteNotification(offer.helperUid,"Your help offer was accepted. You can start helping now.","help_offer_accepted",d.id);
+                   setHelpMessage("Helper accepted. The request is now In Progress.");
+                 }catch(error){setHelpMessage("Could not accept this offer: "+clean(error?.message||error,200));}
+               });
+               makeHelpButton("Decline","Decline help offer from "+clean(offer.helperName,60),async()=>{
+                 try{await updateDoc(doc(db,"helpOffers",offerDoc.id),{status:"declined",updatedAt:serverTimestamp()});await saveRemoteNotification(offer.helperUid,"Your help offer was declined.","help_offer_declined",d.id);setHelpMessage("Help offer declined.");}catch(error){setHelpMessage("Could not decline offer: "+clean(error?.message||error,180));}
+               });
+             }
+             if(offer.status==="submitted"){
+               makeHelpButton("Confirm completed help","Confirm that "+clean(offer.helperName,60)+" completed the help",async()=>{
+                 setHelpMessage("Confirming completed help…");
+                 try{
+                   await runTransaction(db,async transaction=>{
+                     const requestRef=doc(db,"helpRequests",d.id),offerRef=doc(db,"helpOffers",offerDoc.id);
+                     const requestSnap=await transaction.get(requestRef),offerSnap=await transaction.get(offerRef);
+                     if(!requestSnap.exists()||!offerSnap.exists())throw new Error("Request or offer no longer exists.");
+                     const requestData=requestSnap.data()||{},offerData=offerSnap.data()||{};
+                     if(requestData.uid!==uid||requestData.acceptedHelperUid!==offerData.helperUid||offerData.status!=="submitted")throw new Error("Only the requester can confirm the accepted helper's submitted work.");
+                     transaction.update(offerRef,{status:"completed",completedAt:serverTimestamp(),updatedAt:serverTimestamp()});
+                     transaction.update(requestRef,{status:"Resolved",completedAt:serverTimestamp(),completedOfferId:offerDoc.id,statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()});
+                   });
+                   await saveRemoteNotification(offer.helperUid,"The requester confirmed your help as completed. Thank you!","help_completed",d.id);
+                   setHelpMessage("Help marked Resolved. Reward points will be enabled after secure server-side reward setup.");
+                 }catch(error){setHelpMessage("Could not confirm completion: "+clean(error?.message||error,200));}
+               });
+             }
+           });
+         }).catch(error=>setHelpMessage("Help offers could not load: "+clean(error?.message||error,160)));
+       }else if(x.uid && status==="Open" && !x.acceptedHelperUid){
+         getDocs(query(collection(db,"helpOffers"),where("requestId","==",d.id),where("helperUid","==",uid))).then(snapshot=>{
+           if(!actionArea.isConnected)return;
+           const own=snapshot.docs[0],offer=own?.data()||null;
+           if(!offer){
+             makeHelpButton("Offer Help","Offer to help "+(clean(x.displayName,60)||"this user"),async()=>{
+               setHelpMessage("Sending your help offer…");
+               try{
+                 const ref=await addDoc(collection(db,"helpOffers"),{requestId:d.id,requesterUid:String(x.uid),requesterName:clean(x.displayName,60)||"Indian User",helperUid:uid,helperName:name(),status:"pending",createdAt:serverTimestamp(),createdAtMs:Date.now(),updatedAt:serverTimestamp()});
+                 await saveRemoteNotification(String(x.uid),name()+" offered to help with your request.","help_offer",d.id);
+                 setHelpMessage("Your help offer has been sent.");
+                 const b=actionArea.querySelector('button[aria-label^="Offer to help"]');if(b){b.disabled=true;b.textContent="Offer Sent";}
+               }catch(error){setHelpMessage("Could not send help offer: "+clean(error?.message||error,180));}
+             });
+           }else if(offer.status==="pending"){
+             makeHelpButton("Withdraw offer","Withdraw your help offer",async()=>{
+               try{await updateDoc(doc(db,"helpOffers",own.id),{status:"withdrawn",updatedAt:serverTimestamp()});setHelpMessage("Your offer was withdrawn.");}catch(error){setHelpMessage("Could not withdraw offer: "+clean(error?.message||error,180));}
+             });
+           }else if(offer.status==="accepted"){
+             makeHelpButton("Start helping","Mark that you have started helping",async()=>{
+               try{await updateDoc(doc(db,"helpOffers",own.id),{status:"in_progress",startedAt:serverTimestamp(),updatedAt:serverTimestamp()});setHelpMessage("Help marked In Progress.");}catch(error){setHelpMessage("Could not update help status: "+clean(error?.message||error,180));}
+             });
+           }else if(offer.status==="in_progress"){
+             makeHelpButton("Submit completed work","Tell the requester that the help is completed",async()=>{
+               try{await updateDoc(doc(db,"helpOffers",own.id),{status:"submitted",submittedAt:serverTimestamp(),updatedAt:serverTimestamp()});await saveRemoteNotification(String(x.uid),"Your accepted helper submitted the work as completed. Please review it.","help_submitted",d.id);setHelpMessage("Completion submitted. The requester must confirm it.");}catch(error){setHelpMessage("Could not submit completion: "+clean(error?.message||error,180));}
+             });
+           }else if(offer.status==="submitted"){
+             const waiting=document.createElement("p");waiting.textContent="You submitted the completed help. Waiting for requester confirmation.";actionArea.appendChild(waiting);
+           }
+         }).catch(error=>setHelpMessage("Your help offer could not load: "+clean(error?.message||error,160)));
+       }else if(x.uid && x.acceptedHelperUid===uid){
+         const note=document.createElement("p");note.textContent="You are the accepted helper for this request.";actionArea.appendChild(note);
+         getDocs(query(collection(db,"helpOffers"),where("requestId","==",d.id),where("helperUid","==",uid))).then(snapshot=>{
+           if(!actionArea.isConnected)return;
+           const own=snapshot.docs.find(item=>["accepted","in_progress","submitted"].includes(String(item.data()?.status||"")));
+           if(!own){setHelpMessage("Your accepted help offer could not be be found.");return;}
+           const offer=own.data()||{};
+           if(offer.status==="accepted"){
+             makeHelpButton("Start helping","Mark that you have started helping",async()=>{
+               try{await updateDoc(doc(db,"helpOffers",own.id),{status:"in_progress",startedAt:serverTimestamp(),updatedAt:serverTimestamp()});setHelpMessage("Help marked In Progress.");}
+               catch(error){setHelpMessage("Could not update help status: "+clean(error?.message||error,180));}
+             });
+           }else if(offer.status==="in_progress"){
+             makeHelpButton("Submit completed work","Tell the requester that the help is completed",async()=>{
+               try{await updateDoc(doc(db,"helpOffers",own.id),{status:"submitted",submittedAt:serverTimestamp(),updatedAt:serverTimestamp()});await saveRemoteNotification(String(x.uid),"Your accepted helper submitted the work as completed. Please review it.","help_submitted",d.id);setHelpMessage("Completion submitted. The requester must confirm it.");}
+               catch(error){setHelpMessage("Could not submit completion: "+clean(error?.message||error,180));}
+             });
+           }else if(offer.status==="submitted"){
+             const waiting=document.createElement("p");waiting.textContent="You submitted the completed help. Waiting for requester confirmation.";actionArea.appendChild(waiting);
+           }
+         }).catch(error=>setHelpMessage("Your accepted help offer could not load: "+clean(error?.message||error,160)));
        }else if(x.uid){
-         const offer=document.createElement("button");offer.type="button";offer.className="action";offer.textContent="Offer Help in Messages";offer.setAttribute("aria-label","Offer help to "+(clean(x.displayName,60)||"this user")+" by message");offer.addEventListener("click",()=>window.startHelpConversation&&window.startHelpConversation(String(x.uid),String(x.displayName||"Indian User"),"Hello, I would like to help with your "+clean(x.category||"General",50)+" request."));el.appendChild(offer);
+         const offer=makeHelpButton("Offer Help in Messages","Offer help to "+(clean(x.displayName,60)||"this user")+" by message",()=>window.startHelpConversation&&window.startHelpConversation(String(x.uid),String(x.displayName||"Indian User"),"Hello, I would like to help with your "+clean(x.category||"General",50)+" request."));
+         offer.disabled=status!=="Open"||!!x.acceptedHelperUid;
        }
      });
    },e=>console.error("Help listener",e)));

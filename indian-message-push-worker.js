@@ -124,11 +124,11 @@ async function getOneSignalUser(env, uid) {
 
 async function sendNearbyHelpPush(env, requestId, requestData, senderUid, latitude, longitude) {
   const safeName = String(stringField(requestData, "displayName") || "An Indian user")
-    .replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, 60) || "An Indian user";
+    .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "An Indian user";
   const category = String(stringField(requestData, "category") || "General help")
-    .replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, 50);
+    .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 50);
   const problem = String(stringField(requestData, "text") || "A person nearby needs help.")
-    .replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, 220);
+    .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 220);
   const idempotencyKey = await stableIdempotencyKey(`help-request:${requestId}`);
   const payload = {
     app_id: ONESIGNAL_APP_ID,

@@ -6350,7 +6350,8 @@ else{
        if(nearbyState.enabled===true && navigator.geolocation){
          nearbyPushStatus="failed";
          const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,timeout:12000,maximumAge:60000}));
-         const pushResult=await window.callIndianNearbyHelpWorker("sendHelpRequest",{helpRequestId:requestRef.id,latitude:position.coords.latitude,longitude:position.coords.longitude});
+         await window.callIndianNearbyHelpWorker("setHelpLocation",{latitude:position.coords.latitude,longitude:position.coords.longitude});
+         const pushResult=await window.callIndianNearbyHelpWorker("sendHelpRequest",{helpRequestId:requestRef.id});
          nearbyPushStatus=pushResult.sent===true?"sent":"no_recipients";
        }
      }catch(pushError){

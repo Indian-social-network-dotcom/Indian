@@ -284,11 +284,16 @@ export default {
           const tags = oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.tags || {};
           const pushActive = hasActivePushSubscription(oneSignalUser);
           const locationOptIn = tags.indian_help_location_optin === "1";
+          const latitude = Number(oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.lat);
+          const longitude = Number(oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.long);
+          const locationReady = Number.isFinite(latitude) && latitude >= -90 && latitude <= 90 &&
+            Number.isFinite(longitude) && longitude >= -180 && longitude <= 180;
           return json({
             success: true,
-            enabled: locationOptIn && pushActive,
+            enabled: locationOptIn && pushActive && locationReady,
             locationOptIn: locationOptIn,
-            pushActive: pushActive
+            pushActive: pushActive,
+            locationReady: locationReady
           }, 200, origin);
         }
 

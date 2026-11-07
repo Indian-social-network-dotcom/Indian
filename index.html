@@ -6318,6 +6318,42 @@ else{
  }
  window.saveRemoteNotification=saveRemoteNotification;
 
+ // When a requester accepts an offer, create one normal Firestore chat message
+ // containing the original help request. The same message appears in both chats.
+ async function createAcceptedHelpChatMessage(helperUid, helperName, requestData, requestId){
+   if(!currentUser || !helperUid || helperUid===currentUser.uid) throw new Error("Accepted helper account is unavailable.");
+   const problem=clean(requestData.text||"Help request",2500);
+   const category=clean(requestData.category||"General",50);
+   const requesterName=clean(requestData.displayName||name(),60)||"Indian User";
+   const messageText="Help Request Accepted\\n"+
+     requesterName+" accepted your offer to help.\\n"+
+     "Category: "+category+"\\n"+
+     "Problem: "+problem+"\\n"+
+     "Help Request ID: "+clean(requestId,120);
+   const messageRef=await addDoc(collection(db,"messages"),{
+     senderId:currentUser.uid,
+     receiverId:String(helperUid),
+     text:messageText.slice(0,2000),
+     edited:false,
+     read:false,
+     createdAt:serverTimestamp(),
+     createdAtMs:Date.now()
+   });
+   // Use the existing message push sender so the accepted helper gets the
+   // same kind of mobile alert as an ordinary incoming chat message.
+   try{
+     const idToken=await currentUser.getIdToken();
+     const response=await fetch("https://indian-message-push.sadrealam892075.workers.dev/",{
+       method:"POST",
+       headers:{"Authorization":"Bearer "+idToken,"Content-Type":"application/json"},
+       body:JSON.stringify({messageId:messageRef.id})
+     });
+     const result=await response.json().catch(function(){return {};});
+     if(!response.ok||result.success!==true) console.warn("Accepted Help chat push was not delivered:",response.status,result);
+   }catch(pushError){console.warn("Accepted Help chat push failed; chat message is saved:",pushError);}
+   return messageRef.id;
+ }
+
  async function saveNotification(n){
    if(!currentUser||!n)return null;
    try{
@@ -6598,8 +6634,13 @@ else{
                      transaction.update(requestRef,{acceptedHelperUid:offerData.helperUid,acceptedHelperName:offerData.helperName,acceptedOfferId:offerDoc.id,status:"In Progress",statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()});
                      transaction.update(offerRef,{status:"accepted",acceptedAt:serverTimestamp(),updatedAt:serverTimestamp()});
                    });
-                   await saveRemoteNotification(offer.helperUid,"Your help offer was accepted. You can start helping now.","help_offer_accepted",d.id);
-                   setHelpMessage("Helper accepted. The request is now In Progress.");
+                   try{
+                     await createAcceptedHelpChatMessage(offer.helperUid,offer.helperName,x,d.id);
+                   }catch(chatError){
+                     console.warn("Accepted Help chat message could not be created:",chatError);
+                   }
+                   await saveRemoteNotification(offer.helperUid,"Your help offer was accepted. The original Help Request is now in your Messages chat.","help_offer_accepted",d.id);
+                   setHelpMessage("Helper accepted. The Help Request was sent to Messages.");
                  }catch(error){setHelpMessage("Could not accept this offer: "+clean(error?.message||error,200));}
                });
                makeHelpButton("Decline","Decline help offer from "+clean(offer.helperName,60),async()=>{

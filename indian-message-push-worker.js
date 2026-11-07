@@ -290,7 +290,7 @@ export default {
             Number.isFinite(longitude) && longitude >= -180 && longitude <= 180;
           return json({
             success: true,
-            enabled: locationOptIn && pushActive && locationReady,
+            enabled: locationOptIn && locationReady,
             locationOptIn: locationOptIn,
             pushActive: pushActive,
             locationReady: locationReady
@@ -303,10 +303,6 @@ export default {
           if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
               !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
             return json({ error: "Valid latitude and longitude are required." }, 400, origin);
-          }
-          const currentOneSignalUser = await getOneSignalUser(env, callerUid);
-          if (!currentOneSignalUser || !hasActivePushSubscription(currentOneSignalUser)) {
-            return json({ error: "Enable push notifications on this Indian account before turning on Nearby Help Alerts." }, 403, origin);
           }
           await updateOneSignalUser(env, callerUid, {
             lat: latitude,
@@ -352,9 +348,6 @@ export default {
           const tags = oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.tags || {};
           if (!oneSignalUser || tags.indian_help_location_optin !== "1") {
             return json({ error: "Enable Nearby Help Alerts and allow location before posting a request." }, 403, origin);
-          }
-          if (!hasActivePushSubscription(oneSignalUser)) {
-            return json({ success: true, sent: false, message: "No active push subscription is available for this account." }, 200, origin);
           }
           const latitude = Number(oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.lat);
           const longitude = Number(oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.long);

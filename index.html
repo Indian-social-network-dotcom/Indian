@@ -6595,7 +6595,7 @@ else{
                      if(requestData.uid!==uid)throw new Error("Only the requester can accept an offer.");
                      if(requestData.status!=="Open"||requestData.acceptedHelperUid)throw new Error("Another helper was already accepted or this request is closed.");
                      if(offerData.requesterUid!==uid||offerData.status!=="pending")throw new Error("This offer is no longer pending.");
-                     transaction.update(requestRef,{acceptedHelperUid:offerData.helperUid,acceptedHelperName:offerData.helperName,status:"In Progress",statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()});
+                     transaction.update(requestRef,{acceptedHelperUid:offerData.helperUid,acceptedHelperName:offerData.helperName,acceptedOfferId:offerDoc.id,status:"In Progress",statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()});
                      transaction.update(offerRef,{status:"accepted",acceptedAt:serverTimestamp(),updatedAt:serverTimestamp()});
                    });
                    await saveRemoteNotification(offer.helperUid,"Your help offer was accepted. You can start helping now.","help_offer_accepted",d.id);
@@ -6617,7 +6617,7 @@ else{
                      const requestData=requestSnap.data()||{},offerData=offerSnap.data()||{};
                      if(requestData.uid!==uid||requestData.acceptedHelperUid!==offerData.helperUid||offerData.status!=="submitted")throw new Error("Only the requester can confirm the accepted helper's submitted work.");
                      transaction.update(offerRef,{status:"completed",completedAt:serverTimestamp(),updatedAt:serverTimestamp()});
-                     transaction.update(requestRef,{status:"Resolved",completedAt:serverTimestamp(),statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()});
+                     transaction.update(requestRef,{status:"Resolved",completedAt:serverTimestamp(),completedOfferId:offerDoc.id,statusUpdatedAtMs:Date.now(),statusUpdatedAt:serverTimestamp()});
                    });
                    await saveRemoteNotification(offer.helperUid,"The requester confirmed your help as completed. Thank you!","help_completed",d.id);
                    setHelpMessage("Help marked Resolved. Reward points will be enabled after secure server-side reward setup.");

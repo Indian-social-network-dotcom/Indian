@@ -99,6 +99,26 @@ async function updateOneSignalUser(env, uid, properties) {
     body: JSON.stringify({ properties })
   });
   const result = await response.json().catch(() => ({}));
+  if (response.status === 404) {
+    const createResponse = await fetch(`https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/users`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${env.ONESIGNAL_REST_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        identity: { external_id: externalId },
+        properties: properties
+      })
+    });
+    const created = await createResponse.json().catch(() => ({}));
+    if (!createResponse.ok) {
+      const createErrors = created && created.errors;
+      const createDetail = Array.isArray(createErrors) ? createErrors.map(x => typeof x === "string" ? x : (x.title || x.code || JSON.stringify(x))).join("; ") : (created.message || createResponse.statusText);
+      throw new Error(`OneSignal user create failed (${createResponse.status}): ${String(createDetail || "Unknown error").slice(0, 220)}`);
+    }
+    return created;
+  }
   if (!response.ok) {
     const errors = result && result.errors;
     const detail = Array.isArray(errors) ? errors.map(x => typeof x === "string" ? x : (x.title || x.code || JSON.stringify(x))).join("; ") : (result.message || response.statusText);
@@ -290,7 +310,7 @@ export default {
             Number.isFinite(longitude) && longitude >= -180 && longitude <= 180;
           return json({
             success: true,
-            enabled: locationOptIn && pushActive && locationReady,
+            enabled: locationOptIn && locationReady,
             locationOptIn: locationOptIn,
             pushActive: pushActive,
             locationReady: locationReady
@@ -303,10 +323,6 @@ export default {
           if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
               !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
             return json({ error: "Valid latitude and longitude are required." }, 400, origin);
-          }
-          const currentOneSignalUser = await getOneSignalUser(env, callerUid);
-          if (!currentOneSignalUser || !hasActivePushSubscription(currentOneSignalUser)) {
-            return json({ error: "Enable push notifications on this Indian account before turning on Nearby Help Alerts." }, 403, origin);
           }
           await updateOneSignalUser(env, callerUid, {
             lat: latitude,
@@ -352,9 +368,6 @@ export default {
           const tags = oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.tags || {};
           if (!oneSignalUser || tags.indian_help_location_optin !== "1") {
             return json({ error: "Enable Nearby Help Alerts and allow location before posting a request." }, 403, origin);
-          }
-          if (!hasActivePushSubscription(oneSignalUser)) {
-            return json({ success: true, sent: false, message: "No active push subscription is available for this account." }, 200, origin);
           }
           const latitude = Number(oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.lat);
           const longitude = Number(oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.long);

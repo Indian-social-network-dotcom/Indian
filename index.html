@@ -658,7 +658,7 @@ Live viewers: 0
 <h2 id="helpSectionHeading">Help</h2>
 
 <p>
-Ask for help or offer help to other people. Each request starts as Open. The person who created it can update it to In Progress or Resolved.
+Need help? Submit a request. Want to help someone? Open another person's request and choose "Offer Help". The requester can accept one helper. The accepted helper chooses "Start helping" and then "Submit completed work". The requester finishes by choosing "Confirm completed help". A request is not marked Resolved until the requester confirms completion.
 </p>
 <label for="helpStatusFilter">Filter help requests by status:</label>
 <select id="helpStatusFilter" aria-label="Filter help requests by status" style="display:block;width:100%;padding:10px;margin:8px 0 12px;border:1px solid #b9c9d6;border-radius:11px;background:#fff;color:#172b3a;">
@@ -6634,9 +6634,9 @@ else{
              makeHelpButton("Offer Help","Offer to help "+(clean(x.displayName,60)||"this user"),async()=>{
                setHelpMessage("Sending your help offer…");
                try{
-                 const ref=await addDoc(collection(db,"helpOffers"),{requestId:d.id,requesterUid:String(x.uid),requesterName:clean(x.displayName,60)||"Indian User",helperUid:uid,helperName:name(),status:"pending",createdAt:serverTimestamp(),createdAtMs:Date.now(),updatedAt:serverTimestamp()});
+                 const ref=await addDoc(collection(db,"helpOffers"),{requestId:d.id,requesterUid:String(x.uid),requesterName:clean(x.displayName,60)||"Indian User",helperUid:uid,helperName:clean(name(),60)||"Indian User",status:"pending",createdAt:serverTimestamp(),createdAtMs:Date.now(),updatedAt:serverTimestamp()});
                  await saveRemoteNotification(String(x.uid),name()+" offered to help with your request.","help_offer",d.id);
-                 setHelpMessage("Your help offer has been sent.");
+                 setHelpMessage("Your offer was sent. The requester can now accept it.");
                  const b=actionArea.querySelector('button[aria-label^="Offer to help"]');if(b){b.disabled=true;b.textContent="Offer Sent";}
                }catch(error){setHelpMessage("Could not send help offer: "+clean(error?.message||error,180));}
              });

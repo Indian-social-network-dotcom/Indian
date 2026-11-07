@@ -1,44 +1,37 @@
 /* Extracted Uran/shorts viewer styles; linked at the original position. */
 
-#indianShortsViewer{position:fixed;inset:0;z-index:5000;background:#050505;color:#fff;display:none;align-items:center;justify-content:center;padding:12px}
+/* Full-screen, accessible Uran swipe viewer */
+#indianShortsViewer{position:fixed;inset:0;z-index:5000;background:#050505;color:#fff;display:none;align-items:stretch;justify-content:center;padding:0;overflow:hidden}
 #indianShortsViewer.open{display:flex}
-#indianShortsViewer .isv-shell{width:min(100%,1100px);height:calc(100dvh - 24px);max-height:1000px;display:flex;flex-direction:column;gap:8px}
-#indianShortsViewer .isv-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-#indianShortsViewer button{min-height:44px;padding:8px 13px;border-radius:10px;border:1px solid #aaa;background:#fff;color:#111;font-weight:700}
-#indianShortsViewer .isv-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,320px);gap:14px;flex:1;min-height:0}
-#indianShortsViewer .isv-player-column{display:flex;flex-direction:column;min-width:0;min-height:0;gap:8px}
-#indianShortsViewer .isv-stage{flex:1;min-height:0;position:relative;overflow:hidden;border-radius:14px;background:#111;touch-action:none}
-#indianShortsViewer .isv-stage iframe,#indianShortsViewer .isv-stage video{width:100%;height:100%;border:0;object-fit:contain;background:#000}
-#indianShortsViewer .isv-caption{max-height:18vh;overflow:auto;margin:0;padding:8px 4px;white-space:pre-wrap;overflow-wrap:anywhere}
-#indianShortsViewer .isv-social{min-width:0;min-height:0;overflow:auto;padding:10px;border:1px solid #444;border-radius:14px;background:#151515}
-#indianShortsViewer .isv-social .uran-creator-row{align-items:flex-start}
-#indianShortsViewer .isv-social .uran-social-metrics{display:flex;flex-direction:column;align-items:stretch}
-#indianShortsViewer .isv-social .uran-social-metrics>*{width:100%;box-sizing:border-box}
-#indianShortsViewer .isv-social .uran-comment-list{max-height:24vh}
-#indianShortsViewer .isv-controls{display:flex;gap:8px;justify-content:space-between}
-#indianShortsViewer .isv-controls button{flex:1}
-#indianShortsViewer #isvStatus{margin:0;font-size:.9rem}
-.shortsOpenViewer{display:block;width:100%;margin-top:8px}
-#indianShortsViewer .isv-comments{max-height:20vh;overflow:auto;padding:8px;border-top:1px solid #444}
-#indianShortsViewer .isv-comments .uran-comment-list{max-height:14vh}
-@media(max-width:700px){
- #indianShortsViewer{padding:8px}
- #indianShortsViewer .isv-shell{height:calc(100dvh - 16px)}
- #indianShortsViewer .isv-content{grid-template-columns:minmax(0,1fr) 104px;gap:6px}
- #indianShortsViewer .isv-social{padding:5px}
- #indianShortsViewer .isv-social .uran-creator-row{display:flex;flex-direction:column;align-items:center;gap:4px}
- #indianShortsViewer .isv-social .uran-creator-link{flex-direction:column;align-items:center;gap:4px;font-size:11px;text-align:center;overflow-wrap:anywhere}
- #indianShortsViewer .isv-social .uran-creator-avatar{width:34px;height:34px;min-width:34px}
- #indianShortsViewer .isv-social .uran-social-metrics{gap:6px}
- #indianShortsViewer .isv-social .uran-social-button{font-size:11px;padding:6px 3px;min-height:40px;white-space:normal}
- #indianShortsViewer .isv-social .uran-social-count{font-size:10px;padding:5px 2px;min-height:34px}
- #indianShortsViewer .isv-comments{max-height:20vh}
- #indianShortsViewer .isv-comments .uran-comment-list{max-height:9vh}
- #indianShortsViewer .isv-caption{max-height:12vh}
-}
-@media(min-width:701px){#indianShortsViewer .isv-shell{height:calc(100vh - 30px)}}
-
-
+#indianShortsViewer .isv-shell{position:relative;width:100%;height:100dvh;max-width:560px;overflow:hidden;background:#080808}
+#indianShortsViewer .isv-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden;touch-action:pan-y}
+#indianShortsViewer .isv-stage video,#indianShortsViewer .isv-stage iframe{display:block;width:100%;height:100%;max-height:100dvh;border:0;object-fit:contain;background:#000}
+#indianShortsViewer .isv-top{position:absolute;z-index:5;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:linear-gradient(180deg,rgba(0,0,0,.78),transparent);pointer-events:none}
+#indianShortsViewer .isv-top h1{margin:0;color:#fff;font-size:1.25rem;line-height:1.4}
+#indianShortsViewer .isv-top-actions{display:flex;gap:6px;pointer-events:auto}
+#indianShortsViewer button{min-height:44px;min-width:44px;padding:8px 12px;border:1px solid rgba(255,255,255,.75);border-radius:999px;background:#171717;color:#fff;font:inherit;font-weight:700}
+#indianShortsViewer button:focus-visible{outline:3px solid #ff9800;outline-offset:3px}
+#indianShortsViewer .isv-social{position:absolute;z-index:4;inset:0;pointer-events:none;color:#fff}
+#indianShortsViewer .isv-social .uran-creator-row{position:absolute;left:14px;right:94px;bottom:calc(110px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:flex-start;gap:10px;margin:0;pointer-events:auto}
+#indianShortsViewer .isv-social .uran-creator-link{color:#fff;text-shadow:0 1px 4px #000;max-width:calc(100% - 110px);overflow-wrap:anywhere}
+#indianShortsViewer .isv-social .uran-creator-avatar{width:40px;height:40px;min-width:40px}
+#indianShortsViewer .isv-social .uran-follow-button{min-width:76px;background:#ff9800!important;color:#171717!important}
+#indianShortsViewer .isv-caption{position:absolute;left:16px;right:94px;bottom:calc(56px + env(safe-area-inset-bottom,0px));max-height:22vh;overflow:auto;margin:0;padding:6px 2px;color:#fff;font-size:.98rem;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;text-shadow:0 1px 4px #000;pointer-events:auto}
+#indianShortsViewer .isv-action-rail{position:absolute;right:12px;bottom:calc(105px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;pointer-events:auto}
+#indianShortsViewer .isv-icon-action{display:flex;align-items:center;justify-content:center;width:48px;min-width:48px;height:48px;min-height:48px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.58);color:#fff;font-size:27px;line-height:1}
+#indianShortsViewer .isv-icon-action[aria-pressed=true]{color:#ff9800}
+#indianShortsViewer .isv-count{display:block;min-height:18px;margin:0 0 8px;color:#fff;font-size:13px;font-weight:800;text-align:center;text-shadow:0 1px 4px #000}
+#indianShortsViewer .isv-view-action{display:flex;align-items:center;justify-content:center;width:48px;height:42px;font-size:24px;text-shadow:0 1px 4px #000}
+#indianShortsViewer .isv-comments{position:absolute;z-index:7;left:0;right:0;bottom:0;max-height:58dvh;overflow:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));border-radius:18px 18px 0 0;border:1px solid #555;background:#151515;color:#fff;box-shadow:0 -8px 30px rgba(0,0,0,.55)}
+#indianShortsViewer .isv-comments[hidden]{display:none}
+#indianShortsViewer .isv-comments .uran-comment-list{max-height:30dvh;overflow:auto}
+#indianShortsViewer .isv-comments .uran-comment-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:12px}
+#indianShortsViewer .isv-comments textarea{width:100%;min-height:44px;padding:10px;border-radius:8px;background:#222;color:#fff}
+#indianShortsViewer #isvStatus{position:absolute;z-index:8;left:12px;right:12px;top:66px;margin:0;padding:1px 4px;color:#fff;font-size:1px;line-height:1px;opacity:.02;pointer-events:none}
+#indianShortsViewer .shortsOpenViewer{display:block;width:100%;margin-top:8px}
+@media(min-width:561px){#indianShortsViewer{background:#000}#indianShortsViewer .isv-shell{height:100dvh;max-width:520px;border-left:1px solid #333;border-right:1px solid #333}}
+@media(max-width:380px){#indianShortsViewer .isv-action-rail{right:5px;width:56px}#indianShortsViewer .isv-caption{right:72px;font-size:.9rem}#indianShortsViewer .isv-social .uran-creator-row{right:72px;left:8px}#indianShortsViewer .isv-top{padding-left:8px;padding-right:8px}#indianShortsViewer .isv-top-actions{gap:3px}#indianShortsViewer .isv-top-actions button{padding:7px 9px;font-size:.85rem}}
+@media(prefers-reduced-motion:reduce){#indianShortsViewer *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 /* Uran creator and engagement controls */
 .uran-creator-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;min-width:0}
 .uran-creator-link{display:flex;align-items:center;gap:10px;min-width:0;border:0;background:transparent;color:#fff;text-align:left;font-weight:700;font-size:1rem;padding:4px;cursor:pointer}

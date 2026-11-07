@@ -6325,10 +6325,10 @@ else{
    const problem=clean(requestData.text||"Help request",2500);
    const category=clean(requestData.category||"General",50);
    const requesterName=clean(requestData.displayName||name(),60)||"Indian User";
-   const messageText="Help Request Accepted\\n"+
-     requesterName+" accepted your offer to help.\\n"+
-     "Category: "+category+"\\n"+
-     "Problem: "+problem+"\\n"+
+   const messageText="Help Request Accepted\n"+
+     requesterName+" accepted your offer to help.\n"+
+     "Category: "+category+"\n"+
+     "Problem: "+problem+"\n"+
      "Help Request ID: "+clean(requestId,120);
    const messageRef=await addDoc(collection(db,"messages"),{
      senderId:currentUser.uid,

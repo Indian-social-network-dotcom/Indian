@@ -6348,7 +6348,7 @@ else{
      try{
        const OneSignal=window.__indianOneSignalInstance;
        const tags=OneSignal?.User?.getTags?.()||{};
-       if(tags.indian_help_location_optin==="1" && OneSignal?.User?.PushSubscription?.optedIn && typeof Notification!=="undefined" && Notification.permission==="granted" && navigator.geolocation){
+       if(tags.indian_help_location_optin==="1" && navigator.geolocation){
          nearbyPushStatus="failed";
          const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,timeout:12000,maximumAge:60000}));
          const pushResult=await window.callIndianNearbyHelpWorker("sendHelpRequest",{helpRequestId:requestRef.id,latitude:position.coords.latitude,longitude:position.coords.longitude});
@@ -8554,13 +8554,15 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
     setNearbyStatus("Checking notification permission…");
     try{
       if(!OneSignal||!window.__indianOneSignalReady)throw new Error("Please wait for Indian notification settings to finish loading.");
-      if(!OneSignal.Notifications.isPushSupported())throw new Error("This browser or device does not support push notifications.");
-      if(typeof Notification!=="undefined"&&Notification.permission==="denied")throw new Error("Notifications are blocked. Allow notifications for Indian in your browser or phone settings first.");
-      if(!OneSignal.Notifications.permission)await OneSignal.Notifications.requestPermission();
-      if(!OneSignal.Notifications.permission)throw new Error("Notification permission was not allowed.");
-      await OneSignal.User.PushSubscription.optIn();
-      for(var attempt=0;attempt<10&&!OneSignal.User.PushSubscription.optedIn;attempt++)await new Promise(function(resolve){window.setTimeout(resolve,500);});
-      if(!OneSignal.User.PushSubscription.optedIn)throw new Error("Push notifications are not ready yet. Please try again.");
+      var browserPushSupported=OneSignal.Notifications.isPushSupported();
+      if(browserPushSupported){
+        if(typeof Notification!=="undefined"&&Notification.permission==="denied")throw new Error("Notifications are blocked. Allow notifications for Indian in your browser or phone settings first.");
+        if(!OneSignal.Notifications.permission)await OneSignal.Notifications.requestPermission();
+        if(!OneSignal.Notifications.permission)throw new Error("Notification permission was not allowed.");
+        await OneSignal.User.PushSubscription.optIn();
+        for(var attempt=0;attempt<10&&!OneSignal.User.PushSubscription.optedIn;attempt++)await new Promise(function(resolve){window.setTimeout(resolve,500);});
+        if(!OneSignal.User.PushSubscription.optedIn)throw new Error("Push notifications are not ready yet. Please try again.");
+      }
       setNearbyStatus("Please allow location when your browser asks.");
       var position=await getCurrentNearbyPosition();
       if(!window.callIndianNearbyHelpWorker)throw new Error("Indian account connection is still loading. Please try again.");
@@ -8591,7 +8593,9 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
     var OneSignal=window.__indianOneSignalInstance;
     if(!OneSignal||!OneSignal.User||!OneSignal.User.PushSubscription)return;
     if(getNearbyTags().indian_help_location_optin!=="1")return;
-    if(typeof Notification==="undefined"||Notification.permission!=="granted"||!OneSignal.User.PushSubscription.optedIn){
+    var browserPushSupported=false;
+    try{browserPushSupported=!!(OneSignal.Notifications&&OneSignal.Notifications.isPushSupported());}catch(e){}
+    if(browserPushSupported && (typeof Notification==="undefined"||Notification.permission!=="granted"||!OneSignal.User.PushSubscription.optedIn)){
       try{await window.callIndianNearbyHelpWorker("clearHelpLocation");await OneSignal.User.addTag("indian_help_location_optin","0");}catch(e){console.warn("Could not clear inactive nearby location",e);}
       return;
     }

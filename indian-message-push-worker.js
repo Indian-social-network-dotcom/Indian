@@ -139,7 +139,9 @@ async function sendNearbyHelpPush(env, requestId, requestData, senderUid, latitu
   const category = String(stringField(requestData, "category") || "General help")
     .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 50);
   const problem = String(stringField(requestData, "text") || "A person nearby needs help.")
-    .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 220);
+    .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 480);
+  const mediaCount = numberField(requestData, "mediaCount");
+  const mediaNote = Number.isFinite(mediaCount) && mediaCount > 0 ? " Media is attached." : "";
   const idempotencyKey = await stableIdempotencyKey(`help-request:${requestId}`);
   const payload = {
     app_id: ONESIGNAL_APP_ID,
@@ -150,7 +152,7 @@ async function sendNearbyHelpPush(env, requestId, requestData, senderUid, latitu
       { field: "tag", key: "indian_firebase_uid", relation: "!=", value: senderUid }
     ],
     headings: { en: `Help Request Nearby — ${category}` },
-    contents: { en: `${safeName}: ${problem}`.slice(0, 240) },
+    contents: { en: `${safeName} — ${category}: ${problem}${mediaNote}`.slice(0, 520) },
     web_url: `${INDIAN_SITE_URL}?indianHelpRequestId=${encodeURIComponent(requestId)}#help`,
     idempotency_key: idempotencyKey,
     data: { type: "help_request", helpRequestId: requestId, category: category }

@@ -6576,11 +6576,11 @@ else{
            actions.appendChild(b);
          });
          actionArea.appendChild(actions);
-         getDocs(query(collection(db,"helpOffers"),where("requestId","==",d.id),where("requesterUid","==",uid))).then(snapshot=>{
+         getDocs(query(collection(db,"helpOffers"),where("requesterUid","==",uid))).then(snapshot=>{\n           const requestOffers=snapshot.docs.filter(item=>String((item.data()||{}).requestId||"")===d.id);
            if(!document.getElementById(id)||!actionArea.isConnected)return;
            const heading=document.createElement("h4");heading.textContent="People offering help";actionArea.appendChild(heading);
-           if(snapshot.empty){const none=document.createElement("p");none.textContent="No one has offered help yet.";actionArea.appendChild(none);return;}
-           snapshot.docs.forEach(offerDoc=>{
+           if(requestOffers.length===0){const none=document.createElement("p");none.textContent="No one has offered help yet.";actionArea.appendChild(none);return;}
+           requestOffers.forEach(offerDoc=>{
              const offer=offerDoc.data()||{},line=document.createElement("p");
              line.textContent=clean(offer.helperName,60)+" — "+String(offer.status||"pending");actionArea.appendChild(line);
              if(offer.status==="pending" && !x.acceptedHelperUid && status==="Open"){
@@ -6627,9 +6627,9 @@ else{
            });
          }).catch(error=>setHelpMessage("Help offers could not load: "+clean(error?.message||error,160)));
        }else if(x.uid && status==="Open" && !x.acceptedHelperUid){
-         getDocs(query(collection(db,"helpOffers"),where("requestId","==",d.id),where("helperUid","==",uid))).then(snapshot=>{
+         getDocs(query(collection(db,"helpOffers"),where("helperUid","==",uid))).then(snapshot=>{
            if(!actionArea.isConnected)return;
-           const own=snapshot.docs[0],offer=own?.data()||null;
+           const own=snapshot.docs.find(item=>String((item.data()||{}).requestId||"")===d.id)||null,offer=own?.data()||null;
            if(!offer){
              makeHelpButton("Offer Help","Offer to help "+(clean(x.displayName,60)||"this user"),async()=>{
                setHelpMessage("Sending your help offer…");

@@ -126,8 +126,7 @@ function animate(){
  else{armL.rotation.x=THREE.MathUtils.damp(armL.rotation.x,0,8,dt);armR.rotation.x=THREE.MathUtils.damp(armR.rotation.x,0,8,dt);legL.rotation.x=THREE.MathUtils.damp(legL.rotation.x,0,8,dt);legR.rotation.x=THREE.MathUtils.damp(legR.rotation.x,0,8,dt);}
  if(!onGround){avatar.position.y+=jumpVelocity*dt;jumpVelocity-=9.8*dt;if(avatar.position.y<=0){avatar.position.y=0;onGround=true;jumpVelocity=0;}}
  head.rotation.y=THREE.MathUtils.damp(head.rotation.y,(left?-.35:right?.35:0),5,dt);
- const followDistance=6.2;const followHeight=3.4;const behindX=-Math.sin(avatar.rotation.y)*followDistance;const behindZ=-Math.cos(avatar.rotation.y)*followDistance;const orbitLeft=keys.has('q'),orbitRight=keys.has('e');
- cameraOrbitAngle+=(orbitRight?1:0-(orbitLeft?1:0))*0;
+ const followDistance=6.2;const followHeight=3.4;const orbitLeft=keys.has('q'),orbitRight=keys.has('e');
  if(orbitLeft||orbitRight)cameraOrbitAngle+=((orbitRight?1:0)-(orbitLeft?1:0))*1.8*dt;
  const orbitHeading=avatar.rotation.y+cameraOrbitAngle;
  const behindX=-Math.sin(orbitHeading)*followDistance;const behindZ=-Math.cos(orbitHeading)*followDistance;

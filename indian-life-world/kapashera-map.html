@@ -47,7 +47,7 @@ let THREE;
 try{say('3D engine download ho raha hai…');THREE=await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');}
 catch(e){say('3D engine download nahi hua. Internet connection check karke Reload karein.');return;}
 const center={lat:28.5214,lon:77.0820},tileMeters=400,latStep=tileMeters/111320,lonStep=tileMeters/(111320*Math.cos(center.lat*Math.PI/180));
-const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+const endpoints=['https://overpass.private.coffee/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass-api.de/api/interpreter'];
 let scene,camera,renderer,avatar,world,clock;const loaded=new Map(),pending=new Set(),failed=new Set(),queue=[];let busy=false,yaw=0,distance=34;
 const keys=new Set();let avatarX=0,avatarZ=0;
 function geo(x,z){return {lat:center.lat-z/111320,lon:center.lon+x/(111320*Math.cos(center.lat*Math.PI/180))};}
@@ -80,14 +80,14 @@ const mesh=new THREE.Mesh(geom,new THREE.MeshStandardMaterial({color,roughness:.
 async function requestData(bounds){
 const q='[out:json][timeout:18];(way["building"]('+bounds.s+','+bounds.w+','+bounds.n+','+bounds.e+');way["highway"]('+bounds.s+','+bounds.w+','+bounds.n+','+bounds.e+'););out geom;';
 let last;
-for(const url of endpoints){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);try{
+for(const url of endpoints){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);try{
 const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(q),signal:controller.signal});
 if(!response.ok)throw new Error('HTTP '+response.status);const result=await response.json();if(!result.elements)throw new Error('Map data format galat hai');return result;
 }catch(e){last=e;}finally{clearTimeout(timer);}}
 throw last||new Error('No map response');
 }
 function enqueue(tx,tz){const key=tileKey(tx,tz);if(loaded.has(key)||pending.has(key)||failed.has(key))return;pending.add(key);queue.push({tx,tz,key});processQueue();}
-async function processQueue(){if(busy)return;busy=true;while(queue.length){const item=queue.shift();try{say('Kapashera tile '+item.key+' ka OSM data manga gaya hai. Har server ko 8 second milenge…');const data=await requestData(tileBounds(item.tx,item.tz));const group=new THREE.Group();let roads=0,buildings=0;
+async function processQueue(){if(busy)return;busy=true;while(queue.length){const item=queue.shift();try{say('Kapashera tile '+item.key+' ka OSM data manga gaya hai. Har free server ko 15 second milenge…');const data=await requestData(tileBounds(item.tx,item.tz));const group=new THREE.Group();let roads=0,buildings=0;
 const mats={major:new THREE.MeshStandardMaterial({color:0x64696b}),local:new THREE.MeshStandardMaterial({color:0xb5aa9b}),minor:new THREE.MeshStandardMaterial({color:0xc4b9a9})};
 for(const way of data.elements||[]){if(way.tags?.highway&&way.geometry?.length>1){const type=way.tags.highway,w=['motorway','trunk','primary'].includes(type)?10:['secondary','tertiary'].includes(type)?7:['residential','unclassified'].includes(type)?5:2.5;const mat=['motorway','trunk','primary'].includes(type)?mats.major:['secondary','tertiary','residential','unclassified'].includes(type)?mats.local:mats.minor;group.add(addRoad(way.geometry.map(p=>local(p.lat,p.lon)),w,mat));roads++;}
 else if(way.tags?.building&&way.geometry?.length>3){const b=addBuilding(way);if(b){group.add(b);buildings++;}}}
@@ -99,7 +99,7 @@ await new Promise(r=>setTimeout(r,300));
 busy=false;updateStreaming();if(loaded.size)say('3D map tayyar hai. Aage badhne par naye tiles load honge.');else say('Map data abhi nahi mila. Internet connection aur free OSM server check karein; phir Reload button dabayein.');
 }
 function updateStreaming(){const tx=Math.round(avatarX/tileMeters),tz=Math.round(avatarZ/tileMeters);
-enqueue(tx,tz);for(let radius=1;radius<=1;radius++){for(let x=tx-radius;x<=tx+radius;x++)for(let z=tz-radius;z<=tz+radius;z++){if(x!==tx||z!==tz)enqueue(x,z);}}
+enqueue(tx,tz);if(loaded.has(tileKey(tx,tz))){for(let radius=1;radius<=1;radius++){for(let x=tx-radius;x<=tx+radius;x++)for(let z=tz-radius;z<=tz+radius;z++){if(x!==tx||z!==tz)enqueue(x,z);}}}
 for(const [key,item] of loaded){const [x,z]=key.split(',').map(Number);if(Math.abs(x-tx)>1.5||Math.abs(z-tz)>1.5){world.remove(item.group);item.group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});loaded.delete(key);}}
 counts.textContent='Loaded tiles: '+loaded.size+'; waiting: '+queue.length+'. Door ke tiles unload ho jaate hain.';
 }

@@ -48,7 +48,7 @@ try{say('3D engine download ho raha hai…');THREE=await import('https://cdn.jsd
 catch(e){say('3D engine download nahi hua. Internet connection check karke Reload karein.');return;}
 const center={lat:28.5214,lon:77.0820},tileMeters=400,latStep=tileMeters/111320,lonStep=tileMeters/(111320*Math.cos(center.lat*Math.PI/180));
 const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
-let scene,camera,renderer,avatar,world,clock;const loaded=new Map(),pending=new Set(),queue=[];let busy=false,yaw=0,distance=34;
+let scene,camera,renderer,avatar,world,clock;const loaded=new Map(),pending=new Set(),failed=new Set(),queue=[];let busy=false,yaw=0,distance=34;
 const keys=new Set();let avatarX=0,avatarZ=0;
 function geo(x,z){return {lat:center.lat-z/111320,lon:center.lon+x/(111320*Math.cos(center.lat*Math.PI/180))};}
 function tileKey(tx,tz){return tx+','+tz;}
@@ -86,13 +86,13 @@ if(!response.ok)throw new Error('HTTP '+response.status);return await response.j
 }catch(e){last=e;}finally{clearTimeout(timer);}}
 throw last||new Error('No map response');
 }
-function enqueue(tx,tz){const key=tileKey(tx,tz);if(loaded.has(key)||pending.has(key))return;pending.add(key);queue.push({tx,tz,key});processQueue();}
+function enqueue(tx,tz){const key=tileKey(tx,tz);if(loaded.has(key)||pending.has(key)||failed.has(key))return;pending.add(key);queue.push({tx,tz,key});processQueue();}
 async function processQueue(){if(busy)return;busy=true;while(queue.length){const item=queue.shift();try{say('Map tile '+item.key+' load ho raha hai…');const data=await requestData(tileBounds(item.tx,item.tz));const group=new THREE.Group();let roads=0,buildings=0;
 const mats={major:new THREE.MeshStandardMaterial({color:0x64696b}),local:new THREE.MeshStandardMaterial({color:0xb5aa9b}),minor:new THREE.MeshStandardMaterial({color:0xc4b9a9})};
 for(const way of data.elements||[]){if(way.tags?.highway&&way.geometry?.length>1){const type=way.tags.highway,w=['motorway','trunk','primary'].includes(type)?10:['secondary','tertiary'].includes(type)?7:['residential','unclassified'].includes(type)?5:2.5;const mat=['motorway','trunk','primary'].includes(type)?mats.major:['secondary','tertiary','residential','unclassified'].includes(type)?mats.local:mats.minor;group.add(addRoad(way.geometry.map(p=>local(p.lat,p.lon)),w,mat));roads++;}
 else if(way.tags?.building&&way.geometry?.length>3){const b=addBuilding(way);if(b){group.add(b);buildings++;}}}
 world.add(group);loaded.set(item.key,{group,roads,buildings});counts.textContent='Loaded tiles: '+loaded.size+'. Is tile mein '+roads+' roads aur '+buildings+' buildings.';
-}catch(e){console.error(e);say('Tile '+item.key+' load nahi hua. Server busy ho sakta hai; aage badhne par dobara koshish hogi.');}
+}catch(e){failed.add(item.key);console.error(e);say('Tile '+item.key+' load nahi hua. Server busy ho sakta hai; Reload button se dobara koshish karein.');}
 finally{pending.delete(item.key);}
 await new Promise(r=>setTimeout(r,900));
 }
@@ -107,7 +107,7 @@ function move(dir){const step=28;if(dir==='forward')avatarZ-=step;if(dir==='back
 document.querySelectorAll('[data-move]').forEach(b=>b.addEventListener('click',()=>move(b.dataset.move)));
 document.getElementById('turnLeft').onclick=()=>{yaw-=.25;updateCamera();};document.getElementById('turnRight').onclick=()=>{yaw+=.25;updateCamera();};
 document.getElementById('zoomIn').onclick=()=>{distance=Math.max(12,distance*.8);updateCamera();};document.getElementById('zoomOut').onclick=()=>{distance=Math.min(100,distance*1.2);updateCamera();};
-document.getElementById('reload').onclick=()=>{for(const [k,v] of loaded){world.remove(v.group);}loaded.clear();queue.length=0;pending.clear();updateStreaming();};
+document.getElementById('reload').onclick=()=>{for(const [k,v] of loaded){world.remove(v.group);}loaded.clear();queue.length=0;pending.clear();failed.clear();updateStreaming();};
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();keys.add(k);if(k==='q'){yaw-=.08;updateCamera();}if(k==='e'){yaw+=.08;updateCamera();}});
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 root.addEventListener('pointerdown',e=>{root.dataset.drag='1';root.dataset.x=e.clientX;root.dataset.y=e.clientY;root.setPointerCapture(e.pointerId);});

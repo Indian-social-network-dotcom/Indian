@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101820">
+<title>Indian Life World — 3D Prototype</title>
+<style>
+:root{color-scheme:dark;--bg:#101820;--panel:#1b2935;--line:#385064;--accent:#ffb74d;--text:#f4f7fa;--muted:#c4d0da}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#15232e;border-bottom:1px solid var(--line)}
+header a,button{font:inherit}
+header a{color:var(--accent);text-decoration:none}
+header h1{font-size:1.15rem;margin:0}
+main{max-width:1000px;margin:auto;padding:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 14px}
+h2{font-size:1.05rem;margin:0 0 8px;color:var(--accent)}
+p{margin:6px 0;color:var(--muted)}
+#gameCanvas{display:block;width:100%;height:min(58vh,520px);min-height:280px;border-radius:12px;background:#91b9d4;touch-action:none}
+.controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:330px;margin:12px auto}
+button,.file-label{border:1px solid #718494;border-radius:10px;background:#263b4b;color:white;padding:11px;min-height:46px;cursor:pointer;text-align:center}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+button:active{background:#405a6d}
+#jump{grid-column:2}
+#photo{position:absolute;width:1px;height:1px;opacity:0}
+.file-label{display:inline-block}
+#photoPreview{display:block;max-width:180px;max-height:180px;margin-top:10px;border-radius:10px}
+.status{padding:10px;border:1px solid var(--line);border-radius:10px;background:#13212c;color:#eaf3f9}
+.note{font-size:.92rem}
+@media(min-width:700px){.layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(250px,1fr);gap:14px}.layout .panel{margin:0}}
+</style>
+</head>
+<body>
+<header><a href="../games.html">← Games</a><h1>🌍 Indian Life World</h1></header>
+<main>
+<section class="panel">
+<h2>Welcome to your virtual world</h2>
+<p>Abhi ye pehla playable 3D prototype hai. Ismein aap ek test Avatar ko chala, ghuma aur jump kara sakte hain.</p>
+<div id="status" class="status" role="status" aria-live="polite">3D world load ho raha hai…</div>
+</section>
+<div class="layout">
+<section class="panel">
+<h2>3D World</h2>
+<canvas id="gameCanvas" aria-label="3D virtual world with a controllable test avatar"></canvas>
+<div class="controls" aria-label="Touch movement controls">
+<span></span><button type="button" data-move="forward" aria-label="Aage">↑ Aage</button><span></span>
+<button type="button" data-move="left" aria-label="Baayein">← Baayein</button>
+<button type="button" data-move="back" aria-label="Peechhe">↓ Peechhe</button>
+<button type="button" data-move="right" aria-label="Daayein">→ Daayein</button>
+<button id="jump" type="button">Jump</button>
+</div>
+<p class="note">Laptop: W A S D ya Arrow keys se chalayen. Space se jump. Mobile: upar diye buttons ko dabayein.</p>
+</section>
+<section class="panel">
+<h2>Apna photo</h2>
+<label class="file-label" for="photo">Full-body photo select karein</label>
+<input id="photo" type="file" accept="image/jpeg,image/png,image/webp">
+<img id="photoPreview" alt="Selected photo preview" hidden>
+<p id="photoStatus" class="note" role="status" aria-live="polite">Photo abhi sirf is device par preview hogi. Server par upload nahi hoti.</p>
+<div class="status note">AI se aapka asli-jaisa 3D Avatar banana agla development stage hai. Is prototype mein filhaal articulated test Avatar hai; photo se clone abhi generate nahi hota.</div>
+<h2 style="margin-top:16px">Aage kya aayega?</h2>
+<p>Photo-to-3D Avatar, face expressions, detailed hand and finger animation, multiplayer friends, live voice, aur real-world locations ko alag-alag stages mein jodenge.</p>
+</section>
+</div>
+</main>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js';
+const canvas=document.getElementById('gameCanvas');
+const status=document.getElementById('status');
+const photo=document.getElementById('photo');
+const photoPreview=document.getElementById('photoPreview');
+const photoStatus=document.getElementById('photoStatus');
+let renderer,scene,camera,avatar,head,armL,armR,legL,legR,clock;
+const keys=new Set();
+const touch=new Set();
+let jumpVelocity=0,onGround=true;
+function say(message){status.textContent=message;}
+function makeLimb(parent,x,y,z,radius,length,color){
+ const pivot=new THREE.Group();pivot.position.set(x,y,z);parent.add(pivot);
+ const mesh=new THREE.Mesh(new THREE.CapsuleGeometry(radius,length,5,8),new THREE.MeshStandardMaterial({color}));
+ mesh.position.y=-length/2;mesh.castShadow=true;pivot.add(mesh);return pivot;
+}
+function createAvatar(){
+ avatar=new THREE.Group();
+ const skin=new THREE.MeshStandardMaterial({color:0xc98f68});
+ const shirt=new THREE.MeshStandardMaterial({color:0x1976d2});
+ const pants=new THREE.MeshStandardMaterial({color:0x263238});
+ const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.34,.58,6,12),shirt);torso.position.y=1.42;torso.castShadow=true;avatar.add(torso);
+ head=new THREE.Group();head.position.set(0,2.12,0);avatar.add(head);
+ const face=new THREE.Mesh(new THREE.SphereGeometry(.25,20,16),skin);face.scale.set(.9,1.08,.9);face.castShadow=true;head.add(face);
+ const hair=new THREE.Mesh(new THREE.SphereGeometry(.255,16,10,0,Math.PI*2,0,Math.PI*.55),new THREE.MeshStandardMaterial({color:0x202020}));hair.position.y=.08;head.add(hair);
+ const eyeMat=new THREE.MeshStandardMaterial({color:0x171717});
+ for(const x of [-.09,.09]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.025,8,8),eyeMat);eye.position.set(x,.025,.22);head.add(eye);}
+ armL=makeLimb(avatar,-.4,1.78,0,.105,.55,0xc98f68);
+ armR=makeLimb(avatar,.4,1.78,0,.105,.55,0xc98f68);
+ legL=makeLimb(avatar,-.17,.92,0,.13,.72,0x263238);
+ legR=makeLimb(avatar,.17,.92,0,.13,.72,0x263238);
+ scene.add(avatar);
+}
+function init(){
+ scene=new THREE.Scene();scene.background=new THREE.Color(0x9ac5df);scene.fog=new THREE.Fog(0x9ac5df,18,65);
+ camera=new THREE.PerspectiveCamera(55,1,.1,100);camera.position.set(0,4,7);
+ renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;
+ scene.add(new THREE.HemisphereLight(0xffffff,0x536779,2));
+ const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-5,10,6);sun.castShadow=true;scene.add(sun);
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(100,100),new THREE.MeshStandardMaterial({color:0x5d965b}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+ const road=new THREE.Mesh(new THREE.PlaneGeometry(5,100),new THREE.MeshStandardMaterial({color:0x42484c}));road.rotation.x=-Math.PI/2;road.position.set(0,.012,-5);scene.add(road);
+ for(let z=-35;z<35;z+=8){const dash=new THREE.Mesh(new THREE.PlaneGeometry(.12,3),new THREE.MeshBasicMaterial({color:0xf6e6a6}));dash.rotation.x=-Math.PI/2;dash.position.set(0,.025,z);scene.add(dash);}
+ for(let i=0;i<10;i++){const x=(i%2?1:-1)*(4+Math.floor(i/2)*1.2),z=-i*6;const building=new THREE.Mesh(new THREE.BoxGeometry(2.4,2.5+(i%3),2.8),new THREE.MeshStandardMaterial({color:[0xd7c3a2,0xb7c9d4,0xd8d0c1][i%3]}));building.position.set(x,building.geometry.parameters.height/2,z);building.castShadow=true;scene.add(building);}
+ createAvatar();clock=new THREE.Clock();resize();window.addEventListener('resize',resize);say('3D world ready. W/A/S/D ya arrow keys se Avatar chalayein.');animate();
+}
+function resize(){if(!renderer)return;const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+function animate(){
+ requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);
+ const forward=keys.has('w')||keys.has('arrowup')||touch.has('forward');
+ const back=keys.has('s')||keys.has('arrowdown')||touch.has('back');
+ const left=keys.has('a')||keys.has('arrowleft')||touch.has('left');
+ const right=keys.has('d')||keys.has('arrowright')||touch.has('right');
+ let dx=(right?1:0)-(left?1:0),dz=(back?1:0)-(forward?1:0);
+ const moving=dx!==0||dz!==0;
+ if(moving){const len=Math.hypot(dx,dz);dx/=len;dz/=len;avatar.position.x+=dx*4*dt;avatar.position.z+=dz*4*dt;avatar.rotation.y=Math.atan2(dx,dz);armL.rotation.x=Math.sin(clock.elapsedTime*9)*.65;armR.rotation.x=-Math.sin(clock.elapsedTime*9)*.65;legL.rotation.x=-Math.sin(clock.elapsedTime*9)*.7;legR.rotation.x=Math.sin(clock.elapsedTime*9)*.7;}
+ else{armL.rotation.x=THREE.MathUtils.damp(armL.rotation.x,0,8,dt);armR.rotation.x=THREE.MathUtils.damp(armR.rotation.x,0,8,dt);legL.rotation.x=THREE.MathUtils.damp(legL.rotation.x,0,8,dt);legR.rotation.x=THREE.MathUtils.damp(legR.rotation.x,0,8,dt);}
+ if(!onGround){avatar.position.y+=jumpVelocity*dt;jumpVelocity-=9.8*dt;if(avatar.position.y<=0){avatar.position.y=0;onGround=true;jumpVelocity=0;}}
+ head.rotation.y=THREE.MathUtils.damp(head.rotation.y,(left?-.35:right?.35:0),5,dt);
+ const desired=new THREE.Vector3(avatar.position.x,avatar.position.y+3.4,avatar.position.z+6.2);camera.position.lerp(desired,1-Math.exp(-4*dt));camera.lookAt(avatar.position.x,avatar.position.y+1.25,avatar.position.z);
+ renderer.render(scene,camera);
+}
+function doJump(){if(onGround){jumpVelocity=5.2;onGround=false;}}
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();keys.add(k);if(k===' ')doJump();});
+window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+document.querySelectorAll('[data-move]').forEach(btn=>{
+ const k=btn.dataset.move;
+ const down=e=>{e.preventDefault();touch.add(k);};
+ const up=e=>{e.preventDefault();touch.delete(k);};
+ btn.addEventListener('pointerdown',down);btn.addEventListener('pointerup',up);btn.addEventListener('pointerleave',up);btn.addEventListener('pointercancel',up);
+});
+document.getElementById('jump').addEventListener('click',doJump);
+photo.addEventListener('change',()=>{
+ const file=photo.files?.[0];if(!file)return;
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)){photoStatus.textContent='JPG, PNG ya WebP photo select karein.';photo.value='';return;}
+ if(file.size>8*1024*1024){photoStatus.textContent='Photo 8 MB se chhoti honi chahiye.';photo.value='';return;}
+ if(photoPreview.dataset.url)URL.revokeObjectURL(photoPreview.dataset.url);
+ const url=URL.createObjectURL(file);photoPreview.src=url;photoPreview.dataset.url=url;photoPreview.hidden=false;
+ photoStatus.textContent='Photo is device par preview ho rahi hai. Abhi upload ya AI cloning nahi ho rahi.';
+});
+try{init();}catch(error){say('3D world load nahi hua. Is browser mein WebGL support check karein.');console.error(error);}
+</script>
+</body>
+</html>

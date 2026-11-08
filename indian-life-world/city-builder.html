@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101820">
+<title>Automatic 3D City Builder | Indian Life World</title>
+<style>
+:root{color-scheme:dark;--bg:#101820;--panel:#1b2935;--line:#385064;--accent:#ffb74d;--text:#f4f7fa;--muted:#c4d0da}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,Segoe UI,sans-serif}
+header{padding:14px 16px;background:#15232e;border-bottom:1px solid var(--line)}header a{color:var(--accent)}h1{font-size:1.25rem;margin:6px 0}
+main{max-width:850px;margin:auto;padding:14px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+label{display:block;font-weight:650;margin:10px 0 4px}input{width:100%;min-height:46px;padding:9px 12px;border-radius:8px;border:1px solid #718494;background:#101820;color:white;font:inherit}
+button{font:inherit;color:white;background:#263b4b;border:1px solid #718494;border-radius:9px;padding:11px 16px;min-height:48px;cursor:pointer;margin:6px 4px 4px 0}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+#status{font-weight:650;color:#ffe0a3}#download{display:none;color:#a9e6b5;font-weight:700}.small{font-size:.92rem;color:var(--muted)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:520px){.row{grid-template-columns:1fr}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<header><a href="./index.html">Indian Life World mein wapas jaayein</a><h1>Automatic 3D City Builder</h1></header>
+<main>
+<section class="panel">
+<p>Yahan map par kuchh draw nahi karna hai. Jagah ke coordinates aur area ka size pehle se diya gaya hai. Generate dabane par available OpenStreetMap roads aur building footprints se 3D city model banega.</p>
+<p class="small">Pehla test: Kapashera Border, New Delhi. Area 400 × 400 metre. Zaroorat par baad mein coordinates aur size badal sakte hain.</p>
+</section>
+<section class="panel">
+<h2>1. Jagah</h2>
+<label for="place">Jagah ka naam</label><input id="place" value="Kapashera Border, New Delhi 110037">
+<div class="row">
+<div><label for="lat">Latitude</label><input id="lat" type="number" step="0.000001" value="28.5214"></div>
+<div><label for="lon">Longitude</label><input id="lon" type="number" step="0.000001" value="77.0820"></div>
+</div>
+<div class="row">
+<div><label for="width">Area width (metre)</label><input id="width" type="number" min="100" max="1200" step="100" value="400"></div>
+<div><label for="height">Area height (metre)</label><input id="height" type="number" min="100" max="1200" step="100" value="400"></div>
+</div>
+<button id="generate">3D City Generate karein</button>
+<p id="status" role="status" aria-live="polite">Generate button dabane par free map data manga jayega.</p>
+<p id="counts" role="status" aria-live="polite"></p>
+<a id="download" download="kapashera-3d-city.glb">3D City GLB file download karein</a>
+</section>
+<section class="panel">
+<h2>2. Is model mein kya aayega?</h2>
+<ul><li>OpenStreetMap mein darj asli sadkein aur galiyan</li><li>OpenStreetMap building footprints se 3D buildings</li><li>Jahan available ho, building height, floors aur colour tags</li><li>Ek GLB file, jise Indian Life World ke Three.js game mein load kiya ja sakta hai</li></ul>
+<p class="small">Zaroori limitation: OSM data mein har ghar ka exact rang, khidki, darwaza ya photo nahi hota. Yeh real map layout par bana 3D model hoga, photorealistic street scan nahi. Map data © OpenStreetMap contributors, ODbL.</p>
+</section>
+</main>
+<script type="module">
+const status=document.getElementById('status'),counts=document.getElementById('counts'),button=document.getElementById('generate'),download=document.getElementById('download');
+const say=t=>status.textContent=t;
+let THREE,GLTFExporter;
+try{
+  say('3D builder engine load ho raha hai…');
+  THREE=await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
+  ({GLTFExporter}=await import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/exporters/GLTFExporter.js'));
+  say('Builder tayyar hai. Generate button dabayein.');
+}catch(error){say('3D builder load nahi hua. Internet connection check karke page refresh karein.');}
+const servers=['https://overpass.private.coffee/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass-api.de/api/interpreter'];
+function localPoint(lat,lon,centerLat,centerLon){return {x:(lon-centerLon)*111320*Math.cos(centerLat*Math.PI/180),z:-(lat-centerLat)*111320};}
+async function getOSM(bounds){
+ const q='[out:json][timeout:25];(way["building"]('+bounds.s+','+bounds.w+','+bounds.n+','+bounds.e+');way["highway"]('+bounds.s+','+bounds.w+','+bounds.n+','+bounds.e+'););out geom;';
+ let last;
+ for(let i=0;i<servers.length;i++){
+  say('Free map server '+(i+1)+' of '+servers.length+' se Kapashera ka data manga ja raha hai…');
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),18000);
+  try{
+   const response=await fetch(servers[i],{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(q),signal:controller.signal});
+   if(!response.ok)throw new Error('HTTP '+response.status);
+   const data=await response.json();if(!Array.isArray(data.elements))throw new Error('Map data format sahi nahi hai');
+   if(!data.elements.length)throw new Error('Is area mein OSM data nahi mila');
+   return data.elements;
+  }catch(e){last=e;}finally{clearTimeout(timer);}
+ }
+ throw last||new Error('Free map servers ne jawab nahi diya');
+}
+function makeCity(elements,lat,lon,w,h){
+ const city=new THREE.Group();city.name='IndianLifeWorld_Real_OSM_City';
+ const ground=new THREE.Mesh(new THREE.BoxGeometry(w,.5,h),new THREE.MeshStandardMaterial({color:0x9eaa8c,roughness:1}));
+ ground.position.y=-.3;ground.name='Terrain';city.add(ground);
+ const roadMats={
+  major:new THREE.MeshStandardMaterial({color:0x55595b,roughness:1}),
+  local:new THREE.MeshStandardMaterial({color:0x77736d,roughness:1}),
+  minor:new THREE.MeshStandardMaterial({color:0xaaa397,roughness:1})
+ };
+ let roads=0,buildings=0;
+ for(const way of elements){
+  const tags=way.tags||{},geom=way.geometry||[];
+  if(tags.highway&&geom.length>1){
+   const type=tags.highway;
+   const width=['motorway','trunk'].includes(type)?12:['primary','secondary'].includes(type)?8:['tertiary','residential','unclassified','service'].includes(type)?5:2.5;
+   const mat=['motorway','trunk','primary'].includes(type)?roadMats.major:['secondary','tertiary','residential','unclassified','service'].includes(type)?roadMats.local:roadMats.minor;
+   for(let i=0;i<geom.length-1;i++){
+    const a=localPoint(geom[i].lat,geom[i].lon,lat,lon),b=localPoint(geom[i+1].lat,geom[i+1].lon,lat,lon);
+    const dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz);if(len<.2)continue;
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(width,.12,len),mat);
+    mesh.position.set((a.x+b.x)/2,.02,(a.z+b.z)/2);mesh.rotation.y=Math.atan2(dx,dz);mesh.name='OSM road '+type;city.add(mesh);
+   }
+   roads++;continue;
+  }
+  if(tags.building&&geom.length>=4){
+   const pts=geom.map(p=>localPoint(p.lat,p.lon,lat,lon));
+   const shape=new THREE.Shape();shape.moveTo(pts[0].x,-pts[0].z);
+   for(let i=1;i<pts.length;i++)shape.lineTo(pts[i].x,-pts[i].z);
+   shape.closePath();
+   let levels=parseFloat(tags['building:levels']||'');
+   let height=parseFloat(String(tags.height||'').replace(/[^0-9.]/g,''));
+   if(!Number.isFinite(height)||height<2)height=Number.isFinite(levels)&&levels>0?levels*3.1:7.5;
+   height=Math.min(150,Math.max(2,height));
+   const geometry=new THREE.ExtrudeGeometry(shape,{depth:height,bevelEnabled:false});
+   geometry.rotateX(-Math.PI/2);
+   let colour=0xc7b9a5;const raw=tags['building:colour']||tags.colour;
+   if(raw&&/^#[0-9a-f]{6}$/i.test(raw))colour=raw;
+   const mesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:colour,roughness:.9}));
+   mesh.position.y=.05;mesh.name='OSM building '+(tags.building||'yes');city.add(mesh);buildings++;
+  }
+ }
+ city.userData={source:'OpenStreetMap',attribution:'© OpenStreetMap contributors',centerLatitude:lat,centerLongitude:lon,widthMeters:w,heightMeters:h,roadWays:roads,buildings};
+ return {city,roads,buildings};
+}
+function exportGLB(city){
+ return new Promise((resolve,reject)=>{
+  const exporter=new GLTFExporter();
+  exporter.parse(city,result=>resolve(result),error=>reject(error),{binary:true,onlyVisible:true,trs:false});
+ });
+}
+button.addEventListener('click',async()=>{
+ if(!THREE||!GLTFExporter){say('3D builder abhi load nahi hua. Page refresh karein.');return;}
+ button.disabled=true;download.style.display='none';counts.textContent='';
+ try{
+  const lat=Number(document.getElementById('lat').value),lon=Number(document.getElementById('lon').value);
+  const w=Number(document.getElementById('width').value),h=Number(document.getElementById('height').value);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>85||Math.abs(lon)>180)throw new Error('Latitude ya Longitude sahi nahi hai.');
+  if(!Number.isFinite(w)||!Number.isFinite(h)||w<100||h<100||w>1200||h>1200)throw new Error('Area 100 se 1200 metre ke beech rakhein.');
+  const latDelta=h/2/111320,lonDelta=w/2/(111320*Math.cos(lat*Math.PI/180));
+  const bounds={s:lat-latDelta,n:lat+latDelta,w:lon-lonDelta,e:lon+lonDelta};
+  const elements=await getOSM(bounds);
+  say('Asli map data mil gaya. 3D buildings aur roads ban rahe hain…');
+  const result=makeCity(elements,lat,lon,w,h);
+  if(!result.roads&&!result.buildings)throw new Error('Is jagah par roads ya buildings ka usable data nahi mila.');
+  say('3D city ban gayi. GLB file taiyar ho rahi hai…');
+  const blob=await exportGLB(result.city);
+  const url=URL.createObjectURL(new Blob([blob],{type:'model/gltf-binary'}));
+  download.href=url;download.download=(document.getElementById('place').value.toLowerCase().includes('kapashera')?'kapashera':'indian')+'-3d-city.glb';download.style.display='inline-block';
+  counts.textContent='Taiyar: '+result.roads+' road ways aur '+result.buildings+' buildings. File size: '+(blob.byteLength/1024/1024).toFixed(2)+' MB.';
+  say('Kaam poora! Ab neeche GLB file download link activate hai.');
+ }catch(error){say('City nahi ban saki: '+(error&&error.message?error.message:'Unknown error')+'. Dobara koshish karein.');}
+ finally{button.disabled=false;}
+});
+</script>
+</body>
+</html>

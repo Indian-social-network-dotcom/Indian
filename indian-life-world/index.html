@@ -129,11 +129,27 @@ function animate(){
 function doJump(){if(onGround){jumpVelocity=5.2;onGround=false;}}
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();keys.add(k);if(k===' ')doJump();});
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+function moveOneStep(direction){
+ const step=1.25;
+ if(direction==='forward')avatar.position.z-=step;
+ if(direction==='back')avatar.position.z+=step;
+ if(direction==='left')avatar.position.x-=step;
+ if(direction==='right')avatar.position.x+=step;
+ if(direction==='forward'||direction==='back'||direction==='left'||direction==='right'){
+  if(direction==='forward')avatar.rotation.y=Math.PI;
+  if(direction==='back')avatar.rotation.y=0;
+  if(direction==='left')avatar.rotation.y=-Math.PI/2;
+  if(direction==='right')avatar.rotation.y=Math.PI/2;
+  say('Avatar moved '+direction+'.');
+ }
+}
 document.querySelectorAll('[data-move]').forEach(btn=>{
  const k=btn.dataset.move;
  const down=e=>{e.preventDefault();touch.add(k);};
  const up=e=>{e.preventDefault();touch.delete(k);};
  btn.addEventListener('pointerdown',down);btn.addEventListener('pointerup',up);btn.addEventListener('pointerleave',up);btn.addEventListener('pointercancel',up);
+ // Keyboard/screen-reader activation (Enter/Space) produces click, not pointer hold.
+ btn.addEventListener('click',()=>moveOneStep(k));
 });
 document.getElementById('jump').addEventListener('click',doJump);
 photo.addEventListener('change',()=>{

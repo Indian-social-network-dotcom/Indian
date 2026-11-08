@@ -57,21 +57,21 @@ try{
   ({GLTFExporter}=await import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/exporters/GLTFExporter.js'));
   say('Builder tayyar hai. Generate button dabayein.');
 }catch(error){say('3D builder load nahi hua. Internet connection check karke page refresh karein.');}
-const servers=['https://overpass.private.coffee/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass-api.de/api/interpreter'];
+const servers=['https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass-api.de/api/interpreter'];
 function localPoint(lat,lon,centerLat,centerLon){return {x:(lon-centerLon)*111320*Math.cos(centerLat*Math.PI/180),z:-(lat-centerLat)*111320};}
 async function getOSM(bounds){
  const q='[out:json][timeout:25];(way["building"]('+bounds.s+','+bounds.w+','+bounds.n+','+bounds.e+');way["highway"]('+bounds.s+','+bounds.w+','+bounds.n+','+bounds.e+'););out geom;';
  let last;
  for(let i=0;i<servers.length;i++){
-  say('Free map server '+(i+1)+' of '+servers.length+' se Kapashera ka data manga ja raha hai…');
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),18000);
+  say('Free map server '+(i+1)+' of '+servers.length+' se Kapashera ka data manga ja raha hai. 30 second tak jawab ka intezar hoga…');
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
   try{
    const response=await fetch(servers[i],{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(q),signal:controller.signal});
    if(!response.ok)throw new Error('HTTP '+response.status);
    const data=await response.json();if(!Array.isArray(data.elements))throw new Error('Map data format sahi nahi hai');
    if(!data.elements.length)throw new Error('Is area mein OSM data nahi mila');
    return data.elements;
-  }catch(e){last=e;}finally{clearTimeout(timer);}
+  }catch(e){last=e;say('Free map server '+(i+1)+' se data nahi mila. Agla server try ho raha hai…');}finally{clearTimeout(timer);}
  }
  throw last||new Error('Free map servers ne jawab nahi diya');
 }

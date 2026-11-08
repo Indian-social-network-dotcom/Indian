@@ -123,7 +123,7 @@ function animate(){
  else{armL.rotation.x=THREE.MathUtils.damp(armL.rotation.x,0,8,dt);armR.rotation.x=THREE.MathUtils.damp(armR.rotation.x,0,8,dt);legL.rotation.x=THREE.MathUtils.damp(legL.rotation.x,0,8,dt);legR.rotation.x=THREE.MathUtils.damp(legR.rotation.x,0,8,dt);}
  if(!onGround){avatar.position.y+=jumpVelocity*dt;jumpVelocity-=9.8*dt;if(avatar.position.y<=0){avatar.position.y=0;onGround=true;jumpVelocity=0;}}
  head.rotation.y=THREE.MathUtils.damp(head.rotation.y,(left?-.35:right?.35:0),5,dt);
- const desired=new THREE.Vector3(avatar.position.x,avatar.position.y+3.4,avatar.position.z+6.2);camera.position.lerp(desired,1-Math.exp(-4*dt));camera.lookAt(avatar.position.x,avatar.position.y+1.25,avatar.position.z);
+ const followDistance=6.2;const followHeight=3.4;const behindX=-Math.sin(avatar.rotation.y)*followDistance;const behindZ=-Math.cos(avatar.rotation.y)*followDistance;const desired=new THREE.Vector3(avatar.position.x+behindX,avatar.position.y+followHeight,avatar.position.z+behindZ);camera.position.lerp(desired,1-Math.exp(-4*dt));camera.lookAt(avatar.position.x,avatar.position.y+1.25,avatar.position.z);
  renderer.render(scene,camera);
 }
 function doJump(){if(onGround){jumpVelocity=5.2;onGround=false;}}

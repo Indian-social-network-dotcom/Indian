@@ -4,101 +4,118 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<title>Kapashera Border — Real Map Preview | Indian Life World</title>
+<title>Kapashera Border — Streaming 3D Map | Indian Life World</title>
 <style>
 :root{color-scheme:dark;--bg:#101820;--panel:#1b2935;--line:#385064;--accent:#ffb74d;--text:#f4f7fa;--muted:#c4d0da}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,sans-serif}
 header{padding:12px 16px;background:#15232e;border-bottom:1px solid var(--line)}header a{color:var(--accent)}h1{font-size:1.2rem;margin:4px 0}
 main{max-width:1100px;margin:auto;padding:14px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
-#map{height:min(68vh,680px);min-height:340px;background:#b8c8d0;border-radius:10px;overflow:hidden}
+#map{height:min(62vh,640px);min-height:320px;background:#b8c8d0;border-radius:10px;overflow:hidden;touch-action:none}
 button{font:inherit;color:white;background:#263b4b;border:1px solid #718494;border-radius:9px;padding:10px 14px;min-height:44px;cursor:pointer;margin:4px}
 button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-#status{font-weight:600;color:#ffe0a3}p{color:var(--muted);margin:6px 0}.small{font-size:.9rem}
+#status{font-weight:600;color:#ffe0a3}.small{font-size:.9rem;color:var(--muted)}.controls{display:flex;flex-wrap:wrap;gap:4px}
 </style>
 </head>
 <body>
-<header><a href="./index.html">Indian Life World mein wapas jaayein</a><h1>Kapashera Border — Real Map Test</h1></header>
+<header><a href="./index.html">Indian Life World mein wapas jaayein</a><h1>Kapashera Border — Free Real 3D Map</h1></header>
 <main>
 <section class="panel">
-<p>Area: Kapashera Border, New Delhi 110037. Is preview mein OpenStreetMap se milne wali asli road geometry aur building footprints ko 3D mein dikhaya jayega.</p>
-<p id="status" role="status" aria-live="polite">Map data load ho raha hai. Kripya intezar karein.</p>
-<button id="reload" type="button">Map dobara load karein</button>
-<button id="zoomIn" type="button">Zoom in</button><button id="zoomOut" type="button">Zoom out</button>
-<p class="small">Mouse se drag karke view ghumayein; wheel se zoom karein. Keyboard: arrow keys se view ghumayein, + aur - se zoom.</p>
+<p>Yeh OpenStreetMap ke open geographic data se banaya gaya streaming map hai. Avatar ko WASD / arrow keys se chalayein. Mobile ya NVDA ke liye neeche buttons hain.</p>
+<p id="status" role="status" aria-live="polite">3D engine shuru ho raha hai…</p>
+<div class="controls" aria-label="Movement and camera controls">
+<button data-move="forward">Aage</button><button data-move="back">Peechhe</button><button data-move="left">Baayein</button><button data-move="right">Daayein</button>
+<button id="turnLeft">Camera baayein</button><button id="turnRight">Camera daayein</button><button id="zoomIn">Zoom in</button><button id="zoomOut">Zoom out</button><button id="reload">Current area dobara load karein</button>
+</div>
+<p class="small">Laptop: W A S D ya arrow keys. Q/E se camera ghumayein. Map 400 metre ke tiles mein load hota hai; paas ke tiles load hote hain aur door ke 3D objects scene se hata diye jaate hain.</p>
 </section>
-<div id="map" aria-label="Kapashera Border ka 3D map"></div>
+<div id="map" aria-label="Kapashera Border streaming 3D map"></div>
 <section class="panel">
-<p id="counts">Roads aur buildings ki ginti data load hone ke baad dikhegi.</p>
-<p class="small">Map data © OpenStreetMap contributors, ODbL. Is test mein buildings ki height OSM tags se li jayegi; jahan height nahi hogi wahan estimated height hogi. Asli gharon ke exact rang, balconies, doors aur windows har jagah ke open map data mein available nahi hote. Isliye yeh pehla geographic 3D preview hai, photorealistic final map nahi.</p>
+<p id="counts" role="status" aria-live="polite">Road aur building data ka intezar hai.</p>
+<p class="small">Map data © OpenStreetMap contributors, ODbL. Building height OSM tags se milne par use hoti hai; warna estimate hota hai. Har building ka asli rang, darwaza aur khidki open data mein zaroori nahi milte. Yeh photorealistic scan nahi hai.</p>
 <p class="small"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap attribution aur licence</a></p>
 </section>
 </main>
+<script>
+window.addEventListener('error',function(){const s=document.getElementById('status');if(s)s.textContent='3D map engine load nahi hua. Internet connection ya browser WebGL check karein.';});
+window.addEventListener('unhandledrejection',function(){const s=document.getElementById('status');if(s)s.textContent='3D map mein ek error aaya. Reload button dabayein.';});
+</script>
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-const center={lat:28.5214,lon:77.0820};
-const bbox={south:28.5160,west:77.0760,north:28.5270,east:77.0880};
-const root=document.getElementById('map');
-const status=document.getElementById('status');
-const counts=document.getElementById('counts');
-let scene,camera,renderer,world,dragging=false,lastX=0,lastY=0,yaw=0,pitch=.72,distance=900;
-function say(t){status.textContent=t}
-function local(lat,lon){return {x:(lon-center.lon)*111320*Math.cos(center.lat*Math.PI/180),z:-(lat-center.lat)*111320}}
-function makeRoad(points,width,material){
- const verts=[],indices=[];
- for(let i=0;i<points.length-1;i++){
-  const a=points[i],b=points[i+1],dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz)||1,ox=-dz/len*width/2,oz=dx/len*width/2,base=verts.length/3;
-  verts.push(a.x+ox,.8,a.z+oz,a.x-ox,.8,a.z-oz,b.x+ox,.8,b.z+oz,b.x-ox,.8,b.z-oz);
-  indices.push(base,base+1,base+2,base+1,base+3,base+2);
- }
- const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(indices);g.computeVertexNormals();return new THREE.Mesh(g,material);
+(async()=>{
+const status=document.getElementById('status'),counts=document.getElementById('counts'),root=document.getElementById('map');
+const say=t=>status.textContent=t;
+let THREE;
+try{say('3D engine download ho raha hai…');THREE=await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');}
+catch(e){say('3D engine download nahi hua. Internet connection check karke Reload karein.');return;}
+const center={lat:28.5214,lon:77.0820},tileMeters=400,latStep=tileMeters/111320,lonStep=tileMeters/(111320*Math.cos(center.lat*Math.PI/180));
+const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+let scene,camera,renderer,avatar,world,clock;const loaded=new Map(),pending=new Set(),failed=new Set(),queue=[];let busy=false,yaw=0,distance=34;
+const keys=new Set();let avatarX=0,avatarZ=0;
+function geo(x,z){return {lat:center.lat-z/111320,lon:center.lon+x/(111320*Math.cos(center.lat*Math.PI/180))};}
+function tileKey(tx,tz){return tx+','+tz;}
+function tileBounds(tx,tz){const c=geo(tx*tileMeters,tz*tileMeters);return {s:c.lat-latStep/2,n:c.lat+latStep/2,w:c.lon-lonStep/2,e:c.lon+lonStep/2};}
+function local(lat,lon){return {x:(lon-center.lon)*111320*Math.cos(center.lat*Math.PI/180),z:-(lat-center.lat)*111320};}
+function init(){
+ scene=new THREE.Scene();scene.background=new THREE.Color(0x9bb8c8);scene.fog=new THREE.Fog(0x9bb8c8,700,1800);
+ camera=new THREE.PerspectiveCamera(58,root.clientWidth/root.clientHeight,.1,3000);
+ renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(root.clientWidth,root.clientHeight);root.replaceChildren(renderer.domElement);
+ scene.add(new THREE.HemisphereLight(0xffffff,0x66705e,2));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-400,700,300);scene.add(sun);
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(5000,5000),new THREE.MeshStandardMaterial({color:0x9eaa8c,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.3;scene.add(ground);
+ world=new THREE.Group();scene.add(world);
+ avatar=new THREE.Group();const body=new THREE.Mesh(new THREE.CapsuleGeometry(1,2,5,8),new THREE.MeshStandardMaterial({color:0x1976d2}));body.position.y=2;avatar.add(body);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.8,12,10),new THREE.MeshStandardMaterial({color:0xc98f68}));head.position.y=4;avatar.add(head);scene.add(avatar);
+ clock=new THREE.Clock();animate();updateCamera();window.addEventListener('resize',resize);
 }
-function building(way){
- const pts=(way.geometry||[]).map(p=>local(p.lat,p.lon));if(pts.length<4)return null;
- if(Math.hypot(pts[0].x-pts.at(-1).x,pts[0].z-pts.at(-1).z)>1)pts.push(pts[0]);
- const shape=new THREE.Shape();shape.moveTo(pts[0].x,-pts[0].z);for(let i=1;i<pts.length;i++)shape.lineTo(pts[i].x,-pts[i].z);
- const tags=way.tags||{};let h=parseFloat(String(tags.height||'').replace(/[^0-9.]/g,''));if(!Number.isFinite(h)||h<2||h>150)h=parseFloat(tags['building:levels']||'')*3.1;if(!Number.isFinite(h)||h<2)h=7.5;
- const geom=new THREE.ExtrudeGeometry(shape,{depth:h,bevelEnabled:false});geom.rotateX(-Math.PI/2);
- let color=0xc7b9a5;const raw=tags['building:colour']||tags.colour;
- if(raw&&/^#[0-9a-f]{6}$/i.test(raw))color=raw;
- else if(String(raw||'').toLowerCase()==='white')color=0xe5e1d8;
- else if(String(raw||'').toLowerCase()==='red')color=0xa95d4c;
- else if(String(raw||'').toLowerCase()==='brown')color=0x98765b;
- const mesh=new THREE.Mesh(geom,new THREE.MeshStandardMaterial({color,roughness:.92}));mesh.position.y=.9;mesh.castShadow=true;mesh.receiveShadow=true;return mesh;
+function resize(){if(!renderer)return;camera.aspect=root.clientWidth/root.clientHeight;camera.updateProjectionMatrix();renderer.setSize(root.clientWidth,root.clientHeight);}
+function updateCamera(){if(!camera)return;camera.position.set(avatarX-Math.sin(yaw)*distance,22,avatarZ+Math.cos(yaw)*distance);camera.lookAt(avatarX,2,avatarZ);}
+function animate(){requestAnimationFrame(animate);if(!renderer)return;const dt=Math.min(clock.getDelta(),.04);let dx=0,dz=0;
+if(keys.has('w')||keys.has('arrowup'))dz-=1;if(keys.has('s')||keys.has('arrowdown'))dz+=1;if(keys.has('a')||keys.has('arrowleft'))dx-=1;if(keys.has('d')||keys.has('arrowright'))dx+=1;
+if(dx||dz){const l=Math.hypot(dx,dz);avatarX+=dx/l*18*dt;avatarZ+=dz/l*18*dt;avatar.position.set(avatarX,0,avatarZ);updateCamera();updateStreaming();}
+renderer.render(scene,camera);}
+function addRoad(pts,width,mat){const group=new THREE.Group();for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz)||1;const mesh=new THREE.Mesh(new THREE.BoxGeometry(width,.35,len),mat);mesh.position.set((a.x+b.x)/2,.1,(a.z+b.z)/2);mesh.rotation.y=Math.atan2(dx,dz);group.add(mesh);}return group;}
+function addBuilding(way){const pts=(way.geometry||[]).map(p=>local(p.lat,p.lon));if(pts.length<4)return null;
+const shape=new THREE.Shape();shape.moveTo(pts[0].x,-pts[0].z);for(let i=1;i<pts.length;i++)shape.lineTo(pts[i].x,-pts[i].z);
+const tags=way.tags||{};let h=parseFloat(String(tags.height||'').replace(/[^0-9.]/g,''));if(!Number.isFinite(h)||h<2||h>150)h=parseFloat(tags['building:levels']||'')*3.1;if(!Number.isFinite(h)||h<2)h=7.5;
+const geom=new THREE.ExtrudeGeometry(shape,{depth:h,bevelEnabled:false});geom.rotateX(-Math.PI/2);let color=0xc7b9a5;const raw=tags['building:colour']||tags.colour;if(raw&&/^#[0-9a-f]{6}$/i.test(raw))color=raw;
+const mesh=new THREE.Mesh(geom,new THREE.MeshStandardMaterial({color,roughness:.92}));mesh.position.y=.2;return mesh;}
+async function requestData(bounds){
+const q='[out:json][timeout:18];(way["building"]('+bounds.s+','+bounds.w+','+bounds.n+','+bounds.e+');way["highway"]('+bounds.s+','+bounds.w+','+bounds.n+','+bounds.e+'););out geom;';
+let last;
+for(const url of endpoints){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),14000);try{
+const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(q),signal:controller.signal});
+if(!response.ok)throw new Error('HTTP '+response.status);return await response.json();
+}catch(e){last=e;}finally{clearTimeout(timer);}}
+throw last||new Error('No map response');
 }
-function initScene(){
- scene=new THREE.Scene();scene.background=new THREE.Color(0x9bb8c8);scene.fog=new THREE.Fog(0x9bb8c8,1500,4500);
- camera=new THREE.PerspectiveCamera(55,root.clientWidth/root.clientHeight,.5,10000);
- renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(root.clientWidth,root.clientHeight);renderer.shadowMap.enabled=true;root.replaceChildren(renderer.domElement);
- scene.add(new THREE.HemisphereLight(0xffffff,0x66705e,2));const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-400,700,300);sun.castShadow=true;scene.add(sun);
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(3000,3000),new THREE.MeshStandardMaterial({color:0x9eaa8c,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.2;ground.receiveShadow=true;scene.add(ground);
- world=new THREE.Group();scene.add(world);updateCamera();renderer.setAnimationLoop(()=>renderer.render(scene,camera));
+function enqueue(tx,tz){const key=tileKey(tx,tz);if(loaded.has(key)||pending.has(key)||failed.has(key))return;pending.add(key);queue.push({tx,tz,key});processQueue();}
+async function processQueue(){if(busy)return;busy=true;while(queue.length){const item=queue.shift();try{say('Map tile '+item.key+' load ho raha hai…');const data=await requestData(tileBounds(item.tx,item.tz));const group=new THREE.Group();let roads=0,buildings=0;
+const mats={major:new THREE.MeshStandardMaterial({color:0x64696b}),local:new THREE.MeshStandardMaterial({color:0xb5aa9b}),minor:new THREE.MeshStandardMaterial({color:0xc4b9a9})};
+for(const way of data.elements||[]){if(way.tags?.highway&&way.geometry?.length>1){const type=way.tags.highway,w=['motorway','trunk','primary'].includes(type)?10:['secondary','tertiary'].includes(type)?7:['residential','unclassified'].includes(type)?5:2.5;const mat=['motorway','trunk','primary'].includes(type)?mats.major:['secondary','tertiary','residential','unclassified'].includes(type)?mats.local:mats.minor;group.add(addRoad(way.geometry.map(p=>local(p.lat,p.lon)),w,mat));roads++;}
+else if(way.tags?.building&&way.geometry?.length>3){const b=addBuilding(way);if(b){group.add(b);buildings++;}}}
+world.add(group);loaded.set(item.key,{group,roads,buildings});counts.textContent='Loaded tiles: '+loaded.size+'. Is tile mein '+roads+' roads aur '+buildings+' buildings.';
+}catch(e){failed.add(item.key);console.error(e);say('Tile '+item.key+' load nahi hua. Server busy ho sakta hai; Reload button se dobara koshish karein.');}
+finally{pending.delete(item.key);}
+await new Promise(r=>setTimeout(r,900));
 }
-function updateCamera(){if(!camera)return;const x=Math.sin(yaw)*Math.cos(pitch)*distance,y=Math.sin(pitch)*distance,z=Math.cos(yaw)*Math.cos(pitch)*distance;camera.position.set(x,Math.max(35,y),z);camera.lookAt(0,8,0)}
-async function load(){
- say('Kapashera Border ka road aur building data download ho raha hai…');counts.textContent='Data ka intezar karein.';
- if(!scene)initScene();world.clear();
- const q='[out:json][timeout:40];(way["building"]('+bbox.south+','+bbox.west+','+bbox.north+','+bbox.east+');way["highway"]('+bbox.south+','+bbox.west+','+bbox.north+','+bbox.east+'););out geom;';
- const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
- let data=null,lastError=null;
- for(const url of endpoints){try{const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(q)});if(!response.ok)throw new Error('HTTP '+response.status);data=await response.json();break}catch(e){lastError=e}}
- if(!data){say('Map data abhi load nahi hua. Thodi der baad dobara try karein.');console.error(lastError);return}
- const roads=data.elements.filter(e=>e.tags?.highway&&e.geometry?.length>1),buildings=data.elements.filter(e=>e.tags?.building&&e.geometry?.length>3);
- const roadMats={motorway:new THREE.MeshStandardMaterial({color:0x555b60}),trunk:new THREE.MeshStandardMaterial({color:0x62676a}),primary:new THREE.MeshStandardMaterial({color:0x777b7d}),secondary:new THREE.MeshStandardMaterial({color:0x85898a}),residential:new THREE.MeshStandardMaterial({color:0xb3aaa0}),service:new THREE.MeshStandardMaterial({color:0xc1b8aa}),default:new THREE.MeshStandardMaterial({color:0xaaa397})};
- for(const way of roads){const pts=way.geometry.map(p=>local(p.lat,p.lon));const type=way.tags.highway;let w=type==='motorway'?18:['trunk','primary'].includes(type)?13:['secondary','tertiary'].includes(type)?9:['residential','unclassified'].includes(type)?6:3.5;const key=roadMats[type]?type:['trunk','primary','secondary','residential','service'].includes(type)?type:'default';world.add(makeRoad(pts,w,roadMats[key]))}
- for(const way of buildings){const mesh=building(way);if(mesh)world.add(mesh)}
- counts.textContent='Is test area mein '+roads.length+' road segments aur '+buildings.length+' building footprints mile.';
- say('Kapashera Border ka 3D map load ho gaya. Mouse drag ya arrow keys se dekhein.');
+busy=false;updateStreaming();if(loaded.size)say('3D map tayyar hai. Aage badhne par naye tiles load honge.');else say('Map data abhi nahi mila. Reload button dabakar dobara koshish karein.');
 }
-root.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;root.setPointerCapture(e.pointerId)});
-root.addEventListener('pointermove',e=>{if(!dragging)return;yaw-=(e.clientX-lastX)*.006;pitch=Math.max(.18,Math.min(1.35,pitch+(e.clientY-lastY)*.004));lastX=e.clientX;lastY=e.clientY;updateCamera()});
-root.addEventListener('pointerup',()=>dragging=false);root.addEventListener('pointercancel',()=>dragging=false);
-root.addEventListener('wheel',e=>{distance=Math.max(220,Math.min(2200,distance+e.deltaY*.7));updateCamera()},{passive:true});
-document.getElementById('zoomIn').onclick=()=>{distance=Math.max(220,distance*.8);updateCamera()};
-document.getElementById('zoomOut').onclick=()=>{distance=Math.min(2200,distance*1.2);updateCamera()};
-document.getElementById('reload').onclick=load;
-window.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')yaw-=.08;if(e.key==='ArrowRight')yaw+=.08;if(e.key==='ArrowUp')pitch=Math.min(1.35,pitch+.06);if(e.key==='ArrowDown')pitch=Math.max(.18,pitch-.06);if(e.key==='+')distance=Math.max(220,distance*.9);if(e.key==='-')distance=Math.min(2200,distance*1.1);updateCamera()});
-window.addEventListener('resize',()=>{if(!camera||!renderer)return;camera.aspect=root.clientWidth/root.clientHeight;camera.updateProjectionMatrix();renderer.setSize(root.clientWidth,root.clientHeight)});
-load().catch(e=>{say('Map load mein dikkat hui. Reload button dabayein.');console.error(e)});
+function updateStreaming(){const tx=Math.round(avatarX/tileMeters),tz=Math.round(avatarZ/tileMeters);
+enqueue(tx,tz);for(let radius=1;radius<=1;radius++){for(let x=tx-radius;x<=tx+radius;x++)for(let z=tz-radius;z<=tz+radius;z++){if(x!==tx||z!==tz)enqueue(x,z);}}
+for(const [key,item] of loaded){const [x,z]=key.split(',').map(Number);if(Math.abs(x-tx)>1.5||Math.abs(z-tz)>1.5){world.remove(item.group);item.group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});loaded.delete(key);}}
+counts.textContent='Loaded tiles: '+loaded.size+'; waiting: '+queue.length+'. Door ke tiles unload ho jaate hain.';
+}
+function move(dir){const step=28;if(dir==='forward')avatarZ-=step;if(dir==='back')avatarZ+=step;if(dir==='left')avatarX-=step;if(dir==='right')avatarX+=step;avatar.position.set(avatarX,0,avatarZ);updateCamera();updateStreaming();say('Avatar '+dir+' gaya. Nearby map tiles load ho rahe hain.');}
+document.querySelectorAll('[data-move]').forEach(b=>b.addEventListener('click',()=>move(b.dataset.move)));
+document.getElementById('turnLeft').onclick=()=>{yaw-=.25;updateCamera();};document.getElementById('turnRight').onclick=()=>{yaw+=.25;updateCamera();};
+document.getElementById('zoomIn').onclick=()=>{distance=Math.max(12,distance*.8);updateCamera();};document.getElementById('zoomOut').onclick=()=>{distance=Math.min(100,distance*1.2);updateCamera();};
+document.getElementById('reload').onclick=()=>{for(const [k,v] of loaded){world.remove(v.group);}loaded.clear();queue.length=0;pending.clear();failed.clear();updateStreaming();};
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();keys.add(k);if(k==='q'){yaw-=.08;updateCamera();}if(k==='e'){yaw+=.08;updateCamera();}});
+window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+root.addEventListener('pointerdown',e=>{root.dataset.drag='1';root.dataset.x=e.clientX;root.dataset.y=e.clientY;root.setPointerCapture(e.pointerId);});
+root.addEventListener('pointermove',e=>{if(root.dataset.drag!=='1')return;const dx=e.clientX-Number(root.dataset.x);yaw-=dx*.005;root.dataset.x=e.clientX;root.dataset.y=e.clientY;updateCamera();});
+root.addEventListener('pointerup',()=>root.dataset.drag='0');root.addEventListener('pointercancel',()=>root.dataset.drag='0');
+root.addEventListener('wheel',e=>{distance=Math.max(12,Math.min(100,distance+e.deltaY*.04));updateCamera();},{passive:true});
+init();say('Kapashera Border ka pehla 400 metre map tile load ho raha hai…');updateStreaming();
+})().catch(e=>{const s=document.getElementById('status');if(s)s.textContent='Map shuru nahi ho saka. Browser refresh karein.';console.error(e);});
 </script>
 </body>
 </html>

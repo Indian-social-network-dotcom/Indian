@@ -51,6 +51,8 @@ button:active{background:#405a6d}
 <button id="jump" type="button">Jump</button>
 </div>
 <p class="note">Laptop: W A S D ya Arrow keys se chalayen. Space se jump. Mobile: upar diye buttons ko dabayein.</p>
+<div class="controls" aria-label="Camera view controls"><button type="button" data-camera="left">Camera baayein ghumayein</button><button type="button" data-camera="right">Camera daayein ghumayein</button></div>
+<p class="note">Camera ko dheere-dheere ghumane ke liye laptop par Q aur E dabayein. Buttons se camera 15 degree ghoomega.</p>
 </section>
 <section class="panel">
 <h2>Apna photo</h2>
@@ -75,6 +77,7 @@ let renderer,scene,camera,avatar,head,armL,armR,legL,legR,clock;
 const keys=new Set();
 const touch=new Set();
 let jumpVelocity=0,onGround=true;
+let cameraOrbitAngle=0;
 function say(message){status.textContent=message;}
 function makeLimb(parent,x,y,z,radius,length,color){
  const pivot=new THREE.Group();pivot.position.set(x,y,z);parent.add(pivot);
@@ -123,7 +126,11 @@ function animate(){
  else{armL.rotation.x=THREE.MathUtils.damp(armL.rotation.x,0,8,dt);armR.rotation.x=THREE.MathUtils.damp(armR.rotation.x,0,8,dt);legL.rotation.x=THREE.MathUtils.damp(legL.rotation.x,0,8,dt);legR.rotation.x=THREE.MathUtils.damp(legR.rotation.x,0,8,dt);}
  if(!onGround){avatar.position.y+=jumpVelocity*dt;jumpVelocity-=9.8*dt;if(avatar.position.y<=0){avatar.position.y=0;onGround=true;jumpVelocity=0;}}
  head.rotation.y=THREE.MathUtils.damp(head.rotation.y,(left?-.35:right?.35:0),5,dt);
- const followDistance=6.2;const followHeight=3.4;const behindX=-Math.sin(avatar.rotation.y)*followDistance;const behindZ=-Math.cos(avatar.rotation.y)*followDistance;const desired=new THREE.Vector3(avatar.position.x+behindX,avatar.position.y+followHeight,avatar.position.z+behindZ);camera.position.lerp(desired,1-Math.exp(-4*dt));camera.lookAt(avatar.position.x,avatar.position.y+1.25,avatar.position.z);
+ const followDistance=6.2;const followHeight=3.4;const orbitLeft=keys.has('q'),orbitRight=keys.has('e');
+ if(orbitLeft||orbitRight)cameraOrbitAngle+=((orbitRight?1:0)-(orbitLeft?1:0))*1.8*dt;
+ const orbitHeading=avatar.rotation.y+cameraOrbitAngle;
+ const behindX=-Math.sin(orbitHeading)*followDistance;const behindZ=-Math.cos(orbitHeading)*followDistance;
+ const desired=new THREE.Vector3(avatar.position.x+behindX,avatar.position.y+followHeight,avatar.position.z+behindZ);camera.position.lerp(desired,1-Math.exp(-4*dt));camera.lookAt(avatar.position.x,avatar.position.y+1.25,avatar.position.z);
  renderer.render(scene,camera);
 }
 function doJump(){if(onGround){jumpVelocity=5.2;onGround=false;}}
@@ -152,6 +159,10 @@ document.querySelectorAll('[data-move]').forEach(btn=>{
  btn.addEventListener('click',()=>moveOneStep(k));
 });
 document.getElementById('jump').addEventListener('click',doJump);
+document.querySelectorAll('[data-camera]').forEach(btn=>btn.addEventListener('click',()=>{
+ cameraOrbitAngle+=(btn.dataset.camera==='right'?1:-1)*Math.PI/12;
+ say('Camera view ghoom gaya.');
+}));
 photo.addEventListener('change',()=>{
  const file=photo.files?.[0];if(!file)return;
  if(!['image/jpeg','image/png','image/webp'].includes(file.type)){photoStatus.textContent='JPG, PNG ya WebP photo select karein.';photo.value='';return;}

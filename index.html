@@ -8110,7 +8110,7 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
    async function recordFullscreenView(){if(viewRecorded||!window.firebaseCurrentUid||typeof window.indianUranRecordView!=='function')return;viewRecorded=true;try{await window.indianUranRecordView(card.dataset.uranVideoId);var data=await window.indianUranGetSocialData(card.dataset.uranVideoId);var count=social.querySelector('[data-uran-fullscreen-views-for="'+card.dataset.uranVideoId+'"]');if(count){count.textContent=String(data.views);count.setAttribute('aria-label','Video views '+data.views);}}catch(viewError){viewRecorded=false;console.warn('Uran fullscreen view could not be recorded',viewError);}}
    v.addEventListener('play',recordFullscreenView);
    v.addEventListener('ended',function(){try{v.currentTime=0;var replay=v.play();if(replay&&replay.catch)replay.catch(function(){status.textContent='Video khatam hua. Dobara chalane ke liye Play dabayein.';});}catch(replayError){status.textContent='Video khatam hua. Dobara chalane ke liye Play dabayein.';}});
-   v.addEventListener('click',function(e){if(e.defaultPrevented)return;if(v.paused){var start=v.play();if(start&&start.catch)start.catch(function(){});}else{v.pause();}});
+   v.addEventListener('click',function(e){if(e.defaultPrevented)return;var rect=v.getBoundingClientRect();if(e.clientY-rect.top>rect.height-56)return;if(v.paused){var start=v.play();if(start&&start.catch)start.catch(function(){});}else{v.pause();}});
    v.play().then(recordFullscreenView).catch(function(){status.textContent='Automatic playback was blocked. Use the video Play control to start playback.';});
   }else{stage.textContent='Video player is unavailable.';}
   renderSocial(card);

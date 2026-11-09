@@ -2,7 +2,7 @@ import { getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   getFirestore, collection, addDoc, deleteDoc, doc, query, where,
-  onSnapshot, serverTimestamp, getDocs
+  onSnapshot, serverTimestamp, getDocs, getDoc
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const app = getApps()[0];
@@ -14,7 +14,6 @@ if (!app) {
   let currentUser = null;
   let ownRecords = [];
   let incomingRecords = [];
-  let responsesToMe = [];
   let friendUnsubs = [];
 
   const clean = (value, max = 100) => String(value ?? "")
@@ -34,42 +33,40 @@ if (!app) {
   };
 
   function getResponses() {
-    return [...ownRecords, ...responsesToMe]
-      .filter(item => item && item.recordType === "friend_request_response" && item.requestId)
+    return [...ownRecords, ...incomingRecords]
+      .filter(item => item && item.friendRequestType === "response" && item.friendRequestId)
       .sort((a, b) => (Number(a.createdAtMs) || 0) - (Number(b.createdAtMs) || 0));
   }
 
   function responseMap() {
     const map = new Map();
-    getResponses().forEach(item => map.set(String(item.requestId), item));
+    getResponses().forEach(item => map.set(String(item.friendRequestId), item));
     return map;
   }
 
   function getPendingIncoming() {
     const responses = responseMap();
     return incomingRecords.filter(item =>
-      item && item.recordType === "friend_request" && !responses.has(item.id)
+      item && item.friendRequestType === "request" && !responses.has(item.id)
     );
   }
 
   function getOutgoingRequests() {
     const responses = responseMap();
     return ownRecords.filter(item =>
-      item && item.recordType === "friend_request"
+      item && item.friendRequestType === "request"
     ).map(item => ({ request: item, response: responses.get(item.id) || null }));
   }
 
   function getFriends() {
     const result = new Map();
     getResponses().forEach(item => {
-      if (item.status !== "accepted") return;
-      const otherUid = item.followerId === currentUser?.uid
-        ? item.friendUid
-        : item.followerId;
+      if (item.friendRequestStatus !== "accepted") return;
+      const otherUid = item.senderId === currentUser?.uid ? item.receiverId : item.senderId;
       if (!otherUid || otherUid === currentUser?.uid) return;
-      const otherName = item.followerId === currentUser?.uid
-        ? item.friendName
-        : item.followerName;
+      const otherName = item.senderId === currentUser?.uid
+        ? item.friendRequestOtherName
+        : item.senderName;
       result.set(String(otherUid), clean(otherName || "Indian User", 60));
     });
     return result;
@@ -82,10 +79,10 @@ if (!app) {
     if (getFriends().has(targetUid)) {
       return { label: "Friends", disabled: true };
     }
-    const incoming = getPendingIncoming().find(item => item.followerId === targetUid);
+    const incoming = getPendingIncoming().find(item => item.senderId === targetUid);
     if (incoming) return { label: "Accept Request", action: "accept", request: incoming };
     const outgoing = getOutgoingRequests().find(item =>
-      item.request.targetUid === targetUid && !item.response
+      item.request.receiverId === targetUid && !item.response
     );
     if (outgoing) return { label: "Cancel Request", action: "cancel", request: outgoing.request };
     return { label: "Add Friend", action: "send" };
@@ -147,10 +144,10 @@ if (!app) {
         row.className = "indian-friend-row";
         row.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #d7dce2;";
         const name = document.createElement("span");
-        name.textContent = clean(request.followerName || "Indian User", 60) + " sent you a friend request.";
+        name.textContent = clean(request.friendRequestSenderName || request.senderName || "Indian User", 60) + " sent you a friend request.";
         row.appendChild(name);
-        row.appendChild(makeActionButton("Accept", () => respondToRequest(request, "accepted"), "Accept friend request from " + clean(request.followerName || "Indian User", 60)));
-        row.appendChild(makeActionButton("Reject", () => respondToRequest(request, "rejected"), "Reject friend request from " + clean(request.followerName || "Indian User", 60)));
+        row.appendChild(makeActionButton("Accept", () => respondToRequest(request, "accepted"), "Accept friend request from " + clean(request.friendRequestSenderName || request.senderName || "Indian User", 60)));
+        row.appendChild(makeActionButton("Reject", () => respondToRequest(request, "rejected"), "Reject friend request from " + clean(request.friendRequestSenderName || request.senderName || "Indian User", 60)));
         incomingBox.appendChild(row);
       });
     }
@@ -167,11 +164,11 @@ if (!app) {
         row.className = "indian-friend-row";
         row.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #d7dce2;";
         const name = document.createElement("span");
-        name.textContent = clean(request.targetName || "Indian User", 60) + " — " +
-          (entry.response ? (entry.response.status === "accepted" ? "Accepted" : "Declined") : "Request sent");
+        name.textContent = clean(request.friendRequestTargetName || "Indian User", 60) + " — " +
+          (entry.response ? (entry.response.friendRequestStatus === "accepted" ? "Accepted" : "Declined") : "Request sent");
         row.appendChild(name);
         if (!entry.response) {
-          row.appendChild(makeActionButton("Cancel", () => cancelRequest(request), "Cancel friend request to " + clean(request.targetName || "Indian User", 60)));
+          row.appendChild(makeActionButton("Cancel", () => cancelRequest(request), "Cancel friend request to " + clean(request.friendRequestTargetName || "Indian User", 60)));
         }
         outgoingBox.appendChild(row);
       });
@@ -237,71 +234,88 @@ if (!app) {
     if (getFriends().has(targetUid)) return;
 
     const existing = await getDocs(query(
-      collection(db, "follows"),
-      where("followerId", "==", currentUser.uid),
-      where("targetUid", "==", targetUid)
+      collection(db, "messages"),
+      where("senderId", "==", currentUser.uid),
+      where("receiverId", "==", targetUid)
     ));
     const pending = existing.docs.find(item => {
       const data = item.data() || {};
-      return data.recordType === "friend_request" && !responseMap().has(item.id);
+      return data.friendRequestType === "request" && !responseMap().has(item.id);
     });
     if (pending) return;
 
-    const requestRef = await addDoc(collection(db, "follows"), {
-      recordType: "friend_request",
-      followerId: currentUser.uid,
-      followerName: displayName(),
-      targetUid,
-      targetName: clean(person.name || "Indian User", 60),
+    const senderName = displayName();
+    const targetName = clean(person.name || "Indian User", 60);
+    const requestRef = await addDoc(collection(db, "messages"), {
+      senderId: currentUser.uid,
+      receiverId: targetUid,
+      senderName,
+      friendRequestType: "request",
+      friendRequestSenderName: senderName,
+      friendRequestTargetName: targetName,
+      text: "INDIAN_FRIEND_REQUEST_V1:" + JSON.stringify({ senderName, targetName }),
+      edited: false,
+      read: false,
       createdAt: serverTimestamp(),
       createdAtMs: Date.now()
     });
     await notifyUser(
       targetUid,
-      displayName() + " sent you a friend request.",
+      senderName + " sent you a friend request.",
       "friend_request",
       requestRef.id
     );
-    setStatus("Friend request sent to " + clean(person.name || "Indian User", 60) + ".");
+    setStatus("Friend request sent to " + targetName + ".");
   }
 
   async function respondToRequest(request, status) {
-    if (!currentUser || !request || request.targetUid !== currentUser.uid) {
+    if (!currentUser || !request || request.receiverId !== currentUser.uid) {
       throw new Error("This friend request is not addressed to your account.");
     }
     if (status !== "accepted" && status !== "rejected") return;
+
+    const original = await getDoc(doc(db, "messages", request.id));
+    if (!original.exists() || original.data()?.receiverId !== currentUser.uid) {
+      throw new Error("This friend request is no longer available.");
+    }
+
     const existing = await getDocs(query(
-      collection(db, "follows"),
-      where("requestId", "==", request.id)
+      collection(db, "messages"),
+      where("senderId", "==", currentUser.uid),
+      where("receiverId", "==", request.senderId)
     ));
-    if (existing.docs.some(item => (item.data() || {}).recordType === "friend_request_response")) return;
+    if (existing.docs.some(item => {
+      const data = item.data() || {};
+      return data.friendRequestType === "response" && data.friendRequestId === request.id;
+    })) return;
 
     if (status === "accepted") {
-      const reciprocal = await getDocs(query(
-        collection(db, "follows"),
-        where("followerId", "==", currentUser.uid),
-        where("targetUid", "==", request.followerId)
-      ));
-      const pendingReciprocal = reciprocal.docs.filter(item =>
-        (item.data() || {}).recordType === "friend_request" && !responseMap().has(item.id)
-      );
+      const pendingReciprocal = existing.docs.filter(item => {
+        const data = item.data() || {};
+        return data.friendRequestType === "request" && !responseMap().has(item.id);
+      });
       await Promise.all(pendingReciprocal.map(item => deleteDoc(item.ref)));
     }
 
-    await addDoc(collection(db, "follows"), {
-      recordType: "friend_request_response",
-      followerId: currentUser.uid,
-      followerName: displayName(),
-      friendUid: request.followerId,
-      friendName: clean(request.followerName || "Indian User", 60),
-      requestId: request.id,
-      status,
+    const senderName = displayName();
+    const otherName = clean(request.friendRequestSenderName || request.senderName || "Indian User", 60);
+    await addDoc(collection(db, "messages"), {
+      senderId: currentUser.uid,
+      receiverId: request.senderId,
+      senderName,
+      friendRequestType: "response",
+      friendRequestId: request.id,
+      friendRequestStatus: status,
+      friendRequestOtherName: otherName,
+      text: "INDIAN_FRIEND_RESPONSE_V1:" + JSON.stringify({ requestId: request.id, status }),
+      edited: false,
+      read: false,
       createdAt: serverTimestamp(),
       createdAtMs: Date.now()
     });
     await notifyUser(
-      request.followerId,
-      displayName() + (status === "accepted" ? " accepted your friend request." : " declined your friend request."),
+      request.senderId,
+      senderName + (status === "accepted" ? " accepted your friend request." : " declined your friend request."),
       status === "accepted" ? "friend_request_accepted" : "friend_request_rejected",
       request.id
     );
@@ -309,9 +323,17 @@ if (!app) {
   }
 
   async function cancelRequest(request) {
-    if (!currentUser || !request || request.followerId !== currentUser.uid) return;
-    if (responseMap().has(request.id)) return;
-    await deleteDoc(doc(db, "follows", request.id));
+    if (!currentUser || !request || request.senderId !== currentUser.uid) return;
+    const responseQuery = await getDocs(query(
+      collection(db, "messages"),
+      where("senderId", "==", request.receiverId),
+      where("receiverId", "==", currentUser.uid)
+    ));
+    if (responseQuery.docs.some(item => {
+      const data = item.data() || {};
+      return data.friendRequestType === "response" && data.friendRequestId === request.id;
+    })) return;
+    await deleteDoc(doc(db, "messages", request.id));
     setStatus("Friend request cancelled.");
   }
 
@@ -341,13 +363,14 @@ if (!app) {
     friendUnsubs = [];
     ownRecords = [];
     incomingRecords = [];
-    responsesToMe = [];
     const uid = currentUser.uid;
 
     friendUnsubs.push(onSnapshot(
-      query(collection(db, "follows"), where("followerId", "==", uid)),
+      query(collection(db, "messages"), where("senderId", "==", uid)),
       snapshot => {
-        ownRecords = snapshot.docs.map(item => ({ id: item.id, ...(item.data() || {}) }));
+        ownRecords = snapshot.docs
+          .map(item => ({ id: item.id, ...(item.data() || {}) }))
+          .filter(item => item.friendRequestType === "request" || item.friendRequestType === "response");
         setStatus("Friend requests are synced with your Indian account.");
         renderFriendHub();
       },
@@ -355,23 +378,15 @@ if (!app) {
     ));
 
     friendUnsubs.push(onSnapshot(
-      query(collection(db, "follows"), where("targetUid", "==", uid)),
+      query(collection(db, "messages"), where("receiverId", "==", uid)),
       snapshot => {
-        incomingRecords = snapshot.docs.map(item => ({ id: item.id, ...(item.data() || {}) }));
+        incomingRecords = snapshot.docs
+          .map(item => ({ id: item.id, ...(item.data() || {}) }))
+          .filter(item => item.friendRequestType === "request" || item.friendRequestType === "response");
         setStatus("Friend requests are synced with your Indian account.");
         renderFriendHub();
       },
       error => setStatus("Incoming friend requests could not load: " + clean(error?.message || error, 180))
-    ));
-
-    friendUnsubs.push(onSnapshot(
-      query(collection(db, "follows"), where("friendUid", "==", uid)),
-      snapshot => {
-        responsesToMe = snapshot.docs.map(item => ({ id: item.id, ...(item.data() || {}) }));
-        setStatus("Friend requests are synced with your Indian account.");
-        renderFriendHub();
-      },
-      error => setStatus("Friend status could not refresh: " + clean(error?.message || error, 180))
     ));
   }
 
@@ -381,7 +396,6 @@ if (!app) {
     friendUnsubs = [];
     ownRecords = [];
     incomingRecords = [];
-    responsesToMe = [];
     if (currentUser) startFriendRequestListeners();
     renderFriendHub();
     if (typeof window.performSearch === "function") {
@@ -389,6 +403,4 @@ if (!app) {
       if (searchBox && searchBox.value.trim()) window.performSearch();
     }
   });
-
-  window.addEventListener("indian-friend-hub-refresh", renderFriendHub);
 }

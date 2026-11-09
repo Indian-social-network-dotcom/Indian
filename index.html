@@ -503,6 +503,548 @@ Search registered users, places, posts or help requests:
 </section>
 
 <!-- MESSAGES / CHAT -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indian</title>
+<meta name="theme-color" content="#123b2a">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./css-test/indian-pwa-icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./css-test/indian-pwa-icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<!-- Call buttons moved below Send Message/Clear for easier access in the chat. -->
+
+<link rel="stylesheet" href="style.css">
+<!-- OneSignal Web SDK: configured for the Indian GitHub Pages project subpath. -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer onerror="window.__indianOneSignalSdkLoadFailed = true; window.addEventListener('DOMContentLoaded', function(){ var e=document.getElementById('indianNotificationSetupStatus'); if(e) e.textContent='Notifications are temporarily unavailable. You can continue to Indian.'; });"></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.linkIndianOneSignalUser = async function(OneSignal, uid) {
+    var expected = "indian_firebase_" + String(uid || "");
+    if (!expected || expected === "indian_firebase_") return;
+    try {
+      var previous = OneSignal && OneSignal.User ? OneSignal.User.externalId : "";
+      if (previous && previous !== expected && OneSignal.User && typeof OneSignal.User.removeTags === "function") {
+        await OneSignal.User.removeTags(["indian_help_location_optin", "indian_firebase_uid"]);
+      }
+    } catch (tagCleanupError) { console.warn("Old Nearby Help preference cleanup skipped", tagCleanupError); }
+    await OneSignal.login(expected);
+    await OneSignal.User.addTag("indian_firebase_uid", String(uid));
+  };
+  window.__indianOneSignalReady = false;
+  window.__indianOneSignalInstance = null;
+  function setIndianOneSignalStatus(message) {
+    var el = document.getElementById("indianNotificationSetupStatus");
+    if (el) el.textContent = String(message || "");
+  }
+  OneSignalDeferred.push(async function (OneSignal) {
+    try {
+      await OneSignal.init({
+        appId: "019d756d-8ff5-4c09-bcab-75ace208d8da",
+        serviceWorkerPath: "/Indian/OneSignalSDKWorker.js",
+        serviceWorkerParam: { scope: "/Indian/" },
+        autoResubscribe: true
+      });
+      window.__indianOneSignalInstance = OneSignal;
+      window.__indianOneSignalReady = true;
+      // OneSignal v16 click event: preserve the notification's deep-link data.
+      try {
+        OneSignal.Notifications.addEventListener("click", function(event) {
+          var extra = event && event.notification && event.notification.additionalData || {};
+          var target = extra.type === "call" && extra.callId
+            ? "/Indian/?indianCallId=" + encodeURIComponent(extra.callId)
+            : extra.type === "message" && extra.messageId
+              ? "/Indian/?indianMessageId=" + encodeURIComponent(extra.messageId)
+            : extra.type === "help_request" && extra.helpRequestId
+              ? "/Indian/?indianHelpRequestId=" + encodeURIComponent(extra.helpRequestId) + "#help" : "";
+          if (target) {
+            try { window.location.assign(target); } catch (e) {}
+          }
+        });
+      } catch (clickHookError) { console.warn("OneSignal click handler unavailable", clickHookError); }
+      if (window.firebaseCurrentUid) {
+        try { await window.linkIndianOneSignalUser(OneSignal, window.firebaseCurrentUid); }
+        catch (identityError) { console.warn("OneSignal user link pending", identityError); }
+      }
+      setIndianOneSignalStatus(OneSignal.User.PushSubscription.optedIn
+        ? "Notifications are already enabled on this device."
+        : "Ready. Select Allow Notifications to continue.");
+      if (typeof window.updateIndianNotificationSetupUI === "function") window.updateIndianNotificationSetupUI();
+      if (typeof window.updateIndianPushSettingsUI === "function") window.updateIndianPushSettingsUI();
+      if (typeof window.updateIndianNearbyHelpSettingsUI === "function") window.updateIndianNearbyHelpSettingsUI();
+      if (typeof window.refreshIndianNearbyHelpLocation === "function") window.refreshIndianNearbyHelpLocation();
+      if (typeof window.resolveIndianNotificationRoute === "function") window.resolveIndianNotificationRoute();
+    } catch (error) {
+      console.error("OneSignal init failed", error);
+      setIndianOneSignalStatus("Notifications could not be prepared. You can continue to Indian.");
+    }
+  });
+</script>
+
+
+
+
+
+
+
+
+<style id="indianCommunityHomeRedesignStyles">
+  :root { --indian-green:#123b2a; --indian-border:#dbe3e8; --indian-soft:#f5f8fa; }
+  body { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important; }
+  #indianActionBar {
+    display:grid !important; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px;
+    position:sticky; top:0; z-index:1001; width:100%; box-sizing:border-box;
+    margin:0; padding:5px 4px; background:#fff; border-bottom:1px solid var(--indian-border);
+    box-shadow:0 3px 10px rgba(10,30,20,.07);
+  }
+  #indianActionBar .indian-nav-button, #indianBottomNav .indian-nav-button {
+    min-width:0; width:100%; box-sizing:border-box; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:3px; padding:5px 2px; min-height:54px;
+    border:0; border-radius:10px; background:transparent; color:#18342a; font:inherit;
+    font-size:12px; line-height:1.15; white-space:normal; overflow-wrap:anywhere; cursor:pointer;
+  }
+  #indianActionBar .indian-nav-button svg, #indianBottomNav .indian-nav-button svg {
+    width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.8;
+    stroke-linecap:round; stroke-linejoin:round; flex:0 0 auto;
+  }
+  #indianActionBar .indian-nav-button.is-active, #indianBottomNav .indian-nav-button.is-active,
+  #indianActionBar .indian-nav-button[aria-current="page"], #indianBottomNav .indian-nav-button[aria-current="page"] {
+    background:#e9f3ed; color:#123b2a; font-weight:700;
+  }
+  #indianBottomNav {
+    position:fixed !important; left:0; right:0; bottom:0; z-index:9995; width:100%;
+    display:grid !important; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px;
+    box-sizing:border-box; margin:0; padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px));
+    background:rgba(255,255,255,.98); border-top:1px solid var(--indian-border);
+    box-shadow:0 -4px 16px rgba(10,30,20,.09); backdrop-filter:blur(10px);
+  }
+  #indianBottomNav .indian-nav-button { min-height:58px; font-size:11.5px; }
+  #indianBottomNav .nav-badge, #indianActionBar .nav-badge { font-size:10px; min-width:16px; padding:1px 4px; border-radius:999px; }
+  #mainContent { padding-bottom:16px; }
+  #homeSection { display:none !important; }
+  #homeStoriesSection { display:block; margin:12px auto 14px; max-width:980px; padding:0 12px; }
+  #homeStoriesSection .home-section-heading { margin-bottom:8px; }
+  #homeStoriesSection .home-section-heading .story-add-button { display:none !important; }
+  #homeStoriesTitle { font-size:1.25rem; margin:4px 0 10px; }
+  #homeStoriesStrip { display:flex; gap:10px; overflow-x:auto; overscroll-behavior-x:contain; scroll-snap-type:x proximity; padding:4px 2px 12px; }
+  #homeStoriesStrip > * { scroll-snap-align:start; flex:0 0 auto; }
+  #homeMixedFeed { display:block; max-width:980px; margin:0 auto 24px; padding:0 12px 18px; box-sizing:border-box; }
+  .indian-mixed-feed-heading { padding:0 2px 6px; }
+  .indian-mixed-feed-heading h2 { font-size:1.25rem; margin:8px 0 4px; }
+  .indian-mixed-feed-heading p { margin:0 0 8px; color:#51615a; font-size:.9rem; }
+  #indianMixedFeedItems { display:flex; flex-direction:column; gap:14px; }
+  .indian-home-feed-item { width:100%; max-width:760px; box-sizing:border-box; margin:0 auto !important; scroll-margin-top:90px; }
+  .indian-home-feed-item.post { padding:14px !important; border:1px solid var(--indian-border) !important; border-radius:14px !important; background:#fff !important; color:#172b24; box-shadow:0 3px 14px rgba(20,42,30,.06); }
+  .indian-home-feed-kind { display:inline-flex; align-items:center; gap:6px; margin:0 0 7px; padding:4px 9px; border-radius:99px; background:#e9f3ed; color:#123b2a; font-size:11px; font-weight:700; }
+  .indian-mixed-empty { padding:18px; border:1px dashed #bfcbc4; border-radius:12px; background:#fbfdfb; text-align:center; color:#40584a; }
+  .indian-load-more-feed { display:block; width:min(100%,360px); margin:14px auto 4px; }
+  #indianMixedFeedStatus { max-width:760px; margin:8px auto; color:#506258; font-size:.9rem; }
+  #indianMixedFeedSentinel { height:1px; }
+  #shortsSection, #postsSection { max-width:980px; margin-left:auto; margin-right:auto; padding:0 12px 20px; box-sizing:border-box; }
+  .indian-action-dialog { width:min(92vw,440px); max-width:440px; max-height:min(82vh,680px); overflow:auto; padding:0; border:1px solid #d7e0db; border-radius:18px; color:#172b24; background:#fff; box-shadow:0 22px 70px rgba(0,0,0,.25); }
+  .indian-action-dialog::backdrop { background:rgba(12,24,18,.48); backdrop-filter:blur(2px); }
+  .indian-action-dialog-inner { padding:18px; }
+  .indian-action-dialog h2 { margin:0 0 12px; font-size:1.25rem; }
+  .indian-dialog-option { display:flex; align-items:center; gap:12px; width:100%; min-height:50px; margin:5px 0; padding:12px; border:1px solid #e0e7e3; border-radius:12px; background:#f8faf9; color:#163b2c; font:inherit; text-align:left; cursor:pointer; }
+  .indian-dialog-option:hover, .indian-dialog-option:focus-visible { background:#eaf4ee; outline:2px solid #4c8c66; outline-offset:1px; }
+  #feedbackSection { max-width:900px; margin:8px auto; padding:0 14px 28px; box-sizing:border-box; }
+  #feedbackSection h2 { font-size:1.4rem; }
+  .indian-feedback-privacy-note { padding:10px 12px; border-left:4px solid #678c73; background:#f2f7f3; color:#314c3b; border-radius:6px; }
+  .indian-feedback-actions { display:flex; gap:9px; flex-wrap:wrap; margin-top:12px; }
+  @media (max-width:360px) {
+    #indianActionBar .indian-nav-button { font-size:10.5px; }
+    #indianBottomNav .indian-nav-button { font-size:10px; }
+  }
+  @media (min-width:850px) {
+    #indianActionBar { grid-template-columns:repeat(5,minmax(84px,120px)); justify-content:start; padding-left:max(8px,calc((100vw - 980px)/2)); padding-right:max(8px,calc((100vw - 980px)/2)); }
+    #indianActionBar .indian-nav-button { flex-direction:row; min-height:48px; font-size:14px; }
+    #indianBottomNav { left:50%; right:auto; transform:translateX(-50%); max-width:980px; border:1px solid var(--indian-border); border-bottom:0; border-radius:16px 16px 0 0; }
+  }
+</style>
+
+<link rel="stylesheet" href="site-polish.css">
+<style id="indianAuthStartupGate">body.auth-initializing{visibility:hidden!important}</style>
+<script>
+  window.finishIndianAuthStartup = function () {
+    if (window.__indianAuthStartupTimer) window.clearTimeout(window.__indianAuthStartupTimer);
+    if (document.body) document.body.classList.remove("auth-initializing");
+  };
+  // Fallback: if Firebase's module cannot load, show the sign-in screen rather than a blank page.
+  window.__indianAuthStartupTimer = window.setTimeout(function () {
+    window.finishIndianAuthStartup();
+  }, 12000);
+</script>
+<style>
+.indianMessageExtras{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;margin:5px 0;padding:0;border:0}
+.indianMessageFeature{display:block;min-width:0;flex:0 1 auto}
+.indianMessageFeature summary{cursor:pointer;font-weight:600;font-size:.9rem;padding:6px 9px;border:1px solid #cbd2da;border-radius:8px;list-style-position:inside}
+.indianMessageFeature[open]{flex:1 1 100%;padding:8px;border:1px solid #d7dce2;border-radius:10px}
+.indianMessageFeature[open] summary{padding:2px 0 7px;border:0;border-radius:0}
+.indianMessageFeatureBody{display:grid;gap:7px}
+.indianMessageFeature input{width:100%;max-width:100%;box-sizing:border-box;padding:9px;border:1px solid #aab3bd;border-radius:8px}
+.indianTranslationNotice{font-size:.82rem;opacity:.8;margin:0}
+.messageTranslation{margin-top:8px;padding:8px;border-left:3px solid #ff9800;background:rgba(255,152,0,.08);white-space:pre-wrap;overflow-wrap:anywhere}
+.messagePollCard{margin-top:10px;padding:10px;border:1px solid #d7dce2;border-radius:10px;display:grid;gap:8px}
+.messagePollQuestion{font-weight:700}
+.messagePollOption{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;white-space:normal}
+.messagePollOption[aria-pressed=true]{border-color:#ff9800;font-weight:700}
+.messagePollMeta{font-size:.82rem;opacity:.8}
+</style>
+</head>
+
+<body class="auth-required auth-initializing">
+
+<a class="skip-link" href="#mainContent">Skip to main content</a>
+<header class="brand-header" id="indianTopHeader">
+  <div class="brand-inner">
+    <a class="brand-logo-link" href="#home" onclick="openIndianHome(); return false;" aria-label="Indian home">
+      <span class="brand-logo-frame"><img class="brand-logo" src="./css-test/indian-logo.webp" loading="eager" decoding="async" fetchpriority="low" width="64" height="64" alt="Indian logo: three-dimensional map of India in saffron, white and green, with the Ashoka Chakra"></span>
+    </a>
+    <div class="brand-copy"><h1>Indian</h1></div>
+    <button class="top-profile-button" id="topProfileButton" type="button" onclick="openProfile()" aria-label="Open Profile">
+      <img id="topProfileAvatar" class="top-profile-avatar" alt="Your profile photo" hidden />
+      <span id="topProfileDefaultIcon" class="top-profile-default-icon" aria-hidden="true">👤</span>
+      <span class="top-profile-label">Profile</span>
+    </button>
+  </div>
+</header>
+
+<nav id="indianActionBar" aria-label="Quick actions">
+  <button type="button" class="indian-nav-button" data-route="search" onclick="showSearch()" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg><span>Search</span></button>
+  <button type="button" class="indian-nav-button" data-route="place" onclick="openPlace()" aria-label="Place"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5.3-8 11.3-8 11.3S4 15.3 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg><span>Place</span></button>
+  <button type="button" class="indian-nav-button" id="indianCreateMenuButton" onclick="openIndianCreateMenu()" aria-haspopup="dialog" aria-controls="indianCreateDialog" aria-label="Create"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span>Create</span></button>
+  <button type="button" class="indian-nav-button" id="navNotifBtn" data-route="notifications" onclick="openNotifications()" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span>Notifications</span><span class="nav-badge" id="navUnreadBadge" style="display:none;">0</span></button>
+  <button type="button" class="indian-nav-button" id="indianMoreMenuButton" onclick="openIndianMoreMenu()" aria-haspopup="dialog" aria-controls="indianMoreDialog" aria-label="More options"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg><span>More</span></button>
+</nav>
+<div id="indianRouteAnnouncer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<main id="mainContent" tabindex="-1">
+<div id="indianRouteBackBar" class="indian-route-backbar" hidden><button id="indianBackButton" type="button" onclick="indianGoBack()" aria-label="Go back to the previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path><path d="M9 12h12"></path></svg><span>Back</span></button></div>
+
+<section id="homeSection" class="home-intro" tabindex="-1">
+<h2>Welcome to Indian</h2>
+<div class="indianMessageTabs" role="group" aria-label="Message type" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;">
+  <button type="button" class="action" id="indianPersonalChatsTab" aria-pressed="true">Personal Chats</button>
+  <button type="button" class="action" id="indianGroupsTab" aria-pressed="false">Groups</button>
+</div>
+
+
+<p>
+Welcome to Indian. Here people can connect, share, help each other and participate in live activities.
+</p>
+
+<button class="action" onclick="createPost()">Create Post</button>
+<button class="action" onclick="openHelp()">Ask for Help</button>
+<button class="action" id="goLiveButton" onclick="toggleLive()">Go Live</button>
+<button class="action" onclick="openProfile()">My Profile</button>
+
+<div id="indianGroupsPanel" hidden style="border:1px solid #d1d5db;border-radius:12px;padding:12px;margin-top:10px;">
+  <h3>Groups</h3>
+  <label for="indianNewGroupName">Create a group</label>
+  <input id="indianNewGroupName" type="text" maxlength="60" placeholder="Group name" style="display:block;width:100%;max-width:420px;padding:10px;margin:6px 0;">
+  <button type="button" class="action" id="indianCreateGroupButton">Create Group</button>
+  <p id="indianGroupStatus" role="status" aria-live="polite"></p>
+  <div style="display:grid;grid-template-columns:minmax(150px,260px) minmax(0,1fr);gap:12px;margin-top:12px;">
+    <div>
+      <h4>Your Groups</h4>
+      <div id="indianGroupList" aria-label="Your groups"><p>Loading groups…</p></div>
+    </div>
+    <div>
+      <h4 id="indianGroupTitle">Select a group</h4>
+      <p id="indianGroupMembers">Choose a group or create a new one.</p>
+      <div id="indianGroupMessages" class="chatMessages" aria-live="polite" style="min-height:180px;max-height:420px;overflow:auto;border:1px solid #ddd;border-radius:10px;padding:10px;"><p>Select a group to see messages.</p></div>
+      <div id="indianGroupComposer" hidden style="margin-top:10px;">
+        <label for="indianGroupMessageText">Group message</label>
+        <textarea id="indianGroupMessageText" maxlength="2000" rows="3" style="display:block;width:100%;padding:10px;" placeholder="Write a group message…"></textarea>
+        <button type="button" class="action" id="indianGroupSendButton">Send</button>
+      </div>
+      <div id="indianGroupAddMemberArea" hidden style="margin-top:14px;">
+        <h4>Add a registered Indian user</h4>
+        <label for="indianGroupMemberSearch">Search by display name</label>
+        <input id="indianGroupMemberSearch" type="search" maxlength="60" placeholder="Type a name" style="display:block;width:100%;max-width:420px;padding:10px;margin:6px 0;">
+        <button type="button" class="action" id="indianGroupMemberSearchButton">Search users</button>
+        <div id="indianGroupMemberResults" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+  <p><small>First version: private text groups. Photo/video sharing, voice messages, polls and advanced admin controls will be added after this version is tested.</small></p>
+</div>
+</section>
+
+<!-- HOME STORIES STRIP: swipe horizontally on touch screens; keep a keyboard-accessible region -->
+<section id="homeStoriesSection" class="home-stories-section" tabindex="-1" aria-labelledby="homeStoriesTitle">
+  <div class="home-section-heading">
+    <div>
+      <h2 id="homeStoriesTitle">Stories</h2>
+      
+    </div>
+    <button type="button" class="story-add-button" onclick="openStoriesFromHome()" aria-label="Create a new story">＋ Add Story</button>
+  </div>
+  <div id="homeStoriesStrip" class="home-stories-strip" tabindex="0" role="list" aria-label="Stories">
+    <p class="story-empty-note">No stories yet.</p>
+  </div>
+</section>
+
+<!-- Mixed Home Feed: one Uran video, then one post, alternating -->
+<section id="homeMixedFeed" class="indian-home-mixed-feed" tabindex="-1" aria-labelledby="indianMixedFeedTitle">
+  <div class="indian-mixed-feed-heading">
+    <h2 id="indianMixedFeedTitle">For you</h2>
+    <p>Posts and videos.</p>
+  </div>
+  <div id="indianMixedFeedItems" aria-live="off" aria-label="Posts and Uran videos"></div>
+  <p id="indianMixedFeedStatus" role="status" aria-live="polite">Loading…</p>
+  <button type="button" class="action indian-load-more-feed" id="indianLoadMoreMixedFeed" onclick="loadMoreIndianHomeFeed()">Load more</button>
+  <div id="indianMixedFeedSentinel" aria-hidden="true"></div>
+</section>
+
+<!-- POSTS -->
+<section id="shortsSection" style="display:none;" tabindex="-1" aria-labelledby="uranTitle">
+<h2 id="uranTitle">Uran 🎬</h2>
+<p>Yahan sirf Indian par upload kiye gaye video chalenge. YouTube links supported nahi hain. MP4 ya WebM video, maximum 50 MB.</p>
+<form id="uranAddForm" style="display:grid;gap:8px;max-width:620px;">
+<label for="uranVideoFile">Apne device se video select karein:</label>
+<input id="uranVideoFile" type="file" accept="video/mp4,video/webm" required aria-label="Uran ke liye MP4 ya WebM video select karein" style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;">
+<label for="uranShortCaption">Caption (optional):</label>
+<textarea id="uranShortCaption" rows="2" maxlength="300" placeholder="Video ke baare mein likhein..." style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;"></textarea>
+<button class="action" id="uranUploadButton" type="submit">Upload video to Uran</button>
+</form>
+<div id="shortsStatus" role="status" aria-live="polite" style="margin-top:12px;"></div>
+<div id="shortsFeed" style="margin-top:16px;"></div>
+</section>
+<section id="postsSection" tabindex="-1">
+
+<h2>Posts</h2>
+
+<div id="postForm" style="display:none;">
+
+<label for="postBox">
+Write your post:
+</label>
+
+<textarea
+    id="postBox"
+    placeholder="Write something to share..."
+    aria-label="Write your post"
+></textarea>
+
+<label for="mediaInput" class="fileLabel">
+Add photo or video:
+</label>
+
+<input
+    type="file"
+    id="mediaInput"
+    class="mediaInput"
+    accept="image/*,video/*"
+    multiple
+    aria-label="Select photos or videos for your post"
+>
+
+<p class="mediaHelp">
+You can select one or more photos and videos.
+</p>
+
+<button class="action" onclick="publishPost()">
+Post
+</button>
+<p id="postMediaStatus" role="status" aria-live="polite"></p>
+
+<button class="action" onclick="cancelPost()">
+Cancel
+</button>
+
+</div>
+
+<div id="postsContainer"></div>
+
+</section>
+
+<!-- FIREBASE ACCOUNT + SECURE MEDIA UPLOAD -->
+<section id="firebaseSection" style="display:none;" tabindex="-1" aria-labelledby="firebaseSectionTitle">
+<h2 id="firebaseSectionTitle">Welcome to Indian</h2>
+<p class="auth-intro" id="authIntroText">Create an account to join Indian.</p>
+
+<div id="firebaseSetupStatus" class="firebaseStatus" aria-live="polite">
+Firebase is not configured yet. Add your Firebase Web App config in the code comments marked FIREBASE CONFIG.
+</div>
+
+<div class="firebaseCard">
+<h3>Account</h3>
+
+<label id="firebaseDisplayNameLabel" for="firebaseDisplayName">Name</label>
+<input id="firebaseDisplayName" class="firebaseInput" type="text" maxlength="60" autocomplete="name" aria-label="Display name for signup">
+
+<label for="firebaseEmail">Email address:</label>
+<input id="firebaseEmail" class="firebaseInput" type="email" maxlength="254" autocomplete="email" aria-label="Firebase email address">
+
+<label for="firebasePassword">Password:</label>
+<input id="firebasePassword" class="firebaseInput" type="password" minlength="8" maxlength="128" autocomplete="current-password" aria-label="Firebase password">
+
+<div class="firebaseButtonRow">
+<button type="button" class="action" id="firebaseSignupButton" aria-label="Create Firebase account">Create Account</button>
+<button type="button" class="action" id="firebaseLoginButton" aria-label="Sign in to Firebase account">Sign In</button>
+
+</div>
+
+<button type="button" id="authModeToggle" aria-label="Switch between creating an account and signing in">Already have an account? Sign in</button>
+<div id="firebaseAuthStatus" class="firebaseStatus" aria-live="polite">Enter your details to continue.</div>
+</div>
+
+<div class="firebaseCard" id="firebaseSecureUploadCard">
+<h3>Secure Media Upload</h3>
+<p class="mediaHelp">Allowed images: .jpg, .png, .webp up to 10 MB. Allowed videos: .mp4, .webm up to 50 MB. Images are compressed to WebP before upload.</p>
+
+<label for="firebaseMediaInput">Choose a photo or video:</label>
+<input
+  id="firebaseMediaInput"
+  class="mediaInput"
+  type="file"
+  accept=".jpg,.png,.webp,.mp4,.webm,image/jpeg,image/png,image/webp,video/mp4,video/webm"
+  aria-label="Choose a secure photo or video for Firebase Storage upload"
+>
+
+<div id="firebaseSelectedMedia" class="messageSelectedFile" aria-live="polite">No file selected.</div>
+
+<div id="firebaseCompressionStatus" class="firebaseStatus" aria-live="polite"></div>
+
+<button type="button" class="action" id="firebaseUploadButton" aria-label="Upload validated media to Firebase Storage" disabled>Upload to Firebase Storage</button>
+
+<div id="firebaseUploadArea" class="firebaseUploadStatus" aria-live="polite" aria-atomic="true">
+<span id="firebaseUploadSpinner" class="uploadSpinner" aria-hidden="true" style="display:none;"></span>
+<span id="firebaseUploadStatusText">Upload is waiting.</span>
+</div>
+
+<div id="firebaseUploadResult" class="firebaseStatus" aria-live="polite"></div>
+</div>
+
+<div class="firebaseSecurityNote" role="note">
+<strong>Security:</strong> Browser-side checks improve user experience but do not replace Firebase Security Rules. The matching rules are provided with this file for authenticated, owner-only Storage access and size/content-type enforcement. Never place a Firebase service-account private key in index.html.
+</div>
+</section>
+
+
+<!-- FIRST SIGN-IN NOTIFICATION CHOICE -->
+<section id="notificationSetupSection" style="display:none;" tabindex="-1" aria-labelledby="notificationSetupTitle">
+  <h2 id="notificationSetupTitle">Stay connected</h2>
+  <p>Allow notifications to receive updates about messages and activity on Indian.</p>
+  <button class="action" type="button" id="indianAllowNotificationsBtn" disabled>Allow Notifications</button>
+  <button class="action" type="button" id="indianSkipNotificationsBtn">Not now</button>
+  <p id="indianNotificationSetupStatus" role="status" aria-live="polite">Preparing notifications…</p>
+</section>
+
+<!-- SEARCH SECTION -->
+<section id="searchSection" style="display:none;">
+
+<h2>Search Indian</h2>
+
+<section id="indianFriendHub" aria-labelledby="indianFriendHubTitle" style="margin:14px 0;padding:12px;border:1px solid #d7dce2;border-radius:12px;">
+  <h3 id="indianFriendHubTitle">Friends and Friend Requests</h3>
+  <p id="indianFriendRequestStatus" role="status" aria-live="polite">Loading your friend list…</p>
+  <h4>New Requests</h4>
+  <div id="indianIncomingFriendRequests"></div>
+  <h4>Sent Requests</h4>
+  <div id="indianOutgoingFriendRequests"></div>
+  <h4>My Friends</h4>
+  <div id="indianFriendsList"></div>
+</section>
+
+<label for="searchBox">
+Search registered users, places, posts or help requests:
+</label>
+
+<input
+    id="searchBox"
+    type="search"
+    placeholder="Type what you want to search..."
+    aria-label="Search Indian"
+    oninput="performSearch()"
+>
+
+<div id="searchResults">
+<p>Type something to search.</p>
+</div>
+
+</section>
+
+
+<!-- STORIES SECTION: local prototype; online sync is a later storage step -->
+<section id="storiesSection" style="display:none;" tabindex="-1">
+<h2>Stories</h2>
+
+<form id="storyForm">
+<label for="storyCaption">Caption (optional):</label>
+<textarea id="storyCaption" rows="3" maxlength="300" style="width:100%;margin:8px 0;" placeholder="Write something about your story..."></textarea>
+<label for="storyMediaInput">Choose a photo or video:</label>
+<input id="storyMediaInput" type="file" accept="image/*,video/mp4,video/webm" aria-label="Choose photo or video for story" style="display:block;margin:8px 0;">
+<details id="storyAudioOptions" class="story-audio-options">
+  <summary>Add music (optional)</summary>
+  <label for="storyMusicChoice">Choose a website demo tune:</label>
+  <select id="storyMusicChoice" style="display:block;margin:8px 0;padding:10px;width:100%;">
+    <option value="none">No music</option>
+    <option value="gentle">Gentle instrumental demo tone</option>
+    <option value="bright">Bright instrumental demo tone</option>
+    <option value="calm">Calm instrumental demo tone</option>
+  </select>
+  <label for="storyAudioInput">Choose a small audio file (optional):</label>
+  <input id="storyAudioInput" type="file" accept="audio/*" aria-label="Choose your own music audio file" style="display:block;margin:8px 0;">
+  <div id="storyAudioPreview" aria-live="polite" style="margin:8px 0;"></div>
+</details>
+<button class="action" type="button" onclick="publishLocalStory()">Add Story</button>
+</form>
+<div id="storiesStatus" role="status" aria-live="polite" style="margin-top:12px;"></div>
+<h3>Your stories</h3>
+<div id="storiesList" aria-live="polite"><p>No stories yet.</p></div>
+</section>
+
+<!-- REELS / SHORTS SECTION: local preview prototype -->
+
+
+<!-- NOTIFICATIONS SECTION -->
+<section id="notificationsSection" style="display:none;" tabindex="-1">
+<h2>Notifications</h2>
+
+<div id="indianPushNotificationSettings" class="firebaseCard" aria-label="Push notification settings">
+  <h3>Push Notifications</h3>
+  <p id="indianPushNotificationSettingsStatus" role="status" aria-live="polite">Checking notification status…</p>
+  <button class="action" type="button" id="indianEnablePushFromNotificationsBtn">Enable Push Notifications</button>
+</div>
+
+<div id="indianNearbyHelpSettings" class="firebaseCard" aria-label="Nearby Help Alerts settings">
+  <h3>Nearby Help Alerts</h3>
+  <p>Allow location to send Help Requests to users within 5 kilometres. To receive alerts yourself, also enable Push Notifications above. Indian shares your current location with OneSignal, its notification provider, only for nearby matching. Your exact location is not shown to other Indian users. Location refreshes when you use Indian; the app does not track you continuously in the background. You can turn this off at any time.</p>
+  <button class="action" type="button" id="indianEnableNearbyHelpBtn">Enable Nearby Help Alerts</button>
+  <button class="action" type="button" id="indianDisableNearbyHelpBtn" hidden>Turn Off Nearby Help Alerts</button>
+  <p id="indianNearbyHelpStatus" role="status" aria-live="polite">Nearby Help Alerts are off.</p>
+</div>
+
+<button class="action" onclick="markAllNotificationsAsRead()">Mark All as Read</button>
+
+<div id="notificationsContainer" aria-live="polite" style="margin-top:15px;">
+<p id="noNotifMsg">No notifications yet.</p>
+</div>
+</section>
+
+
+<!-- FEEDBACK SECTION: submitted through the existing Help Requests service -->
+<section id="feedbackSection" style="display:none;" tabindex="-1" aria-labelledby="indianFeedbackTitle">
+  <h2 id="indianFeedbackTitle">Website Feedback</h2>
+  <p>Share a suggestion or report a problem with Indian.</p>
+  <p class="indian-feedback-privacy-note">Feedback is submitted as a “Website feedback” Help Request and is visible to Indian users. Do not include passwords or private information.</p>
+  <label for="indianFeedbackText">Your feedback</label>
+  <textarea id="indianFeedbackText" rows="5" maxlength="2000" placeholder="Write your feedback or describe the problem…" style="display:block;width:100%;max-width:760px;box-sizing:border-box;margin:8px 0;padding:12px;border:1px solid #cbd5e1;border-radius:10px;"></textarea>
+  <p id="indianFeedbackStatus" role="status" aria-live="polite"></p>
+  <div class="indian-feedback-actions">
+    <button type="button" class="action" onclick="submitIndianFeedback()">Submit feedback</button>
+    <button type="button" class="action" onclick="openIndianHome()">Back to Home</button>
+  </div>
+</section>
+
+<!-- MESSAGES / CHAT -->
 <section id="messagesSection" class="messagesPage" style="display:none;" tabindex="-1">
 <h2>Messages</h2>
 <div id="firebaseMessageStatus" class="messagesConnectionStatus" aria-live="polite" style="display:none!important;">Messages ready.</div>
@@ -9401,5 +9943,6 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
 })();
 </script>
 <script type="module" src="friend-requests.js"></script>
+<script type="module" src="group-chat.js"></script>
 </body>
 </html>

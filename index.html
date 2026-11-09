@@ -8078,7 +8078,7 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   if(like){var count=card.querySelector('[data-uran-like-count-for]');var n=count?count.textContent:'…';like.textContent=like.getAttribute('aria-pressed')==='true'?'♥':'♡';like.setAttribute('aria-label',(like.getAttribute('aria-pressed')==='true'?'Unlike video':'Like video')+', '+n+' likes');like.classList.add('isv-icon-action');actions.appendChild(like);var likeCount=document.createElement('span');likeCount.className='isv-count';likeCount.dataset.uranLikeCountFor=card.dataset.uranVideoId;likeCount.textContent=n;likeCount.setAttribute('aria-label',n+' likes');actions.appendChild(likeCount);}
   var views=card.querySelector('[data-uran-views-for]');
   var viewCount=document.createElement('span');viewCount.className='isv-view-action';viewCount.textContent='◉';viewCount.setAttribute('aria-label','Views');actions.appendChild(viewCount);
-  var viewNumber=document.createElement('span');viewNumber.className='isv-count';viewNumber.textContent=views?views.textContent.replace(/^Views:\s*/,''):'…';viewNumber.setAttribute('aria-label','Video views '+viewNumber.textContent);actions.appendChild(viewNumber);
+  var viewNumber=document.createElement('span');viewNumber.className='isv-count isv-view-count';viewNumber.dataset.uranFullscreenViewsFor=card.dataset.uranVideoId;viewNumber.textContent=views?views.textContent.replace(/^Views:\s*/,''):'…';viewNumber.setAttribute('aria-label','Video views '+viewNumber.textContent);actions.appendChild(viewNumber);
   var commentList=panel&&panel.querySelector('.uran-comment-list');
   var commentRows=commentList?commentList.querySelectorAll('.uran-comment-row').length:0;
   var commentButton=document.createElement('button');commentButton.type='button';commentButton.className='isv-icon-action';commentButton.textContent='▤';commentButton.dataset.isvCommentsToggle='yes';commentButton.setAttribute('aria-expanded',String(commentsOpen));commentButton.setAttribute('aria-controls','isvComments');commentButton.setAttribute('aria-label','Comments, '+commentRows+'. '+(commentsOpen?'Hide comments':'Show comments'));actions.appendChild(commentButton);
@@ -8106,7 +8106,12 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   }else if(video){
    var v=document.createElement('video');var source=video.currentSrc||video.getAttribute('src')||video.getAttribute('data-home-lazy-src')||video.src;
    v.src=source;v.controls=true;v.playsInline=true;v.muted=false;v.autoplay=true;v.setAttribute('aria-label','Uran video '+(index+1)+' of '+cards.length);v.setAttribute('aria-describedby','isvStatus');stage.appendChild(v);
-   v.play().catch(function(){status.textContent='Automatic playback was blocked. Use the video Play control to start playback.';});
+   var viewRecorded=false;
+   async function recordFullscreenView(){if(viewRecorded||!window.firebaseCurrentUid||typeof window.indianUranRecordView!=='function')return;viewRecorded=true;try{await window.indianUranRecordView(card.dataset.uranVideoId);var data=await window.indianUranGetSocialData(card.dataset.uranVideoId);var count=social.querySelector('[data-uran-fullscreen-views-for="'+card.dataset.uranVideoId+'"]');if(count){count.textContent=String(data.views);count.setAttribute('aria-label','Video views '+data.views);}}catch(viewError){viewRecorded=false;console.warn('Uran fullscreen view could not be recorded',viewError);}}
+   v.addEventListener('play',recordFullscreenView);
+   v.addEventListener('ended',function(){try{v.currentTime=0;var replay=v.play();if(replay&&replay.catch)replay.catch(function(){status.textContent='Video khatam hua. Dobara chalane ke liye Play dabayein.';});}catch(replayError){status.textContent='Video khatam hua. Dobara chalane ke liye Play dabayein.';}});
+   v.addEventListener('click',function(e){if(e.defaultPrevented)return;var rect=v.getBoundingClientRect();if(e.clientY-rect.top>rect.height-56)return;if(v.paused){var start=v.play();if(start&&start.catch)start.catch(function(){});}else{v.pause();}});
+   v.play().then(recordFullscreenView).catch(function(){status.textContent='Automatic playback was blocked. Use the video Play control to start playback.';});
   }else{stage.textContent='Video player is unavailable.';}
   renderSocial(card);
   stage.setAttribute('aria-label','Uran video '+(index+1)+' of '+cards.length);

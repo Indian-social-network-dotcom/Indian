@@ -51,7 +51,7 @@ import {
       groupCache=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.updatedAtMs||0)-(a.updatedAtMs||0));
       renderGroups();
       if(activeGroupId){const fresh=groupCache.find(g=>g.id===activeGroupId);if(fresh){activeGroup=fresh;renderGroupHeader();}}
-    },err=>{console.error("Indian Groups list error",err);setStatus("Groups load error: "+(err?.code||"unknown")+" — "+(err?.message||"No details"));});
+    },err=>{console.error("Indian Groups list error",err,{uid:currentUser?.uid,projectId:apps[0]?.options?.projectId});const uidTail=currentUser?.uid?currentUser.uid.slice(-6):"not-signed-in";const project=apps[0]?.options?.projectId||"unknown-project";setStatus("Groups load error: "+(err?.code||"unknown")+" — "+(err?.message||"No details")+" | Account UID ending: "+uidTail+" | Firebase project: "+project);});
   }
   function renderGroupHeader(){
     const title=el("indianGroupTitle"),meta=el("indianGroupMembers");

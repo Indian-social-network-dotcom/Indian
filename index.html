@@ -1902,7 +1902,7 @@ function renderIndianMessagePollCard(message, personId){
         button.disabled=!window.firebaseCurrentUid;
         button.addEventListener("click",function(){
             button.disabled=true;
-            window.indianVoteInMessagePoll(message.firestoreId,optionId).catch(function(error){
+            window.indianVoteInMessagePoll(message.firestoreId,optionId,personId).catch(function(error){
                 const status=card.querySelector(".messagePollMeta");
                 if(status)status.textContent="Vote save nahi hua: "+String(error&&error.message||error).slice(0,160);
             }).finally(function(){button.disabled=false;});
@@ -2260,35 +2260,7 @@ async function translateIndianChatMessage(personId,messageIndex,bubble,button){
     }
 }
 
-window.indianVoteInMessagePoll=async function(messageId,optionId){
-    if(!firebaseDb||!firebaseCurrentUser)throw new Error("Sign in to vote.");
-    const id=String(messageId||"").trim();
-    const choice=String(optionId||"");
-    const messages=selectedConversationPersonId===null?[]:getMessagesForPerson(selectedConversationPersonId);
-    const message=messages.find(function(item){return item.firestoreId===id&&item.poll;});
-    if(!message)throw new Error("This poll is not available in the open chat.");
-    if(message.senderUid!==firebaseCurrentUser.uid&&message.receiverUid!==firebaseCurrentUser.uid)throw new Error("Only chat participants can vote.");
-    const options=Array.isArray(message.poll.options)?message.poll.options:[];
-    if(!/^\d$/.test(choice)||Number(choice)>=options.length)throw new Error("Invalid poll option.");
-    const peerUid=message.senderUid===firebaseCurrentUser.uid?message.receiverUid:message.senderUid;
-    if(!peerUid)throw new Error("Chat participant information is missing.");
-    const voteText="INDIAN_POLL_VOTE_V1:"+id+":"+choice;
-    const existingVote=messages.find(function(item){return item.pollVote&&item.pollVote.pollId===id&&item.senderUid===firebaseCurrentUser.uid;});
-    if(existingVote&&existingVote.firestoreId){
-        await updateDoc(doc(firebaseDb,"messages",existingVote.firestoreId),{text:voteText});
-    }else{
-        await addDoc(collection(firebaseDb,"messages"),{
-            senderId:firebaseCurrentUser.uid,
-            receiverId:peerUid,
-            text:voteText,
-            edited:false,
-            read:false,
-            createdAt:serverTimestamp(),
-            createdAtMs:Date.now()
-        });
-    }
-    return true;
-};
+// Poll voting is exposed by the Firebase module below.
 
 function updateMessageComposerStatus(){
     const textBox = document.getElementById("messageText");
@@ -2661,7 +2633,7 @@ async function sendIndianMessagePoll(){
     if(button)button.disabled=true;
     if(status)status.textContent="Sending poll…";
     try{
-        const poll={question:question,options:options,createdByUid:firebaseCurrentUser.uid,createdAtMs:Date.now()};
+        const poll={question:question,options:options,createdAtMs:Date.now()};
         const saved=await window.firebaseIndianMessages.save(personId,"📊 "+question,null,null,0,poll);
         if(!saved)throw new Error("Poll could not be saved.");
         if(questionBox)questionBox.value="";
@@ -5456,6 +5428,36 @@ async function deleteFirestoreMessage(message){
     await deleteDoc(doc(firebaseDb, "messages", message.firestoreId));
     return true;
 }
+
+window.indianVoteInMessagePoll=async function(messageId,optionId,personId){
+    if(!firebaseDb||!firebaseCurrentUser)throw new Error("Sign in to vote.");
+    const id=String(messageId||"").trim();
+    const choice=String(optionId||"");
+    const messages=typeof window.getMessagesForPerson==="function"?window.getMessagesForPerson(personId):[];
+    const message=messages.find(function(item){return item.firestoreId===id&&item.poll;});
+    if(!message)throw new Error("This poll is not available in the open chat.");
+    if(message.senderUid!==firebaseCurrentUser.uid&&message.receiverUid!==firebaseCurrentUser.uid)throw new Error("Only chat participants can vote.");
+    const options=Array.isArray(message.poll.options)?message.poll.options:[];
+    if(!/^\d$/.test(choice)||Number(choice)>=options.length)throw new Error("Invalid poll option.");
+    const peerUid=message.senderUid===firebaseCurrentUser.uid?message.receiverUid:message.senderUid;
+    if(!peerUid)throw new Error("Chat participant information is missing.");
+    const voteText="INDIAN_POLL_VOTE_V1:"+id+":"+choice;
+    const existingVote=messages.find(function(item){return item.pollVote&&item.pollVote.pollId===id&&item.senderUid===firebaseCurrentUser.uid;});
+    if(existingVote&&existingVote.firestoreId){
+        await updateDoc(doc(firebaseDb,"messages",existingVote.firestoreId),{text:voteText});
+    }else{
+        await addDoc(collection(firebaseDb,"messages"),{
+            senderId:firebaseCurrentUser.uid,
+            receiverId:peerUid,
+            text:voteText,
+            edited:false,
+            read:false,
+            createdAt:serverTimestamp(),
+            createdAtMs:Date.now()
+        });
+    }
+    return true;
+};
 
 async function saveFirestoreMessageReaction(messageId, emoji){
     if(!firebaseDb || !firebaseCurrentUser || !messageId) throw new Error("Sign in to save message reactions.");

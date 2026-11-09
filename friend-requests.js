@@ -276,6 +276,18 @@ if (!app) {
     ));
     if (existing.docs.some(item => (item.data() || {}).recordType === "friend_request_response")) return;
 
+    if (status === "accepted") {
+      const reciprocal = await getDocs(query(
+        collection(db, "follows"),
+        where("followerId", "==", currentUser.uid),
+        where("targetUid", "==", request.followerId)
+      ));
+      const pendingReciprocal = reciprocal.docs.filter(item =>
+        (item.data() || {}).recordType === "friend_request" && !responseMap().has(item.id)
+      );
+      await Promise.all(pendingReciprocal.map(item => deleteDoc(item.ref)));
+    }
+
     await addDoc(collection(db, "follows"), {
       recordType: "friend_request_response",
       followerId: currentUser.uid,

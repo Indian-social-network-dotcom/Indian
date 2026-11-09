@@ -579,7 +579,7 @@ Search registered users, places, posts or help requests:
 <button type="button" class="action" id="indianScheduleMessageButton" onclick="scheduleIndianMessage()">Schedule message</button>
 <div id="indianScheduleStatus" role="status" aria-live="polite"></div>
 </div>
-<p class="indianTranslationNotice">Message translation uses MyMemory's free translation service. The selected message text is sent to that service.</p>
+<p class="indianTranslationNotice">Message translation uses MyMemory's free translation service. The selected message text is sent to that service; its free daily quota applies.</p>
 </div>
 <div class="messageCallActions" aria-label="Voice and video call options">
 <button type="button" class="chatIconButton" onclick="startIndianVoiceCall()" aria-label="Voice call" title="Voice call">📞 Voice call</button>
@@ -2104,18 +2104,20 @@ function renderChat(personId){
             actions.appendChild(reactBtn);
 
             if(message.sender === "me") {
-                const editBtn = document.createElement("button");
-                editBtn.type = "button";
-                editBtn.className = "action";
-                editBtn.textContent = "Edit";
-                editBtn.setAttribute("aria-label", "Edit your message sent at " + message.time);
-                editBtn.onclick = function(){ startMessageEdit(personId, index); };
-                actions.appendChild(editBtn);
+                const isFutureScheduled=message.scheduledAtMs && Number(message.scheduledAtMs)>Date.now();
+                if(!isFutureScheduled){
+                    const editBtn = document.createElement("button");
+                    editBtn.type = "button";
+                    editBtn.className = "action";
+                    editBtn.textContent = "Edit";
+                    editBtn.setAttribute("aria-label", "Edit your message sent at " + message.time);
+                    editBtn.onclick = function(){ startMessageEdit(personId, index); };
+                    actions.appendChild(editBtn);
+                }
 
                 const deleteBtn = document.createElement("button");
                 deleteBtn.type = "button";
                 deleteBtn.className = "action";
-                const isFutureScheduled=message.scheduledAtMs && Number(message.scheduledAtMs)>Date.now();
                 deleteBtn.textContent = isFutureScheduled ? "Cancel scheduled message" : "Delete";
                 deleteBtn.setAttribute("aria-label", isFutureScheduled ? "Cancel your scheduled message" : "Delete your message sent at " + message.time);
                 deleteBtn.onclick = function(){ deleteMessage(personId, index); };
@@ -2692,7 +2694,11 @@ async function scheduleIndianMessage(){
         if(input)input.value="";
         try{sessionStorage.removeItem("indian_chat_draft_"+personId);}catch(e){}
         updateMessageComposerStatus();
-        if(status)status.textContent="Message scheduled for "+new Date(scheduledAtMs).toLocaleString()+".";
+        const pushStatus=document.getElementById("indianMessagePushResult");
+        const pushFailed=pushStatus&&/alert nahi bheja ja saka|push request failed/i.test(pushStatus.textContent||"");
+        if(status)status.textContent=pushFailed
+            ?"Message saved for the chosen time, but its scheduled push notification could not be confirmed."
+            :"Message scheduled for "+new Date(scheduledAtMs).toLocaleString()+".";
         addNotification("A message was scheduled for "+getPersonNameById(personId)+".","messages",personId);
         renderChat(personId);renderConversationList();textBox.focus();
     }catch(error){
@@ -5717,14 +5723,18 @@ async function loadFirebasePublicProfiles(){
 
 window.refreshIndianPublicProfiles = loadFirebasePublicProfiles;
 if(!window.__indianScheduledMessageRefreshInterval){
+    window.__indianScheduledMessageRevealedIds=window.__indianScheduledMessageRevealedIds||new Set();
     window.__indianScheduledMessageRefreshInterval=setInterval(function(){
         const now=Date.now();
         if(selectedConversationPersonId!==null){
             const messages=getMessagesForPerson(selectedConversationPersonId);
-            const newlyDue=messages.some(function(message){
-                return message.sender==="them"&&Number(message.scheduledAtMs)>0&&Number(message.scheduledAtMs)<=now;
+            const newlyDue=messages.filter(function(message){
+                return message.sender==="them"&&message.firestoreId&&Number(message.scheduledAtMs)>0&&Number(message.scheduledAtMs)<=now&&!window.__indianScheduledMessageRevealedIds.has(message.firestoreId);
             });
-            if(newlyDue)renderChat(selectedConversationPersonId);
+            if(newlyDue.length){
+                newlyDue.forEach(function(message){window.__indianScheduledMessageRevealedIds.add(message.firestoreId);});
+                renderChat(selectedConversationPersonId);
+            }
         }
         if(typeof window.refreshIndianRecentMessagePreviews==="function")window.refreshIndianRecentMessagePreviews();
     },15000);

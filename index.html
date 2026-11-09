@@ -5217,6 +5217,7 @@ window.firebaseIndianMessages = {
 };
 
 let indianPresenceHeartbeat=null;
+let indianPresenceDisplayTimer=null;
 let indianTypingExpiry=null;
 let indianLastTypingWriteAt=0;
 async function writeIndianPresence(isOnline,lastSeenAtMs){
@@ -5230,25 +5231,25 @@ async function writeIndianPresence(isOnline,lastSeenAtMs){
 function startIndianPresence(){
     if(!firebaseDb||!firebaseCurrentUser)return;
     if(indianPresenceHeartbeat)clearInterval(indianPresenceHeartbeat);
+    if(indianPresenceDisplayTimer)clearInterval(indianPresenceDisplayTimer);
     writeIndianPresence(true).catch(function(error){console.warn("Indian online status could not be saved.",error);});
     indianPresenceHeartbeat=setInterval(function(){
         if(document.visibilityState==="visible")writeIndianPresence(true).catch(function(){});
     },25000);
+    indianPresenceDisplayTimer=setInterval(function(){
+        if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(window.indianFirebasePublicProfiles||[]);
+    },15000);
 }
 function stopIndianPresence(){
     if(indianPresenceHeartbeat){clearInterval(indianPresenceHeartbeat);indianPresenceHeartbeat=null;}
+    if(indianPresenceDisplayTimer){clearInterval(indianPresenceDisplayTimer);indianPresenceDisplayTimer=null;}
 }
 window.indianSetMessageTyping=async function(personId,isTyping){
     if(!firebaseDb||!firebaseCurrentUser)return;
     const peerUid=getFirestoreMessagePersonUid(personId);
     if(!peerUid)return;
     const now=Date.now();
-    if(isTyping && now-indianLastTypingWriteAt<1800)return;
-    indianLastTypingWriteAt=now;
     const uid=firebaseCurrentUser.uid;
-    await setDoc(doc(firebaseDb,"publicProfiles",uid),{
-        uid:uid,typingToUid:isTyping?peerUid:"",typingAtMs:isTyping?now:0
-    },{merge:true});
     if(indianTypingExpiry)clearTimeout(indianTypingExpiry);
     if(isTyping){
         indianTypingExpiry=setTimeout(function(){
@@ -5256,7 +5257,12 @@ window.indianSetMessageTyping=async function(personId,isTyping){
                 setDoc(doc(firebaseDb,"publicProfiles",uid),{typingToUid:"",typingAtMs:0},{merge:true}).catch(function(){});
             }
         },6500);
+        if(now-indianLastTypingWriteAt<1800)return;
     }
+    indianLastTypingWriteAt=now;
+    await setDoc(doc(firebaseDb,"publicProfiles",uid),{
+        uid:uid,typingToUid:isTyping?peerUid:"",typingAtMs:isTyping?now:0
+    },{merge:true});
 };
 window.addEventListener("pagehide",function(){
     if(firebaseDb&&firebaseCurrentUser){

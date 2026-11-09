@@ -100,7 +100,7 @@ import {
       setStatus("Group ban gaya.");
       // The membership listener will populate the new group shortly.
       setTimeout(()=>openGroup(ref.id),350);
-    }catch(err){console.error("Indian Group create error",err);setStatus("Group nahi bana. Firestore Rules aur login check karein.");}
+    }catch(err){console.error("Indian Group create error",err);setStatus("Group create error: "+(err?.code||"unknown")+" — "+(err?.message||"No details"));}
     finally{if(button)button.disabled=false;}
   }
   async function searchMembers(){

@@ -400,6 +400,17 @@ Firebase is not configured yet. Add your Firebase Web App config in the code com
 
 <h2>Search Indian</h2>
 
+<section id="indianFriendHub" aria-labelledby="indianFriendHubTitle" style="margin:14px 0;padding:12px;border:1px solid #d7dce2;border-radius:12px;">
+  <h3 id="indianFriendHubTitle">Friends and Friend Requests</h3>
+  <p id="indianFriendRequestStatus" role="status" aria-live="polite">Loading your friend list…</p>
+  <h4>New Requests</h4>
+  <div id="indianIncomingFriendRequests"></div>
+  <h4>Sent Requests</h4>
+  <div id="indianOutgoingFriendRequests"></div>
+  <h4>My Friends</h4>
+  <div id="indianFriendsList"></div>
+</section>
+
 <label for="searchBox">
 Search registered users, places, posts or help requests:
 </label>
@@ -3299,6 +3310,13 @@ function createSearchResult(type,title,sectionId,personId){
 
     result.appendChild(button);
 
+    if(type === "Firebase Person" && personId !== undefined && personId !== null && typeof window.createIndianFriendRequestButton === "function"){
+        const matchedPerson = (window.peopleData || []).find(function(person){ return person.id === personId; });
+        if(matchedPerson && matchedPerson.firebaseUid){
+            result.appendChild(window.createIndianFriendRequestButton(matchedPerson));
+        }
+    }
+
     return result;
 }
 
@@ -5188,6 +5206,7 @@ function convertFirestoreMessage(docSnap, currentUid, person){
         : (Number(data.createdAtMs) || Date.now());
     const senderIsMe = data.senderId === currentUid;
     const rawText=typeof data.text==="string"?data.text:"";
+    const hiddenSystemMessage=data.friendRequestType==="request"||data.friendRequestType==="response"||rawText.indexOf("INDIAN_FRIEND_REQUEST_V1:")===0||rawText.indexOf("INDIAN_FRIEND_RESPONSE_V1:")===0;
     let messageText=rawText;
     let savedPoll=null;
     let savedPollVote=null;
@@ -5212,6 +5231,7 @@ function convertFirestoreMessage(docSnap, currentUid, person){
     } : null;
     return {
         firestoreId: docSnap.id,
+        hiddenSystemMessage: hiddenSystemMessage,
         sender: senderIsMe ? "me" : "them",
         senderUid: String(data.senderId||""),
         receiverUid: String(data.receiverId||""),
@@ -5240,7 +5260,7 @@ function applyFirestoreConversation(personId){
     bucket.outgoing.forEach(function(value, key){ merged.set(key, value); });
     bucket.incoming.forEach(function(value, key){ merged.set(key, value); });
 
-    const messages = Array.from(merged.values()).sort(function(a,b){
+    const messages = Array.from(merged.values()).filter(function(message){return !message.hiddenSystemMessage;}).sort(function(a,b){
         return (a.timestampValue || 0) - (b.timestampValue || 0);
     });
 
@@ -5697,6 +5717,7 @@ function startRecentFirebaseMessages(){
         const person=window.getIndianPersonByFirebaseUid?window.getIndianPersonByFirebaseUid(peerUid):null;
         if(!person)return;
         if(String(data.text||"").indexOf("INDIAN_POLL_VOTE_V1:")===0)return;
+        if(data.friendRequestType==="request"||data.friendRequestType==="response"||String(data.text||"").indexOf("INDIAN_FRIEND_REQUEST_V1:")===0||String(data.text||"").indexOf("INDIAN_FRIEND_RESPONSE_V1:")===0)return;
         const scheduledAtMs=Number(data.scheduledAtMs)||0;
         if(scheduledAtMs>Date.now()&&data.senderId!==uid)return;
         const stamp=Math.max(Number(data.createdAtMs)||((data.createdAt&&typeof data.createdAt.toMillis==="function")?data.createdAt.toMillis():0),scheduledAtMs);
@@ -9379,5 +9400,6 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
  });
 })();
 </script>
+<script type="module" src="friend-requests.js"></script>
 </body>
 </html>

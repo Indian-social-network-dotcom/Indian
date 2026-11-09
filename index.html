@@ -1951,7 +1951,9 @@ function renderChat(personId){
     container.innerHTML = "";
 
     const displayed = getDisplayedChatMessages(personId);
-    const allMessages = getMessagesForPerson(personId);
+    const allMessages = getMessagesForPerson(personId).filter(function(message){
+        return !message.pollVote && !(message.scheduledAtMs && Number(message.scheduledAtMs)>Date.now() && message.sender!=="me");
+    });
 
     if(searchInfo){
         if(messageSearchQuery.trim()){
@@ -2280,7 +2282,7 @@ window.indianVoteInMessagePoll=async function(messageId,optionId){
             receiverId:peerUid,
             text:voteText,
             edited:false,
-            read:true,
+            read:false,
             createdAt:serverTimestamp(),
             createdAtMs:Date.now()
         });

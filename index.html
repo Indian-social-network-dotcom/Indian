@@ -728,11 +728,6 @@ Search registered users, places, posts or help requests:
 
 <section id="homeSection" class="home-intro" tabindex="-1">
 <h2>Welcome to Indian</h2>
-<div class="indianMessageTabs" role="group" aria-label="Message type" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;">
-  <button type="button" class="action" id="indianPersonalChatsTab" aria-pressed="true">Personal Chats</button>
-  <button type="button" class="action" id="indianGroupsTab" aria-pressed="false">Groups</button>
-</div>
-
 
 <p>
 Welcome to Indian. Here people can connect, share, help each other and participate in live activities.
@@ -743,37 +738,7 @@ Welcome to Indian. Here people can connect, share, help each other and participa
 <button class="action" id="goLiveButton" onclick="toggleLive()">Go Live</button>
 <button class="action" onclick="openProfile()">My Profile</button>
 
-<div id="indianGroupsPanel" hidden style="border:1px solid #d1d5db;border-radius:12px;padding:12px;margin-top:10px;">
-  <h3>Groups</h3>
-  <label for="indianNewGroupName">Create a group</label>
-  <input id="indianNewGroupName" type="text" maxlength="60" placeholder="Group name" style="display:block;width:100%;max-width:420px;padding:10px;margin:6px 0;">
-  <button type="button" class="action" id="indianCreateGroupButton">Create Group</button>
-  <p id="indianGroupStatus" role="status" aria-live="polite"></p>
-  <div style="display:grid;grid-template-columns:minmax(150px,260px) minmax(0,1fr);gap:12px;margin-top:12px;">
-    <div>
-      <h4>Your Groups</h4>
-      <div id="indianGroupList" aria-label="Your groups"><p>Loading groups…</p></div>
-    </div>
-    <div>
-      <h4 id="indianGroupTitle">Select a group</h4>
-      <p id="indianGroupMembers">Choose a group or create a new one.</p>
-      <div id="indianGroupMessages" class="chatMessages" aria-live="polite" style="min-height:180px;max-height:420px;overflow:auto;border:1px solid #ddd;border-radius:10px;padding:10px;"><p>Select a group to see messages.</p></div>
-      <div id="indianGroupComposer" hidden style="margin-top:10px;">
-        <label for="indianGroupMessageText">Group message</label>
-        <textarea id="indianGroupMessageText" maxlength="2000" rows="3" style="display:block;width:100%;padding:10px;" placeholder="Write a group message…"></textarea>
-        <button type="button" class="action" id="indianGroupSendButton">Send</button>
-      </div>
-      <div id="indianGroupAddMemberArea" hidden style="margin-top:14px;">
-        <h4>Add a registered Indian user</h4>
-        <label for="indianGroupMemberSearch">Search by display name</label>
-        <input id="indianGroupMemberSearch" type="search" maxlength="60" placeholder="Type a name" style="display:block;width:100%;max-width:420px;padding:10px;margin:6px 0;">
-        <button type="button" class="action" id="indianGroupMemberSearchButton">Search users</button>
-        <div id="indianGroupMemberResults" aria-live="polite"></div>
-      </div>
-    </div>
-  </div>
-  <p><small>First version: private text groups. Photo/video sharing, voice messages, polls and advanced admin controls will be added after this version is tested.</small></p>
-</div>
+
 </section>
 
 <!-- HOME STORIES STRIP: swipe horizontally on touch screens; keep a keyboard-accessible region -->
@@ -1047,6 +1012,42 @@ Search registered users, places, posts or help requests:
 <!-- MESSAGES / CHAT -->
 <section id="messagesSection" class="messagesPage" style="display:none;" tabindex="-1">
 <h2>Messages</h2>
+<div class="indianMessageTabs" role="group" aria-label="Message type" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;">
+  <button type="button" class="action" id="indianPersonalChatsTab" aria-pressed="true">Personal Chats</button>
+  <button type="button" class="action" id="indianGroupsTab" aria-pressed="false">Groups</button>
+</div>
+
+<div id="indianGroupsPanel" hidden style="border:1px solid #d1d5db;border-radius:12px;padding:12px;margin-top:10px;">
+  <h3>Groups</h3>
+  <label for="indianNewGroupName">Create a group</label>
+  <input id="indianNewGroupName" type="text" maxlength="60" placeholder="Group name" style="display:block;width:100%;max-width:420px;padding:10px;margin:6px 0;">
+  <button type="button" class="action" id="indianCreateGroupButton">Create Group</button>
+  <p id="indianGroupStatus" role="status" aria-live="polite"></p>
+  <div style="display:grid;grid-template-columns:minmax(150px,260px) minmax(0,1fr);gap:12px;margin-top:12px;">
+    <div>
+      <h4>Your Groups</h4>
+      <div id="indianGroupList" aria-label="Your groups"><p>Loading groups…</p></div>
+    </div>
+    <div>
+      <h4 id="indianGroupTitle">Select a group</h4>
+      <p id="indianGroupMembers">Choose a group or create a new one.</p>
+      <div id="indianGroupMessages" class="chatMessages" aria-live="polite" style="min-height:180px;max-height:420px;overflow:auto;border:1px solid #ddd;border-radius:10px;padding:10px;"><p>Select a group to see messages.</p></div>
+      <div id="indianGroupComposer" hidden style="margin-top:10px;">
+        <label for="indianGroupMessageText">Group message</label>
+        <textarea id="indianGroupMessageText" maxlength="2000" rows="3" style="display:block;width:100%;padding:10px;" placeholder="Write a group message…"></textarea>
+        <button type="button" class="action" id="indianGroupSendButton">Send</button>
+      </div>
+      <div id="indianGroupAddMemberArea" hidden style="margin-top:14px;">
+        <h4>Add a registered Indian user</h4>
+        <label for="indianGroupMemberSearch">Search by display name</label>
+        <input id="indianGroupMemberSearch" type="search" maxlength="60" placeholder="Type a name" style="display:block;width:100%;max-width:420px;padding:10px;margin:6px 0;">
+        <button type="button" class="action" id="indianGroupMemberSearchButton">Search users</button>
+        <div id="indianGroupMemberResults" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+  <p><small>First version: private text groups. Photo/video sharing, voice messages, polls and advanced admin controls will be added after this version is tested.</small></p>
+</div>
 <div id="firebaseMessageStatus" class="messagesConnectionStatus" aria-live="polite" style="display:none!important;">Messages ready.</div>
 <div class="messageConversationSearch messagesTopSearch" id="indianUnifiedMessageSearch">
 <label for="conversationSearchBox">Search chats</label>

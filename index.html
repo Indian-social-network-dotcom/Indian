@@ -1474,10 +1474,42 @@ function openMessages(){
 
 function getMessageMeta(personId){
     if(!messageMeta[personId]){
-        messageMeta[personId] = {unread:0,pinned:false,muted:false,online:false,lastSeen:"Unknown"};
+        messageMeta[personId] = {unread:0,pinned:false,muted:false,online:false,lastSeen:"Unknown",typing:false};
     }
     return messageMeta[personId];
 }
+function indianFormatPresenceLastSeen(timestamp){
+    const value=Number(timestamp)||0;
+    if(!value)return "Unknown";
+    const elapsed=Math.max(0,Date.now()-value);
+    if(elapsed<60000)return "just now";
+    if(elapsed<3600000)return Math.floor(elapsed/60000)+" minutes ago";
+    if(elapsed<86400000)return Math.floor(elapsed/3600000)+" hours ago";
+    return new Date(value).toLocaleString([], {day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
+}
+window.applyIndianPresenceProfiles=function(profiles){
+    const now=Date.now();
+    (profiles||[]).forEach(function(profile){
+        if(!profile||!profile.uid)return;
+        const person=peopleData.find(function(item){return item.firebaseUid===profile.uid;});
+        if(!person)return;
+        const activeAt=Number(profile.presenceAtMs)||Number(profile.lastSeenAtMs)||0;
+        const online=profile.presenceOnline===true && activeAt>0 && now-activeAt<65000;
+        const meta=getMessageMeta(person.id);
+        meta.online=online;
+        meta.lastSeen=online?"Online now":indianFormatPresenceLastSeen(Number(profile.lastSeenAtMs)||activeAt);
+        meta.typing=!!(profile.typingToUid===window.firebaseCurrentUid && Number(profile.typingAtMs)>now-7000 && online);
+    });
+    if(typeof renderConversationList==="function")renderConversationList();
+    if(selectedConversationPersonId!==null){
+        const person=peopleData.find(function(item){return item.id===selectedConversationPersonId;});
+        const meta=getMessageMeta(selectedConversationPersonId);
+        const presence=document.getElementById("chatPresence");
+        const typing=document.getElementById("chatTypingStatus");
+        if(presence)presence.textContent=meta.typing?"Typing...":(meta.online?"Online":(meta.lastSeen&&meta.lastSeen!=="Unknown"?"Last seen "+meta.lastSeen:""));
+        if(typing)typing.textContent=meta.typing&&person?person.name+" is typing...":"";
+    }
+};
 
 function getTotalUnreadMessages(){
     return Object.keys(messageMeta).reduce(function(total, key){
@@ -1626,7 +1658,7 @@ function renderConversationList(){
 
         const presence = document.createElement("div");
         presence.className = "messageConversationMeta";
-        presence.textContent = meta.online ? "Online now" : "Last seen " + meta.lastSeen;
+        presence.textContent = meta.typing ? "Typing..." : (meta.online ? "Online now" : "Last seen " + meta.lastSeen);
 
         info.appendChild(name);
         info.appendChild(preview);
@@ -1821,8 +1853,8 @@ function renderChat(personId){
             chatAvatar.textContent = "👤";
         }
     }
-    if(presence) presence.textContent = meta.online ? "Online" : (meta.lastSeen && meta.lastSeen !== "Unknown" ? "Last seen " + meta.lastSeen : "");
-    if(typing && !typing.textContent) typing.textContent = "";
+    if(presence) presence.textContent = meta.typing ? "Typing..." : (meta.online ? "Online" : (meta.lastSeen && meta.lastSeen !== "Unknown" ? "Last seen " + meta.lastSeen : ""));
+    if(typing) typing.textContent = meta.typing ? person.name + " is typing..." : "";
     if(searchBar) searchBar.style.display = "block";
 
     container.innerHTML = "";
@@ -2568,13 +2600,16 @@ function handleMessageTyping(){
     clearTimeout(messageTypingTimer);
     clearTimeout(messageDraftSaveTimer);
     saveCurrentMessageDraft();
+    if(window.indianSetMessageTyping){
+        window.indianSetMessageTyping(selectedConversationPersonId,!!(textBox&&textBox.value.trim())).catch(function(){});
+    }
     if(textBox && textBox.value){
-        typing.textContent = "Drafting message to " + person.name + "...";
+        typing.textContent = "Your message draft is being saved...";
     } else {
         typing.textContent = "";
     }
     messageTypingTimer = setTimeout(function(){
-        if(typing) typing.textContent = "";
+        if(typing && !getMessageMeta(selectedConversationPersonId).typing) typing.textContent = "";
     }, 1500);
     messageDraftSaveTimer = setTimeout(saveCurrentMessageDraft, 300);
 }
@@ -5181,6 +5216,64 @@ window.firebaseIndianMessages = {
     }
 };
 
+let indianPresenceHeartbeat=null;
+let indianPresenceDisplayTimer=null;
+let indianTypingExpiry=null;
+let indianLastTypingWriteAt=0;
+async function writeIndianPresence(isOnline,lastSeenAtMs){
+    if(!firebaseDb||!firebaseCurrentUser)return;
+    const uid=firebaseCurrentUser.uid;
+    const now=Date.now();
+    const patch={uid:uid,presenceOnline:!!isOnline,presenceAtMs:now};
+    if(!isOnline)patch.lastSeenAtMs=Number(lastSeenAtMs)||now;
+    await setDoc(doc(firebaseDb,"publicProfiles",uid),patch,{merge:true});
+}
+function startIndianPresence(){
+    if(!firebaseDb||!firebaseCurrentUser)return;
+    if(indianPresenceHeartbeat)clearInterval(indianPresenceHeartbeat);
+    if(indianPresenceDisplayTimer)clearInterval(indianPresenceDisplayTimer);
+    writeIndianPresence(true).catch(function(error){console.warn("Indian online status could not be saved.",error);});
+    indianPresenceHeartbeat=setInterval(function(){
+        if(document.visibilityState==="visible")writeIndianPresence(true).catch(function(){});
+    },25000);
+    indianPresenceDisplayTimer=setInterval(function(){
+        if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(window.indianFirebasePublicProfiles||[]);
+    },15000);
+}
+function stopIndianPresence(){
+    if(indianPresenceHeartbeat){clearInterval(indianPresenceHeartbeat);indianPresenceHeartbeat=null;}
+    if(indianPresenceDisplayTimer){clearInterval(indianPresenceDisplayTimer);indianPresenceDisplayTimer=null;}
+}
+window.indianSetMessageTyping=async function(personId,isTyping){
+    if(!firebaseDb||!firebaseCurrentUser)return;
+    const peerUid=getFirestoreMessagePersonUid(personId);
+    if(!peerUid)return;
+    const now=Date.now();
+    const uid=firebaseCurrentUser.uid;
+    if(indianTypingExpiry)clearTimeout(indianTypingExpiry);
+    if(isTyping){
+        indianTypingExpiry=setTimeout(function(){
+            if(firebaseDb&&firebaseCurrentUser&&firebaseCurrentUser.uid===uid){
+                setDoc(doc(firebaseDb,"publicProfiles",uid),{typingToUid:"",typingAtMs:0},{merge:true}).catch(function(){});
+            }
+        },6500);
+        if(now-indianLastTypingWriteAt<1800)return;
+    }
+    indianLastTypingWriteAt=now;
+    await setDoc(doc(firebaseDb,"publicProfiles",uid),{
+        uid:uid,typingToUid:isTyping?peerUid:"",typingAtMs:isTyping?now:0
+    },{merge:true});
+};
+window.addEventListener("pagehide",function(){
+    if(firebaseDb&&firebaseCurrentUser){
+        const uid=firebaseCurrentUser.uid;
+        const now=Date.now();
+        setDoc(doc(firebaseDb,"publicProfiles",uid),{
+            uid:uid,presenceOnline:false,presenceAtMs:now,lastSeenAtMs:now,typingToUid:"",typingAtMs:0
+        },{merge:true}).catch(function(){});
+    }
+});
+
 async function indianStoryInteractionRef(ownerUid,storyId){
     if(!firebaseDb||!firebaseCurrentUser)throw new Error("Sign in to view or react to a story.");
     const safeOwner=String(ownerUid||"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,128);
@@ -5303,6 +5396,7 @@ async function loadFirebasePublicProfiles(){
             const profiles=allProfiles.filter(function(profile){return profile.uid!==firebaseCurrentUser.uid;});
             window.indianFirebasePublicProfiles=profiles;
             if(typeof window.addFirebasePeopleToIndian === "function") window.addFirebasePeopleToIndian(profiles);
+            if(typeof window.applyIndianPresenceProfiles === "function") window.applyIndianPresenceProfiles(profiles);
             const own=allProfiles.find(profile=>profile.uid===firebaseCurrentUser.uid);
             if(own && own.displayName && typeof window.applyIndianIdentity==="function"){
                 window.applyIndianIdentity(own.displayName,own.bio||window.profileBio||"",own.photoURL||window.profilePhotoURL||"",{preserveActiveEdit:true});
@@ -5368,12 +5462,14 @@ else{
             updateFirebaseAuthUI();
             if (typeof window.finishIndianAuthStartup === "function") window.finishIndianAuthStartup();
             if(user){
+                startIndianPresence();
                 setTimeout(function(){ cleanupExpiredIndianStories(); }, 900);
                 const authName=sanitizePlainText(user.displayName || (user.email ? user.email.split("@")[0] : "Indian User"),60)||"Indian User";
                 if(typeof window.applyIndianIdentity==="function")window.applyIndianIdentity(authName,window.profileBio||"",window.profilePhotoURL||"",{preserveActiveEdit:true});
                 ensureCurrentUserPublicProfile().then(function(){return loadFirebasePublicProfiles();});
                 setFirebaseAuthStatus("Signed in as " + authName + ". UID: " + user.uid);
             }else{
+                stopIndianPresence();
                 if(publicProfilesUnsubscribe){try{publicProfilesUnsubscribe();}catch(e){} publicProfilesUnsubscribe=null;}
                 recentFirebaseMessageUnsubs.forEach(fn=>{try{fn();}catch(e){}});recentFirebaseMessageUnsubs=[];recentFirebaseMessageUid="";recentFirebaseMessagesById.clear();
                 window.indianFirebaseAllProfiles=[];window.indianFirebasePublicProfiles=[];

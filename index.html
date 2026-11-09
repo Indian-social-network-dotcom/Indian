@@ -175,9 +175,11 @@
   }, 12000);
 </script>
 <style>
-.indianMessageExtras{display:grid;gap:10px;margin:12px 0;padding:10px;border:1px solid #d7dce2;border-radius:12px}
-.indianMessageFeature{display:grid;gap:8px}
-.indianMessageFeature summary{cursor:pointer;font-weight:600;padding:6px 0}
+.indianMessageExtras{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;margin:5px 0;padding:0;border:0}
+.indianMessageFeature{display:block;min-width:0;flex:0 1 auto}
+.indianMessageFeature summary{cursor:pointer;font-weight:600;font-size:.9rem;padding:6px 9px;border:1px solid #cbd2da;border-radius:8px;list-style-position:inside}
+.indianMessageFeature[open]{flex:1 1 100%;padding:8px;border:1px solid #d7dce2;border-radius:10px}
+.indianMessageFeature[open] summary{padding:2px 0 7px;border:0;border-radius:0}
 .indianMessageFeatureBody{display:grid;gap:7px}
 .indianMessageFeature input{width:100%;max-width:100%;box-sizing:border-box;padding:9px;border:1px solid #aab3bd;border-radius:8px}
 .indianTranslationNotice{font-size:.82rem;opacity:.8;margin:0}
@@ -574,13 +576,21 @@ Search registered users, places, posts or help requests:
 <div id="indianPollStatus" role="status" aria-live="polite"></div>
 </div>
 </details>
-<div class="indianMessageFeature">
-<label for="indianScheduleAt">Schedule message date and time</label>
+<details id="indianScheduleComposer" class="indianMessageFeature">
+<summary>Schedule Message</summary>
+<div class="indianMessageFeatureBody">
+<label for="indianScheduleAt">Choose date and time</label>
 <input id="indianScheduleAt" type="datetime-local" aria-label="Choose the date and time to send your message">
 <button type="button" class="action" id="indianScheduleMessageButton" onclick="scheduleIndianMessage()">Schedule message</button>
 <div id="indianScheduleStatus" role="status" aria-live="polite"></div>
 </div>
-<p class="indianTranslationNotice">Message translation uses MyMemory's free translation service. The selected message text is sent to that service; its free daily quota applies.</p>
+</details>
+<details class="indianMessageFeature">
+<summary>Translation Info</summary>
+<div class="indianMessageFeatureBody">
+<p class="indianTranslationNotice">Message translation uses MyMemory's free service. The selected message text is sent to that service; its free daily quota applies.</p>
+</div>
+</details>
 </div>
 <div class="messageCallActions" aria-label="Voice and video call options">
 <button type="button" class="chatIconButton" onclick="startIndianVoiceCall()" aria-label="Voice call" title="Voice call">📞 Voice call</button>

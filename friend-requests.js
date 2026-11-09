@@ -140,6 +140,7 @@ if (!app) {
       incoming.forEach(request => {
         const row = document.createElement("div");
         row.className = "indian-friend-row";
+        row.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #d7dce2;";
         const name = document.createElement("span");
         name.textContent = clean(request.followerName || "Indian User", 60) + " sent you a friend request.";
         row.appendChild(name);
@@ -223,7 +224,8 @@ if (!app) {
       return;
     }
     if (state.action === "cancel") {
-      throw new Error("A request is already pending. Use Cancel Request first.");
+      await cancelRequest(state.request);
+      return;
     }
     if (getFriends().has(targetUid)) return;
 

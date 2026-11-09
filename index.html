@@ -163,9 +163,20 @@
 </style>
 
 <link rel="stylesheet" href="site-polish.css">
+<style id="indianAuthStartupGate">body.auth-initializing{visibility:hidden!important}</style>
+<script>
+  window.finishIndianAuthStartup = function () {
+    if (window.__indianAuthStartupTimer) window.clearTimeout(window.__indianAuthStartupTimer);
+    if (document.body) document.body.classList.remove("auth-initializing");
+  };
+  // Fallback: if Firebase's module cannot load, show the sign-in screen rather than a blank page.
+  window.__indianAuthStartupTimer = window.setTimeout(function () {
+    window.finishIndianAuthStartup();
+  }, 12000);
+</script>
 </head>
 
-<body class="auth-required">
+<body class="auth-required auth-initializing">
 
 <a class="skip-link" href="#mainContent">Skip to main content</a>
 <header class="brand-header" id="indianTopHeader">
@@ -5326,6 +5337,7 @@ if(!firebaseConfigReady){
     setFirebaseAuthStatus("Not configured. The local Indian features remain available.");
     setFirebaseUploadStatus("Waiting for Firebase configuration.", false);
     updateFirebaseAuthUI();
+    if (typeof window.finishIndianAuthStartup === "function") window.finishIndianAuthStartup();
 }
 else{
     try{
@@ -5353,6 +5365,7 @@ else{
                 });
             }
             updateFirebaseAuthUI();
+            if (typeof window.finishIndianAuthStartup === "function") window.finishIndianAuthStartup();
             if(user){
                 setTimeout(function(){ cleanupExpiredIndianStories(); }, 900);
                 const authName=sanitizePlainText(user.displayName || (user.email ? user.email.split("@")[0] : "Indian User"),60)||"Indian User";
@@ -5372,6 +5385,7 @@ else{
         firebaseStorage = null;
         setFirebaseSetupStatus("Firebase initialization failed: " + sanitizePlainText(error.message, 300));
         updateFirebaseAuthUI();
+        if (typeof window.finishIndianAuthStartup === "function") window.finishIndianAuthStartup();
     }
 }
 

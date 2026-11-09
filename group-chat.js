@@ -51,7 +51,7 @@ import {
       groupCache=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.updatedAtMs||0)-(a.updatedAtMs||0));
       renderGroups();
       if(activeGroupId){const fresh=groupCache.find(g=>g.id===activeGroupId);if(fresh){activeGroup=fresh;renderGroupHeader();}}
-    },err=>{console.error("Indian Groups list error",err);setStatus("Groups load nahi ho sake. Firestore Rules check karein.");});
+    },err=>{console.error("Indian Groups list error",err);setStatus("Groups load error: "+(err?.code||"unknown")+" — "+(err?.message||"No details"));});
   }
   function renderGroupHeader(){
     const title=el("indianGroupTitle"),meta=el("indianGroupMembers");

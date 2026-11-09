@@ -514,7 +514,16 @@ export default {
 
       const profile = await getPublicProfile(senderId, idToken);
       const senderName = stringField(profile, "displayName") || "Someone";
-      const messageText = stringField(message, "text");
+      const rawMessageText = stringField(message, "text");
+      let messageText = rawMessageText;
+      if (rawMessageText.indexOf("INDIAN_POLL_V1:") === 0) {
+        try {
+          const pollData = JSON.parse(rawMessageText.slice("INDIAN_POLL_V1:".length));
+          messageText = "📊 Poll: " + String(pollData.question || "You received a chat poll.").slice(0, 180);
+        } catch {
+          messageText = "📊 You received a chat poll.";
+        }
+      }
       const attachmentFields = message.fields && message.fields.attachment
         && message.fields.attachment.mapValue && message.fields.attachment.mapValue.fields;
       const attachmentType = attachmentFields && attachmentFields.type

@@ -157,8 +157,21 @@ import {
     el("indianGroupMessageText")?.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendGroupMessage();}});
   });
   onAuthStateChanged(auth,user=>{
+    const nextUid=user?.uid||"";
+    const previousUid=currentUser?.uid||"";
+    if(nextUid!==previousUid){
+      if(groupsUnsubscribe)groupsUnsubscribe();
+      groupsUnsubscribe=null;
+      if(messagesUnsubscribe)messagesUnsubscribe();
+      messagesUnsubscribe=null;
+      groupCache=[];
+      activeGroup=null;
+      activeGroupId="";
+      renderGroups();
+      renderGroupHeader();
+    }
     currentUser=user||null;
-    if(!currentUser){if(groupsUnsubscribe)groupsUnsubscribe();groupsUnsubscribe=null;if(messagesUnsubscribe)messagesUnsubscribe();messagesUnsubscribe=null;groupCache=[];activeGroup=null;activeGroupId="";renderGroups();setStatus("Sign in to use Groups.");}
+    if(!currentUser){setStatus("Sign in to use Groups.");}
     else{loadGroups();}
   });
 })();

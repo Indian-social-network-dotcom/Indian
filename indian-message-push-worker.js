@@ -214,7 +214,7 @@ async function stableIdempotencyKey(messageId) {
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
-async function sendOneSignalPush(env, receiverUid, messageId, senderName, messageText) {
+async function sendOneSignalPush(env, receiverUid, messageId, senderName, messageText, sendAfter) {
   const idempotencyKey = await stableIdempotencyKey(messageId);
   const safeSender = String(senderName || "Someone")
     .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "Someone";
@@ -228,7 +228,8 @@ async function sendOneSignalPush(env, receiverUid, messageId, senderName, messag
     contents: { en: safeMessage || "Sent you a photo or video." },
     web_url: `${INDIAN_SITE_URL}?indianMessageId=${encodeURIComponent(messageId)}`,
     idempotency_key: idempotencyKey,
-    data: { type: "message", messageId }
+    data: { type: "message", messageId },
+    ...(sendAfter ? { send_after: sendAfter } : {})
   };
   const response = await fetch("https://api.onesignal.com/notifications", {
     method: "POST",
@@ -345,6 +346,27 @@ export default {
             }
           });
           return json({ success: true, locationShared: false }, 200, origin);
+        }
+
+        if (action === "cancelScheduledMessage") {
+          const scheduledMessageId = typeof body.messageId === "string" ? body.messageId.trim() : "";
+          if (!/^[A-Za-z0-9_-]{10,40}$/.test(scheduledMessageId)) {
+            return json({ error: "Invalid scheduled message ID." }, 400, origin);
+          }
+          const scheduledMessage = await getFirestoreMessage(scheduledMessageId, idToken);
+          if (!scheduledMessage) return json({ success: true, cancelled: false, message: "Message no longer exists." }, 200, origin);
+          if (stringField(scheduledMessage, "senderId") !== callerUid) {
+            return json({ error: "You can only cancel a scheduled message you sent." }, 403, origin);
+          }
+          const notificationId = stringField(scheduledMessage, "scheduledNotificationId");
+          if (!notificationId) return json({ success: true, cancelled: false, message: "No scheduled push notification was recorded." }, 200, origin);
+          const cancelUrl = "https://api.onesignal.com/notifications/" + encodeURIComponent(notificationId) + "?app_id=" + encodeURIComponent(ONESIGNAL_APP_ID);
+          const cancelResponse = await fetch(cancelUrl, {
+            method: "DELETE",
+            headers: { "Authorization": "Key " + env.ONESIGNAL_REST_API_KEY }
+          });
+          if (!cancelResponse.ok) throw new Error("OneSignal scheduled notification cancellation failed (" + cancelResponse.status + ").");
+          return json({ success: true, cancelled: true }, 200, origin);
         }
 
         if (action === "sendHelpRequest") {
@@ -492,7 +514,16 @@ export default {
 
       const profile = await getPublicProfile(senderId, idToken);
       const senderName = stringField(profile, "displayName") || "Someone";
-      const messageText = stringField(message, "text");
+      const rawMessageText = stringField(message, "text");
+      let messageText = rawMessageText;
+      if (rawMessageText.indexOf("INDIAN_POLL_V1:") === 0) {
+        try {
+          const pollData = JSON.parse(rawMessageText.slice("INDIAN_POLL_V1:".length));
+          messageText = "📊 Poll: " + String(pollData.question || "You received a chat poll.").slice(0, 180);
+        } catch {
+          messageText = "📊 You received a chat poll.";
+        }
+      }
       const attachmentFields = message.fields && message.fields.attachment
         && message.fields.attachment.mapValue && message.fields.attachment.mapValue.fields;
       const attachmentType = attachmentFields && attachmentFields.type
@@ -502,13 +533,17 @@ export default {
         : attachmentType === "image" ? "Sent you a photo."
         : "Sent you a message."
       );
+      const scheduledAtMs = numberField(message, "scheduledAtMs");
+      const sendAfter = Number.isFinite(scheduledAtMs) && scheduledAtMs > Date.now()
+        ? new Date(scheduledAtMs).toISOString()
+        : "";
       const result = await sendOneSignalPush(
-        env, receiverId, messageId, senderName, notificationText
+        env, receiverId, messageId, senderName, notificationText, sendAfter
       );
       if (!result || !result.id) {
         return json({ success: false, message: "No subscribed OneSignal device matched this recipient." }, 200, origin);
       }
-      return json({ success: true, notificationId: result.id }, 200, origin);
+      return json({ success: true, notificationId: result.id, scheduled: !!sendAfter }, 200, origin);
     } catch (error) {
       const detail = String(error && error.message ? error.message : "Unknown push delivery error").slice(0, 300);
       console.error("Indian message push failed:", detail);

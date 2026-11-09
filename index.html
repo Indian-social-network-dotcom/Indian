@@ -174,6 +174,20 @@
     window.finishIndianAuthStartup();
   }, 12000);
 </script>
+<style>
+.indianMessageExtras{display:grid;gap:10px;margin:12px 0;padding:10px;border:1px solid #d7dce2;border-radius:12px}
+.indianMessageFeature{display:grid;gap:8px}
+.indianMessageFeature summary{cursor:pointer;font-weight:600;padding:6px 0}
+.indianMessageFeatureBody{display:grid;gap:7px}
+.indianMessageFeature input{width:100%;max-width:100%;box-sizing:border-box;padding:9px;border:1px solid #aab3bd;border-radius:8px}
+.indianTranslationNotice{font-size:.82rem;opacity:.8;margin:0}
+.messageTranslation{margin-top:8px;padding:8px;border-left:3px solid #ff9800;background:rgba(255,152,0,.08);white-space:pre-wrap;overflow-wrap:anywhere}
+.messagePollCard{margin-top:10px;padding:10px;border:1px solid #d7dce2;border-radius:10px;display:grid;gap:8px}
+.messagePollQuestion{font-weight:700}
+.messagePollOption{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;white-space:normal}
+.messagePollOption[aria-pressed=true]{border-color:#ff9800;font-weight:700}
+.messagePollMeta{font-size:.82rem;opacity:.8}
+</style>
 </head>
 
 <body class="auth-required auth-initializing">
@@ -540,6 +554,33 @@ Search registered users, places, posts or help requests:
 <div class="messageSendRow">
 <button type="button" id="sendMessageButton" class="action" onclick="sendMessage()">Send</button>
 <button type="button" class="action messageClearDraftButton" onclick="clearMessageDraft()">Clear draft</button>
+</div>
+<div class="indianMessageExtras">
+<details id="indianPollComposer" class="indianMessageFeature">
+<summary>Create a chat poll</summary>
+<div class="indianMessageFeatureBody">
+<label for="indianPollQuestion">Poll question</label>
+<input id="indianPollQuestion" type="text" maxlength="180" placeholder="What should we do today?">
+<label for="indianPollOption1">Option 1</label>
+<input id="indianPollOption1" type="text" maxlength="80" placeholder="First option">
+<label for="indianPollOption2">Option 2</label>
+<input id="indianPollOption2" type="text" maxlength="80" placeholder="Second option">
+<label for="indianPollOption3">Option 3 (optional)</label>
+<input id="indianPollOption3" type="text" maxlength="80" placeholder="Third option">
+<label for="indianPollOption4">Option 4 (optional)</label>
+<input id="indianPollOption4" type="text" maxlength="80" placeholder="Fourth option">
+<button type="button" class="action" id="indianSendPollButton" onclick="sendIndianMessagePoll()">Send poll</button>
+<p class="indianTranslationNotice">Poll votes are stored in the chat, and only the two chat participants can read them.</p>
+<div id="indianPollStatus" role="status" aria-live="polite"></div>
+</div>
+</details>
+<div class="indianMessageFeature">
+<label for="indianScheduleAt">Schedule message date and time</label>
+<input id="indianScheduleAt" type="datetime-local" aria-label="Choose the date and time to send your message">
+<button type="button" class="action" id="indianScheduleMessageButton" onclick="scheduleIndianMessage()">Schedule message</button>
+<div id="indianScheduleStatus" role="status" aria-live="polite"></div>
+</div>
+<p class="indianTranslationNotice">Message translation uses MyMemory's free translation service. The selected message text is sent to that service; its free daily quota applies.</p>
 </div>
 <div class="messageCallActions" aria-label="Voice and video call options">
 <button type="button" class="chatIconButton" onclick="startIndianVoiceCall()" aria-label="Voice call" title="Voice call">📞 Voice call</button>
@@ -1812,17 +1853,67 @@ function openConversation(personId){
 function getDisplayedChatMessages(personId){
     const messages = getMessagesForPerson(personId);
     const q = messageSearchQuery.trim().toLowerCase();
-    if(!q) return messages.map(function(message, index){ return {message:message,index:index}; });
-
     return messages.reduce(function(list, message, index){
+        if(message.pollVote) return list;
+        if(message.scheduledAtMs && Number(message.scheduledAtMs)>Date.now() && message.sender!=="me") return list;
         const haystack = [
             message.text || "",
+            message.poll ? (message.poll.question || "") : "",
+            message.poll && Array.isArray(message.poll.options) ? message.poll.options.join(" ") : "",
             message.attachment ? message.attachment.name : "",
             message.replyTo ? (message.replyTo.text || "") : ""
         ].join(" ").toLowerCase();
-        if(haystack.includes(q)) list.push({message:message,index:index});
+        if(!q || haystack.includes(q)) list.push({message:message,index:index});
         return list;
     }, []);
+}
+
+function renderIndianMessagePollCard(message, personId){
+    if(!message || !message.poll || !message.firestoreId) return null;
+    const poll=message.poll;
+    const options=Array.isArray(poll.options)?poll.options.slice(0,4):[];
+    if(!options.length) return null;
+    const card=document.createElement("div");
+    card.className="messagePollCard";
+    const question=document.createElement("div");
+    question.className="messagePollQuestion";
+    question.textContent=String(poll.question||message.text||"Poll").slice(0,180);
+    card.appendChild(question);
+    const chatMessages=getMessagesForPerson(personId);
+    const latestVotes=new Map();
+    chatMessages.forEach(function(voteMessage){
+        if(!voteMessage.pollVote||voteMessage.pollVote.pollId!==message.firestoreId)return;
+        const previous=latestVotes.get(voteMessage.senderUid);
+        if(!previous||Number(voteMessage.timestampValue||0)>=Number(previous.timestampValue||0))latestVotes.set(voteMessage.senderUid,voteMessage);
+    });
+    const myVoteMessage=latestVotes.get(window.firebaseCurrentUid||"");
+    const myVote=myVoteMessage?String(myVoteMessage.pollVote.optionId):"";
+    options.forEach(function(option,index){
+        const optionId=String(index);
+        let count=0;
+        latestVotes.forEach(function(voteMessage){
+            if(String(voteMessage.pollVote.optionId)===optionId)count++;
+        });
+        const button=document.createElement("button");
+        button.type="button";
+        button.className="action messagePollOption";
+        button.setAttribute("aria-pressed",String(myVote===optionId));
+        button.textContent=String(option).slice(0,80)+" — "+count+" vote"+(count===1?"":"s")+(myVote===optionId?" (Your vote)":"");
+        button.disabled=!window.firebaseCurrentUid;
+        button.addEventListener("click",function(){
+            button.disabled=true;
+            window.indianVoteInMessagePoll(message.firestoreId,optionId,personId).catch(function(error){
+                const status=card.querySelector(".messagePollMeta");
+                if(status)status.textContent="Vote save nahi hua: "+String(error&&error.message||error).slice(0,160);
+            }).finally(function(){button.disabled=false;});
+        });
+        card.appendChild(button);
+    });
+    const meta=document.createElement("div");
+    meta.className="messagePollMeta";
+    meta.textContent=myVote?"You can change your vote by choosing another option.":"Choose one option to vote.";
+    card.appendChild(meta);
+    return card;
 }
 
 function renderChat(personId){
@@ -1860,7 +1951,9 @@ function renderChat(personId){
     container.innerHTML = "";
 
     const displayed = getDisplayedChatMessages(personId);
-    const allMessages = getMessagesForPerson(personId);
+    const allMessages = getMessagesForPerson(personId).filter(function(message){
+        return !message.pollVote && !(message.scheduledAtMs && Number(message.scheduledAtMs)>Date.now() && message.sender!=="me");
+    });
 
     if(searchInfo){
         if(messageSearchQuery.trim()){
@@ -1899,10 +1992,13 @@ function renderChat(personId){
             const text = document.createElement("div");
             const formattedCallLog = indianFormatCallLogText(message.text, message.sender === "me");
             text.textContent = formattedCallLog || message.text || "";
-            if(message.text){
+            if(message.text && !message.poll){
                 if(formattedCallLog) text.className = "callLogMessage";
                 bubble.appendChild(text);
             }
+
+            const pollCard=renderIndianMessagePollCard(message,personId);
+            if(pollCard)bubble.appendChild(pollCard);
 
             if(message.attachment){
                 const attachmentWrap = document.createElement("div");
@@ -1993,6 +2089,17 @@ function renderChat(personId){
             copyBtn.onclick = function(){ copyChatMessage(personId, index); };
             actions.appendChild(copyBtn);
 
+            if(message.text && !message.poll && !message.pollVote && !formattedCallLog){
+                const translateBtn=document.createElement("button");
+                translateBtn.type="button";
+                translateBtn.className="action";
+                const translateToEnglish=/[\u0900-\u097F]/.test(message.text);
+                translateBtn.textContent=translateToEnglish?"Translate to English":"Translate to Hindi";
+                translateBtn.setAttribute("aria-label",translateBtn.textContent);
+                translateBtn.onclick=function(){translateIndianChatMessage(personId,index,bubble,translateBtn);};
+                actions.appendChild(translateBtn);
+            }
+
             const reactBtn = document.createElement("button");
             reactBtn.type = "button";
             reactBtn.className = "action";
@@ -2002,19 +2109,22 @@ function renderChat(personId){
             actions.appendChild(reactBtn);
 
             if(message.sender === "me") {
-                const editBtn = document.createElement("button");
-                editBtn.type = "button";
-                editBtn.className = "action";
-                editBtn.textContent = "Edit";
-                editBtn.setAttribute("aria-label", "Edit your message sent at " + message.time);
-                editBtn.onclick = function(){ startMessageEdit(personId, index); };
-                actions.appendChild(editBtn);
+                const isFutureScheduled=message.scheduledAtMs && Number(message.scheduledAtMs)>Date.now();
+                if(!isFutureScheduled){
+                    const editBtn = document.createElement("button");
+                    editBtn.type = "button";
+                    editBtn.className = "action";
+                    editBtn.textContent = "Edit";
+                    editBtn.setAttribute("aria-label", "Edit your message sent at " + message.time);
+                    editBtn.onclick = function(){ startMessageEdit(personId, index); };
+                    actions.appendChild(editBtn);
+                }
 
                 const deleteBtn = document.createElement("button");
                 deleteBtn.type = "button";
                 deleteBtn.className = "action";
-                deleteBtn.textContent = "Delete";
-                deleteBtn.setAttribute("aria-label", "Delete your message sent at " + message.time);
+                deleteBtn.textContent = isFutureScheduled ? "Cancel scheduled message" : "Delete";
+                deleteBtn.setAttribute("aria-label", isFutureScheduled ? "Cancel your scheduled message" : "Delete your message sent at " + message.time);
                 deleteBtn.onclick = function(){ deleteMessage(personId, index); };
                 actions.appendChild(deleteBtn);
             }
@@ -2025,8 +2135,13 @@ function renderChat(personId){
             const status = document.createElement("span");
             status.className = "messageStatus";
             if(message.sender === "me"){
-                status.textContent = message.status === "read" ? "✓✓ Read" : "✓ Sent";
-                status.setAttribute("aria-label", message.status === "read" ? "Message read" : "Message sent");
+                if(message.scheduledAtMs && Number(message.scheduledAtMs)>Date.now()){
+                    status.textContent="Scheduled for "+new Date(Number(message.scheduledAtMs)).toLocaleString();
+                    status.setAttribute("aria-label",status.textContent);
+                }else{
+                    status.textContent = message.status === "read" ? "✓✓ Read" : "✓ Sent";
+                    status.setAttribute("aria-label", message.status === "read" ? "Message read" : "Message sent");
+                }
             }
             if(message.edited){
                 const edited = document.createElement("span");
@@ -2094,6 +2209,58 @@ async function copyChatMessage(personId, messageIndex){
     const status = document.getElementById("chatTypingStatus");
     if(status) status.textContent = copied ? "Message copied." : "Unable to copy this message.";
 }
+
+const indianMessageTranslationCache=new Map();
+async function translateIndianChatMessage(personId,messageIndex,bubble,button){
+    const messages=getMessagesForPerson(personId);
+    const message=messages[messageIndex];
+    if(!message||!message.text||!bubble)return;
+    const sourceText=String(message.text).trim();
+    const targetLanguage=/[\u0900-\u097F]/.test(sourceText)?"en":"hi";
+    const cacheKey=String(message.firestoreId||personId+"-"+messageIndex)+":"+targetLanguage;
+    let output=bubble.querySelector(".messageTranslation");
+    if(output)output.remove();
+    output=document.createElement("div");
+    output.className="messageTranslation";
+    output.setAttribute("role","status");
+    output.setAttribute("aria-live","polite");
+    output.textContent="Translating message…";
+    bubble.appendChild(output);
+    if(button)button.disabled=true;
+    try{
+        if(indianMessageTranslationCache.has(cacheKey)){
+            output.textContent=indianMessageTranslationCache.get(cacheKey);
+            return;
+        }
+        const chunks=[];
+        let chunk="";
+        for(const character of Array.from(sourceText)){
+            if(chunk && new TextEncoder().encode(chunk+character).length>350){
+                chunks.push(chunk);chunk=character;
+            }else chunk+=character;
+        }
+        if(chunk)chunks.push(chunk);
+        const translated=[];
+        for(const part of chunks){
+            const params=new URLSearchParams({q:part,langpair:(targetLanguage==="hi"?"en|hi":"hi|en")});
+            const response=await fetch("https://api.mymemory.translated.net/get?"+params.toString(),{method:"GET",cache:"no-store"});
+            if(!response.ok)throw new Error("Translation service HTTP "+response.status);
+            const data=await response.json();
+            const value=data&&data.responseData&&data.responseData.translatedText;
+            if(!value)throw new Error("Translation was not returned.");
+            translated.push(String(value));
+        }
+        const result=translated.join("");
+        indianMessageTranslationCache.set(cacheKey,result);
+        output.textContent=result;
+    }catch(error){
+        output.textContent="Translation unavailable: "+String(error&&error.message||error).slice(0,180);
+    }finally{
+        if(button)button.disabled=false;
+    }
+}
+
+// Poll voting is exposed by the Firebase module below.
 
 function updateMessageComposerStatus(){
     const textBox = document.getElementById("messageText");
@@ -2442,6 +2609,81 @@ async function sendMessageCore(){
     renderChat(selectedConversationPersonId);
     renderConversationList();
     textBox.focus();
+}
+
+async function sendIndianMessagePoll(){
+    const status=document.getElementById("indianPollStatus");
+    const button=document.getElementById("indianSendPollButton");
+    const personId=selectedConversationPersonId;
+    if(personId===null||!window.firebaseIndianMessages||!window.firebaseIndianMessages.isAvailable(personId)){
+        if(status)status.textContent="Polls are available in chats with registered Indian accounts.";
+        return;
+    }
+    const questionBox=document.getElementById("indianPollQuestion");
+    const question=String(questionBox&&questionBox.value||"").trim().slice(0,180);
+    const options=[1,2,3,4].map(function(n){const el=document.getElementById("indianPollOption"+n);return String(el&&el.value||"").trim().slice(0,80);}).filter(Boolean);
+    if(!question||options.length<2){
+        if(status)status.textContent="Enter a poll question and at least two options.";
+        return;
+    }
+    if(new Set(options.map(function(x){return x.toLowerCase();})).size!==options.length){
+        if(status)status.textContent="Poll options must be different.";
+        return;
+    }
+    if(button)button.disabled=true;
+    if(status)status.textContent="Sending poll…";
+    try{
+        const poll={question:question,options:options,createdAtMs:Date.now()};
+        const saved=await window.firebaseIndianMessages.save(personId,"📊 "+question,null,null,0,poll);
+        if(!saved)throw new Error("Poll could not be saved.");
+        if(questionBox)questionBox.value="";
+        [1,2,3,4].forEach(function(n){const el=document.getElementById("indianPollOption"+n);if(el)el.value="";});
+        const details=document.getElementById("indianPollComposer");if(details)details.open=false;
+        if(status)status.textContent="Poll sent. Votes will sync with the chat.";
+        addNotification("Poll sent to "+getPersonNameById(personId)+".","messages",personId);
+        renderChat(personId);renderConversationList();
+    }catch(error){
+        if(status)status.textContent="Poll could not be sent: "+String(error&&error.message||error).slice(0,180);
+    }finally{if(button)button.disabled=false;}
+}
+
+async function scheduleIndianMessage(){
+    const status=document.getElementById("indianScheduleStatus");
+    const button=document.getElementById("indianScheduleMessageButton");
+    const input=document.getElementById("indianScheduleAt");
+    const personId=selectedConversationPersonId;
+    const textBox=document.getElementById("messageText");
+    const text=String(textBox&&textBox.value||"").trim();
+    if(personId===null||!window.firebaseIndianMessages||!window.firebaseIndianMessages.isAvailable(personId)){
+        if(status)status.textContent="Scheduled messages are available in chats with registered Indian accounts.";
+        return;
+    }
+    if(!text){if(status)status.textContent="Write a text message first.";return;}
+    if(selectedMessagePhoto||selectedMessageVideo){if(status)status.textContent="Scheduled messages currently support text only. Remove the attachment first.";return;}
+    if(editingMessageIndex!==null||selectedReplyMessageIndex!==null){if(status)status.textContent="Finish editing or cancel the reply before scheduling.";return;}
+    const scheduledAtMs=input&&input.value?new Date(input.value).getTime():NaN;
+    if(!Number.isFinite(scheduledAtMs)){if(status)status.textContent="Choose a valid date and time.";return;}
+    if(scheduledAtMs<Date.now()+5*60*1000){if(status)status.textContent="Choose a time at least 5 minutes from now.";return;}
+    if(scheduledAtMs>Date.now()+30*24*60*60*1000){if(status)status.textContent="Schedule messages up to 30 days ahead.";return;}
+    if(button)button.disabled=true;
+    if(status)status.textContent="Saving scheduled message…";
+    try{
+        const saved=await window.firebaseIndianMessages.save(personId,text,null,null,scheduledAtMs,null);
+        if(!saved)throw new Error("Scheduled message could not be saved.");
+        textBox.value="";
+        if(input)input.value="";
+        try{sessionStorage.removeItem("indian_chat_draft_"+personId);}catch(e){}
+        updateMessageComposerStatus();
+        const pushStatus=document.getElementById("indianMessagePushResult");
+        const pushFailed=pushStatus&&/alert nahi bheja ja saka|push request failed/i.test(pushStatus.textContent||"");
+        if(status)status.textContent=pushFailed
+            ?"Message saved for the chosen time, but its scheduled push notification could not be confirmed."
+            :"Message scheduled for "+new Date(scheduledAtMs).toLocaleString()+".";
+        addNotification("A message was scheduled for "+getPersonNameById(personId)+".","messages",personId);
+        renderChat(personId);renderConversationList();textBox.focus();
+    }catch(error){
+        if(status)status.textContent="Message could not be scheduled: "+String(error&&error.message||error).slice(0,180);
+    }finally{if(button)button.disabled=false;}
 }
 
 function startMessageEdit(personId, messageIndex){
@@ -4935,6 +5177,23 @@ function convertFirestoreMessage(docSnap, currentUid, person){
         ? data.createdAt.toMillis()
         : (Number(data.createdAtMs) || Date.now());
     const senderIsMe = data.senderId === currentUid;
+    const rawText=typeof data.text==="string"?data.text:"";
+    let messageText=rawText;
+    let savedPoll=null;
+    let savedPollVote=null;
+    if(rawText.indexOf("INDIAN_POLL_V1:")===0){
+        try{
+            const parsed=JSON.parse(rawText.slice("INDIAN_POLL_V1:".length));
+            const options=Array.isArray(parsed.options)?parsed.options.slice(0,4).map(value=>sanitizePlainText(value,80)).filter(Boolean):[];
+            if(options.length>=2){
+                savedPoll={question:sanitizePlainText(parsed.question,180),options:options};
+                messageText="📊 Poll: "+savedPoll.question;
+            }
+        }catch(parsePollError){console.warn("A chat poll could not be decoded.",parsePollError);}
+    }else if(rawText.indexOf("INDIAN_POLL_VOTE_V1:")===0){
+        const voteMatch=rawText.match(/^INDIAN_POLL_VOTE_V1:([A-Za-z0-9_-]{10,40}):([0-3])$/);
+        if(voteMatch){savedPollVote={pollId:voteMatch[1],optionId:voteMatch[2]};messageText="Voted in a poll";}
+    }
     const savedAttachment = data.attachment && typeof data.attachment.url === "string" ? {
         type: data.attachment.type === "video" ? "video" : "image",
         name: sanitizePlainText(data.attachment.name || (data.attachment.type === "video" ? "video" : "photo"), 180),
@@ -4944,9 +5203,15 @@ function convertFirestoreMessage(docSnap, currentUid, person){
     return {
         firestoreId: docSnap.id,
         sender: senderIsMe ? "me" : "them",
-        text: typeof data.text === "string" ? data.text : "",
+        senderUid: String(data.senderId||""),
+        receiverUid: String(data.receiverId||""),
+        text: messageText,
         time: new Date(created).toLocaleTimeString(),
         timestampValue: created,
+        scheduledAtMs: Number(data.scheduledAtMs)||0,
+        scheduledNotificationId: typeof data.scheduledNotificationId==="string"?data.scheduledNotificationId:"",
+        poll: savedPoll,
+        pollVote: savedPollVote,
         status: data.read ? "read" : "sent",
         edited: data.edited === true,
         reactions: {},
@@ -5047,7 +5312,7 @@ function subscribeFirestoreMessages(personId){
     return true;
 }
 
-async function saveFirestoreMessage(personId, text, replyTo, attachment){
+async function saveFirestoreMessage(personId, text, replyTo, attachment, scheduledAtMs, poll){
     if(!firebaseDb || !firebaseCurrentUser) return null;
     const recipientUid = getFirestoreMessagePersonUid(personId);
     if(!recipientUid) return null;
@@ -5064,6 +5329,20 @@ async function saveFirestoreMessage(personId, text, replyTo, attachment){
         createdAt: serverTimestamp(),
         createdAtMs: Date.now()
     };
+    const safeSchedule=Number(scheduledAtMs)||0;
+    if(safeSchedule>Date.now())payload.scheduledAtMs=safeSchedule;
+    if(poll&&typeof poll==="object"){
+        const safeOptions=Array.isArray(poll.options)?poll.options.slice(0,4).map(value=>sanitizePlainText(value,80)).filter(Boolean):[];
+        const safeQuestion=sanitizePlainText(poll.question,180);
+        if(safeQuestion&&safeOptions.length>=2){
+            payload.text="INDIAN_POLL_V1:"+JSON.stringify({
+                question:safeQuestion,
+                options:safeOptions,
+                createdByUid:firebaseCurrentUser.uid,
+                createdAtMs:Date.now()
+            });
+        }
+    }
     if(attachment && attachment.url && attachment.url.indexOf("https://res.cloudinary.com/") === 0){
         payload.attachment = {
             type: attachment.type === "video" ? "video" : "image",
@@ -5093,6 +5372,10 @@ async function saveFirestoreMessage(personId, text, replyTo, attachment){
             body: JSON.stringify({messageId: ref.id})
         });
         const pushResult = await pushResponse.json().catch(function(){ return {}; });
+        if(pushResponse.ok && pushResult.success===true && pushResult.scheduled===true && pushResult.notificationId){
+            try{await updateDoc(doc(firebaseDb,"messages",ref.id),{scheduledNotificationId:String(pushResult.notificationId)});}
+            catch(scheduleIdError){console.warn("Scheduled push ID could not be saved for cancellation:",scheduleIdError);}
+        }
         const pushStatusNode = document.getElementById("indianMessagePushResult");
         if(!pushResponse.ok || pushResult.success !== true){
             const pushProblem = pushResult.detail || pushResult.message || pushResult.error || ("HTTP " + pushResponse.status);
@@ -5111,7 +5394,7 @@ async function saveFirestoreMessage(personId, text, replyTo, attachment){
             if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya, lekin alert nahi bheja ja saka. Karan: " + pushProblem + firebaseStatus + firebaseDetail;
         }else{
             console.info("Indian message push request accepted. Notification ID:", pushResult.notificationId || "not returned");
-            if(pushStatusNode) pushStatusNode.textContent = "Message save ho gaya.";
+            if(pushStatusNode) pushStatusNode.textContent = pushResult.scheduled ? "Message save ho gaya aur scheduled notification set ho gaya." : "Message save ho gaya.";
         }
     }catch(pushError){
         console.warn("Indian message push request failed; message remains saved:", pushError);
@@ -5132,9 +5415,49 @@ async function updateFirestoreMessage(message){
 
 async function deleteFirestoreMessage(message){
     if(!firebaseDb || !message || !message.firestoreId) return false;
+    if(message.scheduledAtMs && Number(message.scheduledAtMs)>Date.now() && firebaseCurrentUser){
+        const idToken=await firebaseCurrentUser.getIdToken();
+        const response=await fetch("https://indian-message-push.sadrealam892075.workers.dev/",{
+            method:"POST",
+            headers:{"Authorization":"Bearer "+idToken,"Content-Type":"application/json"},
+            body:JSON.stringify({action:"cancelScheduledMessage",messageId:message.firestoreId})
+        });
+        const result=await response.json().catch(function(){return {};});
+        if(!response.ok||result.success!==true)throw new Error(result.detail||result.error||"Scheduled notification could not be cancelled.");
+    }
     await deleteDoc(doc(firebaseDb, "messages", message.firestoreId));
     return true;
 }
+
+window.indianVoteInMessagePoll=async function(messageId,optionId,personId){
+    if(!firebaseDb||!firebaseCurrentUser)throw new Error("Sign in to vote.");
+    const id=String(messageId||"").trim();
+    const choice=String(optionId||"");
+    const messages=typeof window.getMessagesForPerson==="function"?window.getMessagesForPerson(personId):[];
+    const message=messages.find(function(item){return item.firestoreId===id&&item.poll;});
+    if(!message)throw new Error("This poll is not available in the open chat.");
+    if(message.senderUid!==firebaseCurrentUser.uid&&message.receiverUid!==firebaseCurrentUser.uid)throw new Error("Only chat participants can vote.");
+    const options=Array.isArray(message.poll.options)?message.poll.options:[];
+    if(!/^\d$/.test(choice)||Number(choice)>=options.length)throw new Error("Invalid poll option.");
+    const peerUid=message.senderUid===firebaseCurrentUser.uid?message.receiverUid:message.senderUid;
+    if(!peerUid)throw new Error("Chat participant information is missing.");
+    const voteText="INDIAN_POLL_VOTE_V1:"+id+":"+choice;
+    const existingVote=messages.find(function(item){return item.pollVote&&item.pollVote.pollId===id&&item.senderUid===firebaseCurrentUser.uid;});
+    if(existingVote&&existingVote.firestoreId){
+        await updateDoc(doc(firebaseDb,"messages",existingVote.firestoreId),{text:voteText});
+    }else{
+        await addDoc(collection(firebaseDb,"messages"),{
+            senderId:firebaseCurrentUser.uid,
+            receiverId:peerUid,
+            text:voteText,
+            edited:false,
+            read:false,
+            createdAt:serverTimestamp(),
+            createdAtMs:Date.now()
+        });
+    }
+    return true;
+};
 
 async function saveFirestoreMessageReaction(messageId, emoji){
     if(!firebaseDb || !firebaseCurrentUser || !messageId) throw new Error("Sign in to save message reactions.");
@@ -5363,16 +5686,24 @@ function startRecentFirebaseMessages(){
         if(!peerUid || peerUid===uid)return;
         const person=window.getIndianPersonByFirebaseUid?window.getIndianPersonByFirebaseUid(peerUid):null;
         if(!person)return;
-        const stamp=Number(data.createdAtMs)||((data.createdAt&&typeof data.createdAt.toMillis==="function")?data.createdAt.toMillis():0);
+        if(String(data.text||"").indexOf("INDIAN_POLL_VOTE_V1:")===0)return;
+        const scheduledAtMs=Number(data.scheduledAtMs)||0;
+        if(scheduledAtMs>Date.now()&&data.senderId!==uid)return;
+        const stamp=Math.max(Number(data.createdAtMs)||((data.createdAt&&typeof data.createdAt.toMillis==="function")?data.createdAt.toMillis():0),scheduledAtMs);
         if(stamp>=Number(person.latestMessageAtMs||0)){
           person.latestMessageAtMs=stamp;
-          person.latestMessageText=String(data.text|| (data.attachment?"Attachment":"Message")).slice(0,180);
+          let previewText=String(data.text|| (data.attachment?"Attachment":"Message"));
+          if(previewText.indexOf("INDIAN_POLL_V1:")===0){
+            try{previewText="📊 Poll: "+String(JSON.parse(previewText.slice("INDIAN_POLL_V1:".length)).question||"");}catch(e){previewText="📊 Poll";}
+          }
+          person.latestMessageText=(scheduledAtMs>Date.now()?"Scheduled: ":"")+previewText.slice(0,180);
           person.latestMessageId=data.id||"";
           person.latestMessageSenderId=String(data.senderId||"");
         }
       });
       if(typeof window.renderConversationList==="function")window.renderConversationList();
     }
+    window.refreshIndianRecentMessagePreviews=refresh;
     function watch(q){
       const unsub=onSnapshot(q,snapshot=>{
         // Replace records from this query's known side; deleted message docs are removed on that side.
@@ -5412,6 +5743,7 @@ async function loadFirebasePublicProfiles(){
                 });
             });
             if(typeof window.applyIndianSharedMessageReactions==="function")window.applyIndianSharedMessageReactions(shared);
+            if(selectedConversationPersonId!==null && getMessagesForPerson(selectedConversationPersonId).some(function(m){return !!m.poll;}))renderChat(selectedConversationPersonId);
             if(typeof window.renderIndianOnlineStories==="function")window.renderIndianOnlineStories();
             if(typeof window.renderIndianLivePeople==="function")window.renderIndianLivePeople();
             startRecentFirebaseMessages();
@@ -5426,6 +5758,23 @@ async function loadFirebasePublicProfiles(){
 }
 
 window.refreshIndianPublicProfiles = loadFirebasePublicProfiles;
+if(!window.__indianScheduledMessageRefreshInterval){
+    window.__indianScheduledMessageRevealedIds=window.__indianScheduledMessageRevealedIds||new Set();
+    window.__indianScheduledMessageRefreshInterval=setInterval(function(){
+        const now=Date.now();
+        if(selectedConversationPersonId!==null){
+            const messages=getMessagesForPerson(selectedConversationPersonId);
+            const newlyDue=messages.filter(function(message){
+                return message.sender==="them"&&message.firestoreId&&Number(message.scheduledAtMs)>0&&Number(message.scheduledAtMs)<=now&&!window.__indianScheduledMessageRevealedIds.has(message.firestoreId);
+            });
+            if(newlyDue.length){
+                newlyDue.forEach(function(message){window.__indianScheduledMessageRevealedIds.add(message.firestoreId);});
+                renderChat(selectedConversationPersonId);
+            }
+        }
+        if(typeof window.refreshIndianRecentMessagePreviews==="function")window.refreshIndianRecentMessagePreviews();
+    },15000);
+}
 
 if(!firebaseConfigReady){
     setFirebaseSetupStatus("Firebase setup pending. Replace the six placeholder Firebase Web App config values in the FIREBASE CONFIG block inside this index.html.");

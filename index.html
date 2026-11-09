@@ -570,6 +570,7 @@ Search registered users, places, posts or help requests:
 <label for="indianPollOption4">Option 4 (optional)</label>
 <input id="indianPollOption4" type="text" maxlength="80" placeholder="Fourth option">
 <button type="button" class="action" id="indianSendPollButton" onclick="sendIndianMessagePoll()">Send poll</button>
+<p class="indianTranslationNotice">Poll votes are stored in the chat, and only the two chat participants can read them.</p>
 <div id="indianPollStatus" role="status" aria-live="polite"></div>
 </div>
 </details>
@@ -1853,6 +1854,7 @@ function getDisplayedChatMessages(personId){
     const messages = getMessagesForPerson(personId);
     const q = messageSearchQuery.trim().toLowerCase();
     return messages.reduce(function(list, message, index){
+        if(message.pollVote) return list;
         if(message.scheduledAtMs && Number(message.scheduledAtMs)>Date.now() && message.sender!=="me") return list;
         const haystack = [
             message.text || "",
@@ -1877,19 +1879,20 @@ function renderIndianMessagePollCard(message, personId){
     question.className="messagePollQuestion";
     question.textContent=String(poll.question||message.text||"Poll").slice(0,180);
     card.appendChild(question);
-    const profiles=Array.isArray(window.indianFirebaseAllProfiles)?window.indianFirebaseAllProfiles:[];
-    const myProfile=profiles.find(function(p){return p&&p.uid===window.firebaseCurrentUid;});
-    const myVotes=myProfile&&myProfile.messagePollVotes&&typeof myProfile.messagePollVotes==="object"?myProfile.messagePollVotes:{};
-    const myEntry=myVotes[message.firestoreId];
-    const myVote=typeof myEntry==="string"?myEntry:String(myEntry&&myEntry.optionId||"");
+    const chatMessages=getMessagesForPerson(personId);
+    const latestVotes=new Map();
+    chatMessages.forEach(function(voteMessage){
+        if(!voteMessage.pollVote||voteMessage.pollVote.pollId!==message.firestoreId)return;
+        const previous=latestVotes.get(voteMessage.senderUid);
+        if(!previous||Number(voteMessage.timestampValue||0)>=Number(previous.timestampValue||0))latestVotes.set(voteMessage.senderUid,voteMessage);
+    });
+    const myVoteMessage=latestVotes.get(window.firebaseCurrentUid||"");
+    const myVote=myVoteMessage?String(myVoteMessage.pollVote.optionId):"";
     options.forEach(function(option,index){
         const optionId=String(index);
         let count=0;
-        profiles.forEach(function(profile){
-            const votes=profile&&profile.messagePollVotes&&typeof profile.messagePollVotes==="object"?profile.messagePollVotes:{};
-            const entry=votes[message.firestoreId];
-            const selected=typeof entry==="string"?entry:String(entry&&entry.optionId||"");
-            if(selected===optionId)count++;
+        latestVotes.forEach(function(voteMessage){
+            if(String(voteMessage.pollVote.optionId)===optionId)count++;
         });
         const button=document.createElement("button");
         button.type="button";
@@ -1987,7 +1990,7 @@ function renderChat(personId){
             const text = document.createElement("div");
             const formattedCallLog = indianFormatCallLogText(message.text, message.sender === "me");
             text.textContent = formattedCallLog || message.text || "";
-            if(message.text){
+            if(message.text && !message.poll){
                 if(formattedCallLog) text.className = "callLogMessage";
                 bubble.appendChild(text);
             }
@@ -2084,7 +2087,7 @@ function renderChat(personId){
             copyBtn.onclick = function(){ copyChatMessage(personId, index); };
             actions.appendChild(copyBtn);
 
-            if(message.text && !formattedCallLog){
+            if(message.text && !message.poll && !message.pollVote && !formattedCallLog){
                 const translateBtn=document.createElement("button");
                 translateBtn.type="button";
                 translateBtn.className="action";
@@ -2265,20 +2268,23 @@ window.indianVoteInMessagePoll=async function(messageId,optionId){
     if(message.senderUid!==firebaseCurrentUser.uid&&message.receiverUid!==firebaseCurrentUser.uid)throw new Error("Only chat participants can vote.");
     const options=Array.isArray(message.poll.options)?message.poll.options:[];
     if(!/^\d$/.test(choice)||Number(choice)>=options.length)throw new Error("Invalid poll option.");
-    const ref=doc(firebaseDb,"publicProfiles",firebaseCurrentUser.uid);
-    const snap=await getDoc(ref);
-    const profile=snap.exists()?(snap.data()||{}):{};
-    const votes=Object.assign({},profile.messagePollVotes||{});
-    votes[id]={optionId:choice,updatedAtMs:Date.now()};
-    const ordered=Object.entries(votes).sort(function(a,b){return Number((a[1]||{}).updatedAtMs||0)-Number((b[1]||{}).updatedAtMs||0);});
-    const limited=Object.fromEntries(ordered.slice(-100));
-    await setDoc(ref,{
-        uid:firebaseCurrentUser.uid,
-        displayName:sanitizePlainText(firebaseCurrentUser.displayName||"Indian User",60),
-        messagePollVotes:limited,
-        updatedAt:serverTimestamp()
-    },{merge:true});
-    if(selectedConversationPersonId!==null)renderChat(selectedConversationPersonId);
+    const peerUid=message.senderUid===firebaseCurrentUser.uid?message.receiverUid:message.senderUid;
+    if(!peerUid)throw new Error("Chat participant information is missing.");
+    const voteText="INDIAN_POLL_VOTE_V1:"+id+":"+choice;
+    const existingVote=messages.find(function(item){return item.pollVote&&item.pollVote.pollId===id&&item.senderUid===firebaseCurrentUser.uid;});
+    if(existingVote&&existingVote.firestoreId){
+        await updateDoc(doc(firebaseDb,"messages",existingVote.firestoreId),{text:voteText});
+    }else{
+        await addDoc(collection(firebaseDb,"messages"),{
+            senderId:firebaseCurrentUser.uid,
+            receiverId:peerUid,
+            text:voteText,
+            edited:false,
+            read:true,
+            createdAt:serverTimestamp(),
+            createdAtMs:Date.now()
+        });
+    }
     return true;
 };
 
@@ -5197,6 +5203,23 @@ function convertFirestoreMessage(docSnap, currentUid, person){
         ? data.createdAt.toMillis()
         : (Number(data.createdAtMs) || Date.now());
     const senderIsMe = data.senderId === currentUid;
+    const rawText=typeof data.text==="string"?data.text:"";
+    let messageText=rawText;
+    let savedPoll=null;
+    let savedPollVote=null;
+    if(rawText.indexOf("INDIAN_POLL_V1:")===0){
+        try{
+            const parsed=JSON.parse(rawText.slice("INDIAN_POLL_V1:".length));
+            const options=Array.isArray(parsed.options)?parsed.options.slice(0,4).map(value=>sanitizePlainText(value,80)).filter(Boolean):[];
+            if(options.length>=2){
+                savedPoll={question:sanitizePlainText(parsed.question,180),options:options};
+                messageText="📊 Poll: "+savedPoll.question;
+            }
+        }catch(parsePollError){console.warn("A chat poll could not be decoded.",parsePollError);}
+    }else if(rawText.indexOf("INDIAN_POLL_VOTE_V1:")===0){
+        const voteMatch=rawText.match(/^INDIAN_POLL_VOTE_V1:([A-Za-z0-9_-]{10,40}):([0-3])$/);
+        if(voteMatch){savedPollVote={pollId:voteMatch[1],optionId:voteMatch[2]};messageText="Voted in a poll";}
+    }
     const savedAttachment = data.attachment && typeof data.attachment.url === "string" ? {
         type: data.attachment.type === "video" ? "video" : "image",
         name: sanitizePlainText(data.attachment.name || (data.attachment.type === "video" ? "video" : "photo"), 180),
@@ -5208,12 +5231,13 @@ function convertFirestoreMessage(docSnap, currentUid, person){
         sender: senderIsMe ? "me" : "them",
         senderUid: String(data.senderId||""),
         receiverUid: String(data.receiverId||""),
-        text: typeof data.text === "string" ? data.text : "",
+        text: messageText,
         time: new Date(created).toLocaleTimeString(),
         timestampValue: created,
         scheduledAtMs: Number(data.scheduledAtMs)||0,
         scheduledNotificationId: typeof data.scheduledNotificationId==="string"?data.scheduledNotificationId:"",
-        poll: data.poll && typeof data.poll==="object" ? data.poll : null,
+        poll: savedPoll,
+        pollVote: savedPollVote,
         status: data.read ? "read" : "sent",
         edited: data.edited === true,
         reactions: {},
@@ -5335,12 +5359,15 @@ async function saveFirestoreMessage(personId, text, replyTo, attachment, schedul
     if(safeSchedule>Date.now())payload.scheduledAtMs=safeSchedule;
     if(poll&&typeof poll==="object"){
         const safeOptions=Array.isArray(poll.options)?poll.options.slice(0,4).map(value=>sanitizePlainText(value,80)).filter(Boolean):[];
-        if(safeOptions.length>=2)payload.poll={
-            question:sanitizePlainText(poll.question,180),
-            options:safeOptions,
-            createdByUid:firebaseCurrentUser.uid,
-            createdAtMs:Date.now()
-        };
+        const safeQuestion=sanitizePlainText(poll.question,180);
+        if(safeQuestion&&safeOptions.length>=2){
+            payload.text="INDIAN_POLL_V1:"+JSON.stringify({
+                question:safeQuestion,
+                options:safeOptions,
+                createdByUid:firebaseCurrentUser.uid,
+                createdAtMs:Date.now()
+            });
+        }
     }
     if(attachment && attachment.url && attachment.url.indexOf("https://res.cloudinary.com/") === 0){
         payload.attachment = {
@@ -5655,12 +5682,17 @@ function startRecentFirebaseMessages(){
         if(!peerUid || peerUid===uid)return;
         const person=window.getIndianPersonByFirebaseUid?window.getIndianPersonByFirebaseUid(peerUid):null;
         if(!person)return;
+        if(String(data.text||"").indexOf("INDIAN_POLL_VOTE_V1:")===0)return;
         const scheduledAtMs=Number(data.scheduledAtMs)||0;
         if(scheduledAtMs>Date.now()&&data.senderId!==uid)return;
         const stamp=Math.max(Number(data.createdAtMs)||((data.createdAt&&typeof data.createdAt.toMillis==="function")?data.createdAt.toMillis():0),scheduledAtMs);
         if(stamp>=Number(person.latestMessageAtMs||0)){
           person.latestMessageAtMs=stamp;
-          person.latestMessageText=(scheduledAtMs>Date.now()?"Scheduled: ":"")+String(data.text|| (data.attachment?"Attachment":"Message")).slice(0,180);
+          let previewText=String(data.text|| (data.attachment?"Attachment":"Message"));
+          if(previewText.indexOf("INDIAN_POLL_V1:")===0){
+            try{previewText="📊 Poll: "+String(JSON.parse(previewText.slice("INDIAN_POLL_V1:".length)).question||"");}catch(e){previewText="📊 Poll";}
+          }
+          person.latestMessageText=(scheduledAtMs>Date.now()?"Scheduled: ":"")+previewText.slice(0,180);
           person.latestMessageId=data.id||"";
           person.latestMessageSenderId=String(data.senderId||"");
         }

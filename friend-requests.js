@@ -109,7 +109,12 @@ if (!app) {
     button.className = "action";
     button.textContent = label;
     if (ariaLabel) button.setAttribute("aria-label", ariaLabel);
-    button.addEventListener("click", handler);
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try { await handler(); }
+      catch (error) { setStatus("Friend request action failed: " + clean(error?.message || error, 180)); }
+      finally { button.disabled = false; renderFriendHub(); }
+    });
     return button;
   }
 
@@ -160,6 +165,7 @@ if (!app) {
         const request = entry.request;
         const row = document.createElement("div");
         row.className = "indian-friend-row";
+        row.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #d7dce2;";
         const name = document.createElement("span");
         name.textContent = clean(request.targetName || "Indian User", 60) + " — " +
           (entry.response ? (entry.response.status === "accepted" ? "Accepted" : "Declined") : "Request sent");
@@ -180,6 +186,7 @@ if (!app) {
       friends.forEach(([uid, name]) => {
         const row = document.createElement("div");
         row.className = "indian-friend-row";
+        row.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #d7dce2;";
         const label = document.createElement("span");
         label.textContent = name;
         row.appendChild(label);
@@ -329,6 +336,7 @@ if (!app) {
       query(collection(db, "follows"), where("followerId", "==", uid)),
       snapshot => {
         ownRecords = snapshot.docs.map(item => ({ id: item.id, ...(item.data() || {}) }));
+        setStatus("Friend requests are synced with your Indian account.");
         renderFriendHub();
       },
       error => setStatus("Your friend requests could not load: " + clean(error?.message || error, 180))
@@ -338,6 +346,7 @@ if (!app) {
       query(collection(db, "follows"), where("targetUid", "==", uid)),
       snapshot => {
         incomingRecords = snapshot.docs.map(item => ({ id: item.id, ...(item.data() || {}) }));
+        setStatus("Friend requests are synced with your Indian account.");
         renderFriendHub();
       },
       error => setStatus("Incoming friend requests could not load: " + clean(error?.message || error, 180))
@@ -347,6 +356,7 @@ if (!app) {
       query(collection(db, "follows"), where("friendUid", "==", uid)),
       snapshot => {
         responsesToMe = snapshot.docs.map(item => ({ id: item.id, ...(item.data() || {}) }));
+        setStatus("Friend requests are synced with your Indian account.");
         renderFriendHub();
       },
       error => setStatus("Friend status could not refresh: " + clean(error?.message || error, 180))

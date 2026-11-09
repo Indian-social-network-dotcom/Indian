@@ -14,7 +14,6 @@ import {
   const db=getFirestore(apps[0]);
   let currentUser=null, groupsUnsubscribe=null, messagesUnsubscribe=null;
   let activeGroupId="", activeGroup=null, groupCache=[];
-  let profileCache=new Map();
 
   const el=id=>document.getElementById(id);
   const setStatus=(message)=>{const n=el("indianGroupStatus");if(n)n.textContent=message||"";};
@@ -75,7 +74,7 @@ import {
     box.scrollTop=box.scrollHeight;
   }
   function openGroup(groupId){
-    const group=groupCache.find(g=>g.id===groupId);if(!group)return;
+    const group=groupCache.find(g=>g.id===groupId)||(activeGroup&&activeGroup.id===groupId?activeGroup:null);if(!group)return;
     activeGroupId=groupId;activeGroup=group;renderGroupHeader();
     if(messagesUnsubscribe){messagesUnsubscribe();messagesUnsubscribe=null;}
     const q=query(collection(db,"groups",groupId,"messages"),orderBy("createdAt","asc"));
@@ -95,6 +94,9 @@ import {
         updatedAtMs:Date.now(),members:[currentUser.uid],admins:[currentUser.uid]
       });
       if(input)input.value="";
+      activeGroupId=ref.id;
+      activeGroup={id:ref.id,name,members:[currentUser.uid],admins:[currentUser.uid]};
+      renderGroupHeader();
       setStatus("Group ban gaya.");
       // The membership listener will populate the new group shortly.
       setTimeout(()=>openGroup(ref.id),350);

@@ -5206,6 +5206,7 @@ function convertFirestoreMessage(docSnap, currentUid, person){
         : (Number(data.createdAtMs) || Date.now());
     const senderIsMe = data.senderId === currentUid;
     const rawText=typeof data.text==="string"?data.text:"";
+    const hiddenSystemMessage=data.friendRequestType==="request"||data.friendRequestType==="response"||rawText.indexOf("INDIAN_FRIEND_REQUEST_V1:")===0||rawText.indexOf("INDIAN_FRIEND_RESPONSE_V1:")===0;
     let messageText=rawText;
     let savedPoll=null;
     let savedPollVote=null;
@@ -5230,6 +5231,7 @@ function convertFirestoreMessage(docSnap, currentUid, person){
     } : null;
     return {
         firestoreId: docSnap.id,
+        hiddenSystemMessage: hiddenSystemMessage,
         sender: senderIsMe ? "me" : "them",
         senderUid: String(data.senderId||""),
         receiverUid: String(data.receiverId||""),
@@ -5258,7 +5260,7 @@ function applyFirestoreConversation(personId){
     bucket.outgoing.forEach(function(value, key){ merged.set(key, value); });
     bucket.incoming.forEach(function(value, key){ merged.set(key, value); });
 
-    const messages = Array.from(merged.values()).sort(function(a,b){
+    const messages = Array.from(merged.values()).filter(function(message){return !message.hiddenSystemMessage;}).sort(function(a,b){
         return (a.timestampValue || 0) - (b.timestampValue || 0);
     });
 
@@ -5715,6 +5717,7 @@ function startRecentFirebaseMessages(){
         const person=window.getIndianPersonByFirebaseUid?window.getIndianPersonByFirebaseUid(peerUid):null;
         if(!person)return;
         if(String(data.text||"").indexOf("INDIAN_POLL_VOTE_V1:")===0)return;
+        if(data.friendRequestType==="request"||data.friendRequestType==="response"||String(data.text||"").indexOf("INDIAN_FRIEND_REQUEST_V1:")===0||String(data.text||"").indexOf("INDIAN_FRIEND_RESPONSE_V1:")===0)return;
         const scheduledAtMs=Number(data.scheduledAtMs)||0;
         if(scheduledAtMs>Date.now()&&data.senderId!==uid)return;
         const stamp=Math.max(Number(data.createdAtMs)||((data.createdAt&&typeof data.createdAt.toMillis==="function")?data.createdAt.toMillis():0),scheduledAtMs);
@@ -7114,7 +7117,7 @@ else{
      updateIndianPostsPager();
    },e=>{console.error("Posts listener",e);setIndianPostsPagerMessage("Posts could not load. Check the connection and try refreshing.");}));
    unsub.push(onSnapshot(query(collection(db,"notifications"),where("recipientId","==",uid)),s=>{if(Array.isArray(window.notifications)){window.notifications.splice(0,window.notifications.length,...s.docs.map(d=>({id:d.id,firestoreId:d.id,...d.data(),time:new Date(d.data().createdAtMs||Date.now()).toLocaleTimeString()})).sort((a,b)=>(b.createdAtMs||0)-(a.createdAtMs||0)));window.renderNotifications();}},e=>console.error("Notifications listener",e)));
-   unsub.push(onSnapshot(query(collection(db,"follows"),where("followerId","==",uid)),s=>{const docs=s.docs.map(d=>d.data()||{}).filter(d=>d.recordType!=="friend_request"&&d.recordType!=="friend_request_response"),keys=new Set(docs.map(d=>d.followingKey));window.__indianPersistedFollowingKeys=new Set(docs.map(d=>String(d.followingUid||d.followingKey||"")).filter(Boolean));if(Array.isArray(window.peopleData)){window.peopleData.forEach(p=>{const key=p.firebaseUid||("demo_"+p.id),wasFollowing=keys.has(key);p.isFollowing=wasFollowing;const baseFollowers=Number(p.__baseFollowersCount ?? p.followersCount ?? 0);p.__baseFollowersCount=baseFollowers;p.followersCount=baseFollowers+(wasFollowing?1:0);});const mainUser=window.peopleData.find(p=>p.id===0);if(mainUser){mainUser.followingCount=docs.length;}window.updateFollowView?.();window.renderPeopleList?.();window.renderSuggestedPeople?.();}},e=>console.error("Follow listener",e)));
+   unsub.push(onSnapshot(query(collection(db,"follows"),where("followerId","==",uid)),s=>{const docs=s.docs.map(d=>d.data()||{}),keys=new Set(docs.map(d=>d.followingKey));window.__indianPersistedFollowingKeys=new Set(docs.map(d=>String(d.followingUid||d.followingKey||"")).filter(Boolean));if(Array.isArray(window.peopleData)){window.peopleData.forEach(p=>{const key=p.firebaseUid||("demo_"+p.id),wasFollowing=keys.has(key);p.isFollowing=wasFollowing;const baseFollowers=Number(p.__baseFollowersCount ?? p.followersCount ?? 0);p.__baseFollowersCount=baseFollowers;p.followersCount=baseFollowers+(wasFollowing?1:0);});const mainUser=window.peopleData.find(p=>p.id===0);if(mainUser){mainUser.followingCount=docs.length;}window.updateFollowView?.();window.renderPeopleList?.();window.renderSuggestedPeople?.();}},e=>console.error("Follow listener",e)));
    unsub.push(onSnapshot(query(collection(db,"helpRequests")),s=>{
      const box=document.getElementById("helpContainer");if(!box)return;
      const filter=document.getElementById("helpStatusFilter")?.value||"all";
@@ -8491,7 +8494,7 @@ window.indianUranToggleLike=async function(id,liked){if(!currentUser)throw Error
 window.indianUranRecordView=async function(id){if(!currentUser)throw Error('Sign in required');const profile=await getDoc(doc(db,'publicProfiles',currentUser.uid));const p=profile.exists()?profile.data()||{}:{};await setDoc(doc(db,'uranShorts',id,'views',currentUser.uid),{uid:currentUser.uid,displayName:currentUser.displayName||'Indian user',photoURL:String(p.photoURL||''),viewedAt:serverTimestamp()},{merge:true});};
 window.indianUranAddComment=async function(id,message){if(!currentUser)throw Error('Sign in required');const text=String(message||'').trim().slice(0,1000);if(!text)throw Error('Comment likhein.');const profile=await getDoc(doc(db,'publicProfiles',currentUser.uid));const p=profile.exists()?profile.data()||{}:{};await addDoc(collection(db,'uranShorts',id,'comments'),{uid:currentUser.uid,displayName:currentUser.displayName||'Indian user',photoURL:String(p.photoURL||''),text:text,createdAt:serverTimestamp()});};
 window.indianUranGetSocialData=async function(id){const video=await getDoc(doc(db,'uranShorts',id));if(!video.exists())throw Error('Video nahi mila.');const v=video.data()||{};const likedBy=Array.isArray(v.likedBy)?v.likedBy:[];const [views,comments]=await Promise.all([getDocs(collection(db,'uranShorts',id,'views')),getDocs(query(collection(db,'uranShorts',id,'comments'),orderBy('createdAt','asc'),limit(60)))]);return{likes:likedBy.length,likedBy:likedBy,viewerLiked:!!(currentUser&&likedBy.indexOf(currentUser.uid)>=0),views:views.size,comments:comments.docs.map(d=>({id:d.id,...(d.data()||{})})),creatorUid:String(v.addedBy||''),creatorName:String(v.addedByName||'Indian user')};};
-window.indianUranGetCreatorProfile=async function(uid){const snap=await getDoc(doc(db,'publicProfiles',uid));if(!snap.exists())throw Error('Public profile nahi mila.');const p=snap.data()||{};const [followers,following,videos]=await Promise.all([getDocs(query(collection(db,'follows'),where('followingUid','==',uid))),getDocs(query(collection(db,'follows'),where('followerId','==',uid))),getDocs(query(collection(db,'uranShorts'),where('addedBy','==',uid)))]);return{profile:{uid:uid,displayName:String(p.displayName||'Indian user'),bio:String(p.bio||''),photoURL:String(p.photoURL||'')},followers:followers.docs.map(d=>d.data()||{}),following:following.docs.map(d=>d.data()||{}).filter(x=>x.recordType!=="friend_request"&&x.recordType!=="friend_request_response"),videos:videos.docs.map(d=>({id:d.id,...(d.data()||{})})).sort((a,b)=>((b.createdAt&&b.createdAt.toMillis)?b.createdAt.toMillis():0)-((a.createdAt&&a.createdAt.toMillis)?a.createdAt.toMillis():0))};};
+window.indianUranGetCreatorProfile=async function(uid){const snap=await getDoc(doc(db,'publicProfiles',uid));if(!snap.exists())throw Error('Public profile nahi mila.');const p=snap.data()||{};const [followers,following,videos]=await Promise.all([getDocs(query(collection(db,'follows'),where('followingUid','==',uid))),getDocs(query(collection(db,'follows'),where('followerId','==',uid))),getDocs(query(collection(db,'uranShorts'),where('addedBy','==',uid)))]);return{profile:{uid:uid,displayName:String(p.displayName||'Indian user'),bio:String(p.bio||''),photoURL:String(p.photoURL||'')},followers:followers.docs.map(d=>d.data()||{}),following:following.docs.map(d=>d.data()||{}),videos:videos.docs.map(d=>({id:d.id,...(d.data()||{})})).sort((a,b)=>((b.createdAt&&b.createdAt.toMillis)?b.createdAt.toMillis():0)-((a.createdAt&&a.createdAt.toMillis)?a.createdAt.toMillis():0))};};
 window.indianUranIsFollowing=async function(uid){if(!currentUser)return false;const q=query(collection(db,'follows'),where('followerId','==',currentUser.uid),where('followingUid','==',uid));const snap=await getDocs(q);return !snap.empty;};
 window.indianUranToggleFollow=async function(uid,follow){if(!currentUser)throw Error('Sign in required');if(uid===currentUser.uid)throw Error('Aap apne aap ko follow nahi kar sakte.');const q=query(collection(db,'follows'),where('followerId','==',currentUser.uid),where('followingUid','==',uid));const snap=await getDocs(q);if(follow&&snap.empty){const p=await getDoc(doc(db,'publicProfiles',uid));const data=p.exists()?p.data()||{}:{};await addDoc(collection(db,'follows'),{followerId:currentUser.uid,followingKey:uid,followingUid:uid,followingName:String(data.displayName||'Indian user'),createdAt:serverTimestamp(),createdAtMs:Date.now()});}else if(!follow&&!snap.empty){await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));}};
 

@@ -1982,6 +1982,16 @@ function openConversation(personId){
     const person = peopleData.find(function(p){ return p.id === personId; });
     if(!person) return;
 
+    // Switching to a personal chat must always clear any leftover group composer.
+    if(typeof window.indianCloseGroupMode === "function") window.indianCloseGroupMode();
+    document.body.classList.remove("indian-chat-group");
+    const staleGroupInput = document.getElementById("indianUnifiedGroupText");
+    const staleGroupSend = document.getElementById("indianUnifiedGroupSend");
+    const staleGroupControls = document.getElementById("indianUnifiedGroupControls");
+    if(staleGroupInput){ staleGroupInput.hidden = true; staleGroupInput.style.setProperty("display","none","important"); }
+    if(staleGroupSend){ staleGroupSend.hidden = true; staleGroupSend.style.setProperty("display","none","important"); }
+    if(staleGroupControls) staleGroupControls.hidden = true;
+
     selectedConversationPersonId = personId;
     indianOpenChatView();
     editingMessageIndex = null;

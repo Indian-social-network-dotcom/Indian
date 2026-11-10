@@ -74,7 +74,7 @@ import {
     input.style.cssText = "display:block;width:100%;box-sizing:border-box;padding:10px;margin:6px 0;";
     const send = createActionButton("Send", sendGroupMessage, "Send group message");
     send.id = "indianUnifiedGroupSend";
-    input.addEventListener("input", () => { send.hidden = !input.value.trim(); });
+    input.addEventListener("input", () => { send.hidden = !input.value.trim(); send.style.display = send.hidden ? "none" : "flex"; });
     send.hidden = true;
     input.addEventListener("keydown", event => {
       if (event.key === "Enter" && !event.shiftKey) {
@@ -84,7 +84,13 @@ import {
     });
     composer.append(label, input, send);
     const sharedRow = el("indianChatComposerRow");
-    if (sharedRow) sharedRow.append(input, send);
+    if (sharedRow) {
+      const attachment = sharedRow.querySelector(".indian-chat-attachment");
+      const more = sharedRow.querySelector(".indian-chat-more");
+      sharedRow.insertBefore(input, attachment || more || null);
+      if (more) more.insertAdjacentElement("afterend", send);
+      else sharedRow.appendChild(send);
+    }
 
     const memberArea = document.createElement("div");
     memberArea.id = "indianUnifiedGroupMemberArea";
@@ -109,7 +115,7 @@ import {
 
     controls.append(memberArea);
     const menuPanel = el("indianChatMorePanel");
-    if (menuPanel) menuPanel.appendChild(memberArea);
+    if (menuPanel) menuPanel.appendChild(controls);
     else messages.insertAdjacentElement("afterend", controls);
     const sharedRow = el("indianChatComposerRow");
     if (sharedRow && composer.parentElement !== sharedRow) sharedRow.append(input, send);
@@ -297,13 +303,13 @@ import {
     if (personalText) personalText.hidden = true;
     if (personalSend) personalSend.hidden = true;
     if (groupText) { groupText.hidden = false; groupText.style.display = "block"; }
-    if (groupSend) { groupSend.hidden = true; groupSend.style.display = "flex"; }
+    if (groupSend) { groupSend.hidden = true; groupSend.style.display = "none"; }
     const groupLabel = document.querySelector('label[for="indianUnifiedGroupText"]');
     if (groupLabel) groupLabel.classList.add("sr-only");
     if (typing) typing.hidden = true;
     if (headerActions) headerActions.style.display = "";
     if (controls) {
-      controls.hidden = true;
+      controls.hidden = false;
       const memberArea = el("indianUnifiedGroupMemberArea");
       if (memberArea) memberArea.hidden = !(activeGroup?.admins || []).includes(currentUser?.uid);
     }
@@ -328,6 +334,7 @@ import {
     if (controls) controls.hidden = true;
     const memberArea = el("indianUnifiedGroupMemberArea");
     if (memberArea) memberArea.hidden = true;
+    if (controls) controls.hidden = true;
     if (personalComposer) personalComposer.style.display = "";
     const personalText = el("messageText"), personalSend = el("sendMessageButton");
     const groupText = el("indianUnifiedGroupText"), groupSend = el("indianUnifiedGroupSend");
@@ -512,7 +519,7 @@ import {
         createdAt: serverTimestamp()
       });
       if (input) input.value = "";
-      if (send) send.hidden = true;
+      if (send) { send.hidden = true; send.style.display = "none"; }
       setStatus("");
     } catch (error) {
       console.error("Indian group send error", error);

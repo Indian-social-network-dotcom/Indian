@@ -188,6 +188,7 @@ import {
       return cardTime(b) - cardTime(a);
     });
     cards.forEach(card => list.appendChild(card));
+    renderGroupSearchResults();
   }
 
   function syncGroupMessageListeners() {
@@ -336,7 +337,6 @@ import {
   }
 
   function closeGroupMode() {
-    if (!groupMode) return;
     groupMode = false;
     document.body.classList.remove("indian-chat-group");
     if (messagesUnsubscribe) {
@@ -370,7 +370,7 @@ import {
       groupText.hidden = true;
       groupText.style.setProperty("display", "none", "important");
     }
-    if (groupSend) { groupSend.hidden = true; groupSend.style.display = "none"; }
+    if (groupSend) { groupSend.hidden = true; groupSend.style.setProperty("display", "none", "important"); }
     if (typing) typing.hidden = false;
     if (headerActions) headerActions.style.display = "";
     document.querySelectorAll("#messagesLayout .messageCallActions button").forEach((button, index) => {
@@ -572,6 +572,63 @@ import {
     renderGroupMessages(groupMessageRows);
   };
   window.indianCloseGroupMode = closeGroupMode;
+
+  function ensureGroupSearchResults() {
+    const input = el("conversationSearchBox");
+    const userResults = el("messageUserResults");
+    if (!input || !userResults) return null;
+    let area = el("indianGroupChatSearchResults");
+    if (!area) {
+      area = document.createElement("section");
+      area.id = "indianGroupChatSearchResults";
+      area.setAttribute("aria-label", "Matching groups");
+      area.setAttribute("aria-live", "polite");
+      userResults.insertAdjacentElement("afterend", area);
+      input.addEventListener("input", renderGroupSearchResults);
+    }
+    return area;
+  }
+
+  function renderGroupSearchResults() {
+    const input = el("conversationSearchBox");
+    const area = ensureGroupSearchResults();
+    if (!input || !area) return;
+    const term = String(input.value || "").trim().toLowerCase();
+    area.replaceChildren();
+    if (!term) { area.hidden = true; return; }
+    const matches = groupCache.filter(group =>
+      String(group.name || "").toLowerCase().includes(term)
+    );
+    area.hidden = false;
+    const heading = document.createElement("h3");
+    heading.textContent = "Matching groups";
+    area.appendChild(heading);
+    if (!matches.length) {
+      const empty = document.createElement("p");
+      empty.textContent = "No matching groups found.";
+      area.appendChild(empty);
+      return;
+    }
+    matches.forEach(group => {
+      const item = document.createElement("div");
+      item.className = "conversationCard";
+      const name = document.createElement("strong");
+      name.textContent = group.name || "Unnamed group";
+      const count = document.createElement("span");
+      count.textContent = " — " + (Array.isArray(group.members) ? group.members.length : 0) + " members";
+      const button = createActionButton("Open Group Chat", () => {
+        const layout = el("messagesLayout");
+        const results = el("messageUserResults");
+        if (layout) layout.style.display = "";
+        if (results) { results.hidden = true; results.replaceChildren(); }
+        area.hidden = true;
+        input.value = "";
+        openGroup(group.id);
+      }, "Open group chat " + (group.name || "Unnamed group"));
+      item.append(name, count, button);
+      area.appendChild(item);
+    });
+  }
 
   function refreshChatList() {
     if (typeof window.renderConversationList === "function") {

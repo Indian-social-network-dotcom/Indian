@@ -55,13 +55,31 @@ window.runIndianPublicProfileMigration = async function () {
     live: doc(db, "userLiveStatus", uid)
   };
 
+  const expectedRecords = [];
+  const stableValue = value => {
+    if (Array.isArray(value)) return value.map(stableValue);
+    if (value && typeof value === "object") {
+      return Object.keys(value).sort().reduce((out, key) => {
+        out[key] = stableValue(value[key]);
+        return out;
+      }, {});
+    }
+    return value;
+  };
   const ensureCopied = async (ref, data) => {
     const existing = await getDoc(ref);
     if (!existing.exists()) {
       await setDoc(ref, { ...data, migratedFromPublicProfilesAt: serverTimestamp() });
+    } else {
+      const current = existing.data() || {};
+      const matches = Object.keys(data).every(key =>
+        JSON.stringify(stableValue(current[key])) === JSON.stringify(stableValue(data[key]))
+      );
+      if (!matches) {
+        throw new Error("Naya record pehle se maujood hai lekin purane data se match nahi karta: " + ref.path + ". Koi purana record overwrite nahi kiya gaya.");
+      }
     }
-    const verified = await getDoc(ref);
-    if (!verified.exists()) throw new Error("Naye collection mein record verify nahi hua: " + ref.path);
+    expectedRecords.push({ ref, data });
   };
 
   await ensureCopied(targets.stories, {
@@ -110,10 +128,17 @@ window.runIndianPublicProfileMigration = async function () {
     reactionCount++;
   }
 
-  // Verify the main migrated records again before recording completion.
-  for (const ref of [targets.stories]) {
-    const check = await getDoc(ref);
-    if (!check.exists()) throw new Error("Migration verification failed: " + ref.path);
+  // Re-read every migrated document and verify every copied field before marking complete.
+  for (const item of expectedRecords) {
+    const check = await getDoc(item.ref);
+    if (!check.exists()) throw new Error("Migration verification failed: " + item.ref.path);
+    const actual = check.data() || {};
+    const matches = Object.keys(item.data).every(key =>
+      JSON.stringify(stableValue(actual[key])) === JSON.stringify(stableValue(item.data[key]))
+    );
+    if (!matches) {
+      throw new Error("Migration data verification failed: " + item.ref.path + ". Completion marker was not written.");
+    }
   }
 
   const report = {

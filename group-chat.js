@@ -3,7 +3,7 @@ import { getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   getFirestore, collection, doc, addDoc, updateDoc, query, where,
-  onSnapshot, getDocs, orderBy, serverTimestamp, arrayUnion
+  onSnapshot, getDocs, orderBy, limit, serverTimestamp, arrayUnion
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 (function () {
@@ -22,6 +22,7 @@ import {
   let activeGroupId = "";
   let activeGroup = null;
   let groupCache = [];
+  const groupMessageUnsubs = new Map();
   let groupMode = false;
   let originalRenderConversationList = null;
   let originalOpenConversation = null;
@@ -130,8 +131,11 @@ import {
       name.textContent = group.name || "Unnamed group";
       const preview = document.createElement("div");
       preview.className = "conversationPreview";
-      preview.textContent = (Array.isArray(group.members) ? group.members.length : 0) + " members";
-      info.append(name, preview);
+      preview.textContent = group.lastMessageText || "No messages yet.";
+      const memberMeta = document.createElement("div");
+      memberMeta.className = "messageConversationMeta";
+      memberMeta.textContent = (Array.isArray(group.members) ? group.members.length : 0) + " members";
+      info.append(name, preview, memberMeta);
 
       const open = createActionButton("Open Chat", () => openGroup(group.id),
         "Open group chat " + (group.name || "Unnamed group"));
@@ -139,6 +143,76 @@ import {
       card.appendChild(header);
       list.appendChild(card);
     });
+
+    const cards = Array.from(list.querySelectorAll(".conversationCard"));
+    const cardTime = card => {
+      const groupId = card.dataset.indianGroupId;
+      if (groupId) {
+        const item = groupCache.find(group => group.id === groupId);
+        return item ? Math.max(Number(item.lastMessageAtMs) || 0, Number(item.updatedAtMs) || 0) : 0;
+      }
+      const personId = Number(card.dataset.personId);
+      const person = typeof window.getIndianPersonById === "function"
+        ? window.getIndianPersonById(personId) : null;
+      if (!person) return 0;
+      const messages = typeof window.getMessagesForPerson === "function"
+        ? window.getMessagesForPerson(personId) : [];
+      const localTime = messages.length
+        ? Number(messages[messages.length - 1].timestampValue) || 0 : 0;
+      return Math.max(Number(person.latestMessageAtMs) || 0, localTime);
+    };
+    cards.sort((a, b) => {
+      const aPerson = a.dataset.personId ? window.getIndianPersonById?.(Number(a.dataset.personId)) : null;
+      const bPerson = b.dataset.personId ? window.getIndianPersonById?.(Number(b.dataset.personId)) : null;
+      const aMeta = aPerson && window.getMessageMeta ? window.getMessageMeta(aPerson.id) : {};
+      const bMeta = bPerson && window.getMessageMeta ? window.getMessageMeta(bPerson.id) : {};
+      if (!!aMeta.pinned !== !!bMeta.pinned) return aMeta.pinned ? -1 : 1;
+      return cardTime(b) - cardTime(a);
+    });
+    cards.forEach(card => list.appendChild(card));
+  }
+
+  function syncGroupMessageListeners() {
+    const activeIds = new Set(groupCache.map(group => group.id));
+    for (const [groupId, unsubscribe] of groupMessageUnsubs) {
+      if (!activeIds.has(groupId)) {
+        try { unsubscribe(); } catch (error) {}
+        groupMessageUnsubs.delete(groupId);
+      }
+    }
+    groupCache.forEach(group => {
+      if (groupMessageUnsubs.has(group.id)) return;
+      const latestQuery = query(
+        collection(db, "groups", group.id, "messages"),
+        orderBy("createdAt", "desc"),
+        limit(1)
+      );
+      const unsubscribe = onSnapshot(latestQuery, snapshot => {
+        const currentGroup = groupCache.find(item => item.id === group.id) || group;
+        const latest = snapshot.docs[0];
+        if (latest) {
+          const data = latest.data() || {};
+          const timestamp = Number(data.createdAtMs) ||
+            (data.createdAt && typeof data.createdAt.toMillis === "function" ? data.createdAt.toMillis() : 0);
+          currentGroup.lastMessageAtMs = timestamp || Number(currentGroup.updatedAtMs) || 0;
+          currentGroup.lastMessageText = String(data.text || (data.attachment ? "Attachment" : "Message")).slice(0, 180);
+        } else {
+          currentGroup.lastMessageAtMs = 0;
+          currentGroup.lastMessageText = "";
+        }
+        refreshChatList();
+      }, error => {
+        console.warn("Indian group latest-message listener failed", group.id, error);
+      });
+      groupMessageUnsubs.set(group.id, unsubscribe);
+    });
+  }
+
+  function clearGroupMessageListeners() {
+    for (const unsubscribe of groupMessageUnsubs.values()) {
+      try { unsubscribe(); } catch (error) {}
+    }
+    groupMessageUnsubs.clear();
   }
 
   function installConversationHooks() {
@@ -400,7 +474,8 @@ import {
         senderId: currentUser.uid,
         senderName: safe(currentUser.displayName || currentUser.email || "Indian User", 60),
         text: message,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        createdAtMs: Date.now()
       });
       if (input) input.value = "";
       setStatus("");
@@ -433,6 +508,7 @@ import {
     if (nextUid !== previousUid) {
       if (groupsUnsubscribe) groupsUnsubscribe();
       groupsUnsubscribe = null;
+      clearGroupMessageListeners();
       closeGroupMode();
       groupCache = [];
       activeGroup = null;
@@ -452,9 +528,14 @@ import {
       where("members", "array-contains", currentUser.uid)
     );
     groupsUnsubscribe = onSnapshot(membershipQuery, snapshot => {
-      groupCache = snapshot.docs
-        .map(item => ({ id: item.id, ...item.data() }))
-        .sort((a, b) => (b.updatedAtMs || 0) - (a.updatedAtMs || 0));
+      const previousGroups = new Map(groupCache.map(group => [group.id, group]));
+      groupCache = snapshot.docs.map(item => Object.assign(
+        {},
+        previousGroups.get(item.id) || {},
+        item.data() || {},
+        { id: item.id }
+      ));
+      syncGroupMessageListeners();
       refreshChatList();
       if (activeGroupId) {
         const latest = groupCache.find(item => item.id === activeGroupId);

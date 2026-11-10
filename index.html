@@ -241,6 +241,8 @@ body.indian-chat-open #indianUnifiedGroupMemberArea[hidden]{display:none!importa
 body.indian-chat-group .messageCallActions{display:none!important}
 body.indian-chat-group #messageText,body.indian-chat-group #sendMessageButton{display:none!important}
 body.indian-chat-group #indianUnifiedGroupText{display:block!important}
+body.indian-chat-group #indianUnifiedGroupSend[hidden]{display:none!important}
+body.indian-chat-group #indianUnifiedGroupSend:not([hidden]){display:flex!important}
 @media(min-width:760px){body.indian-chat-open .chatHeader{padding-left:18px!important;padding-right:18px!important}body.indian-chat-open #messageComposer{padding-left:18px!important;padding-right:18px!important}.indian-chat-composer-row{max-width:1100px;margin:0 auto}body.indian-chat-open #messagesSection .chatMessages{padding-left:max(18px,calc((100vw - 1050px)/2))!important;padding-right:max(18px,calc((100vw - 1050px)/2))!important}}
 body.indian-chat-open button:focus-visible,body.indian-chat-open input:focus-visible,body.indian-chat-open textarea:focus-visible,body.indian-chat-open summary:focus-visible{outline:3px solid #ff9f43!important;outline-offset:2px!important}
 </style>
@@ -1008,7 +1010,7 @@ function setupIndianChatComposerUI(){
  const menu=document.createElement("details");menu.id="indianChatMoreOptions";menu.className="indian-chat-more";
  const sum=document.createElement("summary");sum.textContent="⋮";sum.title="More message options";sum.setAttribute("aria-label","More message options");
  const panel=document.createElement("div");panel.id="indianChatMorePanel";panel.className="indian-chat-more-panel";menu.append(sum,panel);
- const send=document.getElementById("sendMessageButton");if(send){send.classList.add("indian-chat-send");row.appendChild(send);}row.appendChild(menu);composer.appendChild(row);
+ const send=document.getElementById("sendMessageButton");if(send)send.classList.add("indian-chat-send");row.appendChild(menu);if(send)row.appendChild(send);composer.appendChild(row);
  const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="indian-chat-menu-option";searchButton.textContent="Search Previous Messages";
  searchButton.addEventListener("click",()=>{const q=document.getElementById("indianChatPreviousSearch");if(q){q.hidden=false;q.focus();}});
  const search=document.createElement("input");search.type="search";search.id="indianChatPreviousSearch";search.placeholder="Search previous messages";search.setAttribute("aria-label","Search previous messages in this chat");search.hidden=true;
@@ -2750,6 +2752,8 @@ async function sendMessageCore(){
     }, 800);
 
     textBox.value = "";
+    const chatSendButton = document.getElementById("sendMessageButton");
+    if(chatSendButton) chatSendButton.hidden = true;
     window.__indianMessageLastSuccessfulSendAt = Date.now();
     try { sessionStorage.removeItem("indian_chat_draft_" + selectedConversationPersonId); } catch(e) {}
     updateMessageComposerStatus();

@@ -312,6 +312,11 @@ import {
     if (groupLabel) groupLabel.classList.add("sr-only");
     if (typing) typing.hidden = true;
     if (headerActions) headerActions.style.display = "";
+    document.querySelectorAll("#messagesLayout .messageCallActions button").forEach((button, index) => {
+      button.disabled = true;
+      button.title = "Group calls will be added in a later update";
+      button.setAttribute("aria-label", index === 0 ? "Group voice calls are not available yet" : "Group video calls are not available yet");
+    });
     if (controls) {
       controls.hidden = false;
       controls.style.marginTop = "0";
@@ -349,6 +354,11 @@ import {
     if (groupSend) { groupSend.hidden = true; groupSend.style.display = "none"; }
     if (typing) typing.hidden = false;
     if (headerActions) headerActions.style.display = "";
+    document.querySelectorAll("#messagesLayout .messageCallActions button").forEach((button, index) => {
+      button.disabled = false;
+      button.title = index === 0 ? "Voice call" : "Video call";
+      button.setAttribute("aria-label", index === 0 ? "Start voice call" : "Start video call");
+    });
   }
 
   function openGroup(groupId) {

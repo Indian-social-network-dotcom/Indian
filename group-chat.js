@@ -304,7 +304,10 @@ import {
     if (personalText) personalText.hidden = true;
     if (personalSend) personalSend.hidden = true;
     if (groupText) { groupText.hidden = false; groupText.style.display = "block"; }
-    if (groupSend) { groupSend.hidden = true; groupSend.style.display = "none"; }
+    if (groupSend) {
+      groupSend.hidden = !(groupText && groupText.value.trim());
+      groupSend.style.display = groupSend.hidden ? "none" : "flex";
+    }
     const groupLabel = document.querySelector('label[for="indianUnifiedGroupText"]');
     if (groupLabel) groupLabel.classList.add("sr-only");
     if (typing) typing.hidden = true;

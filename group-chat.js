@@ -90,6 +90,8 @@ import {
       sharedRow.insertBefore(input, attachment || more || null);
       if (more) more.insertAdjacentElement("afterend", send);
       else sharedRow.appendChild(send);
+    } else {
+      messages.insertAdjacentElement("afterend", composer);
     }
 
     const memberArea = document.createElement("div");
@@ -118,8 +120,6 @@ import {
     if (menuPanel) menuPanel.appendChild(controls);
     else messages.insertAdjacentElement("afterend", controls);
     controls.hidden = true;
-    const sharedRow = el("indianChatComposerRow");
-    if (sharedRow && composer.parentElement !== sharedRow) sharedRow.append(input, send);
     return controls;
   }
 

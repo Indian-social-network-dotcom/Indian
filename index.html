@@ -1028,6 +1028,7 @@ let peopleData = window.peopleData = [
     },
     {
         id: 2,
+        isDemoPlaceholder: true,
         name: "Priya Sharma",
         bio: "Digital Creator on Indian",
         isFollowing: false,
@@ -1038,6 +1039,7 @@ let peopleData = window.peopleData = [
     },
     {
         id: 3,
+        isDemoPlaceholder: true,
         name: "Amit Kumar",
         bio: "Community Helper",
         isFollowing: false,
@@ -1487,7 +1489,26 @@ window.addFirebasePeopleToIndian = function(profiles){
         if(!profile || !profile.uid || profile.uid === (window.firebaseCurrentUid || "")) return;
         const safeName = String(profile.displayName || "Indian User").normalize("NFKC").replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0, 60) || "Indian User";
         let existing = peopleData.find(function(p){ return p.firebaseUid === profile.uid; });
+        let matchedDemoPlaceholder = false;
+        if(!existing){
+            const normalizedProfileName = safeName.toLocaleLowerCase();
+            existing = peopleData.find(function(p){
+                return p.isDemoPlaceholder === true && !p.firebaseUid &&
+                    String(p.name || "").normalize("NFKC").trim().toLocaleLowerCase() === normalizedProfileName;
+            });
+            matchedDemoPlaceholder = !!existing;
+        }
         if(existing){
+            if(matchedDemoPlaceholder){
+                const demoChat = messageData.find(function(item){ return item.personId === existing.id; });
+                if(demoChat) demoChat.messages = [];
+                existing.isDemoPlaceholder = false;
+                existing.latestMessageAtMs = 0;
+                existing.latestMessageText = "";
+                existing.latestMessageId = "";
+                existing.latestMessageSenderId = "";
+            }
+            existing.firebaseUid = profile.uid;
             existing.name = safeName;
             existing.bio = String(profile.bio || existing.bio || "Firebase user on Indian.").slice(0, 500);
             existing.photoURL = String(profile.photoURL || existing.photoURL || "");

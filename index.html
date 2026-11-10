@@ -199,6 +199,7 @@ body.indian-chat-open #mainContent{margin:0!important;padding:0!important;max-wi
 body.indian-chat-open #mainContent>*:not(#messagesSection){display:none!important}
 body.indian-chat-open #messagesSection{display:block!important;position:fixed!important;inset:0!important;z-index:10000!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;padding:0!important;box-sizing:border-box;background:#f2f5f3;overflow:hidden!important;border:0!important;border-radius:0!important}
 body.indian-chat-open #messagesSection>h2,body.indian-chat-open #messagesSection>#indianGroupStatus,body.indian-chat-open #messagesSection>#firebaseMessageStatus,body.indian-chat-open #messagesSection>#indianUnifiedMessageSearch,body.indian-chat-open #messagesSection>#messageUserResults{display:none!important}
+#messagesLayout .chatPanel{display:none}
 body.indian-chat-open #messagesLayout{display:block!important;height:100%!important;margin:0!important;padding:0!important}
 body.indian-chat-open .messagesSidebar{display:none!important}
 body.indian-chat-open .chatPanel{display:flex!important;flex-direction:column!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-height:none!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#f2f5f3!important;overflow:hidden!important}
@@ -231,7 +232,6 @@ body.indian-chat-open #messageText,body.indian-chat-open #indianUnifiedGroupText
 #indianChatPreviousSearch[hidden]{display:none}
 body.indian-chat-open .messageAttachmentDetails[open] .messageAttachControls{position:absolute;bottom:58px;left:8px;right:8px;z-index:12;max-height:55vh;overflow:auto;box-shadow:0 8px 26px rgba(0,0,0,.18)}
 body.indian-chat-open .messageSendRow{display:contents}
-body.indian-chat-open .messageClearDraftButton{display:none!important}
 body.indian-chat-open .indianMessageExtras{display:grid;gap:8px;margin:0}
 body.indian-chat-open .indianMessageFeature{width:100%}
 body.indian-chat-open .chatCallStatus{display:none}
@@ -1974,6 +1974,8 @@ function openConversation(personId){
 
     const searchBox = document.getElementById("messageSearchBox");
     if(searchBox) searchBox.value = "";
+    const previousSearch = document.getElementById("indianChatPreviousSearch");
+    if(previousSearch) previousSearch.value = "";
     const unifiedSearch = document.getElementById("conversationSearchBox");
     if(unifiedSearch) unifiedSearch.value = "";
     conversationSearchQuery = "";
@@ -1999,6 +2001,7 @@ function openConversation(personId){
         try { savedDraft = sessionStorage.getItem(draftKey) || ""; } catch(e) {}
         textBox.value = savedDraft;
         updateMessageComposerStatus();
+        if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
         const draftStatus = document.getElementById("messageDraftStatus");
         if(draftStatus && savedDraft) draftStatus.textContent = "Draft restored.";
         setTimeout(function(){ textBox.focus(); }, 100);

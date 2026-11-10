@@ -364,6 +364,9 @@ import {
     }
     const search = el("conversationSearchBox");
     if (search) search.value = "";
+    const previousSearch = el("indianChatPreviousSearch");
+    if (previousSearch) previousSearch.value = "";
+    groupMessageSearch = "";
     renderGroupHeader();
 
     const box = el("chatMessages");
@@ -520,6 +523,7 @@ import {
       });
       if (input) input.value = "";
       if (send) { send.hidden = true; send.style.display = "none"; }
+      if (typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
       setStatus("");
     } catch (error) {
       console.error("Indian group send error", error);

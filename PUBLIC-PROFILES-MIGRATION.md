@@ -94,3 +94,15 @@ Test all three controlled accounts and at least two devices:
 - No application behavior has changed.
 - No Firestore Rules have been published.
 - No Firebase data has been migrated, overwritten or deleted.
+
+
+## Rules draft review — 2026-11-10
+
+- Added `firestore.rules.public-profiles-migration-DRAFT.txt` as a review-only draft. It is not published and is not ready to paste into Firebase yet.
+- The personal Messages Read Receipt block was compared with the authoritative user-supplied Rules file and is byte-for-byte unchanged.
+- The complete Indian Group Chat block was compared with the authoritative user-supplied Rules file and is byte-for-byte unchanged.
+- The story interaction existence check and `hasActiveStory` helper now point to `userStories/{uid}` in the draft.
+- New collection Rules were added for stories, presence, recipient-scoped typing, live status, reactions, and private migration markers.
+- The existing app still writes and reads the legacy `publicProfiles` fields directly. The new collections are not yet integrated into the live app code.
+- The draft has not been compiled or tested with the Firestore Emulator. Query compatibility, exact field validation, and per-feature read/write behavior remain to be verified before publication.
+- No Rules were published, no Firebase data was changed, and no application source file was modified in this review step.

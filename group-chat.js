@@ -24,6 +24,8 @@ import {
   let groupCache = [];
   const groupMessageUnsubs = new Map();
   let groupMode = false;
+  let groupMessageRows = [];
+  let groupMessageSearch = "";
   let originalRenderConversationList = null;
   let originalOpenConversation = null;
 
@@ -71,6 +73,8 @@ import {
     input.style.cssText = "display:block;width:100%;box-sizing:border-box;padding:10px;margin:6px 0;";
     const send = createActionButton("Send", sendGroupMessage, "Send group message");
     send.id = "indianUnifiedGroupSend";
+    input.addEventListener("input", () => { send.hidden = !input.value.trim(); });
+    send.hidden = true;
     input.addEventListener("keydown", event => {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
@@ -78,6 +82,8 @@ import {
       }
     });
     composer.append(label, input, send);
+    const sharedRow = el("indianChatComposerRow");
+    if (sharedRow) sharedRow.append(input, send);
 
     const memberArea = document.createElement("div");
     memberArea.id = "indianUnifiedGroupMemberArea";
@@ -100,8 +106,12 @@ import {
     results.setAttribute("aria-live", "polite");
     memberArea.append(heading, memberLabel, memberInput, search, results);
 
-    controls.append(composer, memberArea);
-    messages.insertAdjacentElement("afterend", controls);
+    controls.append(memberArea);
+    const menuPanel = el("indianChatMorePanel");
+    if (menuPanel) menuPanel.appendChild(memberArea);
+    else messages.insertAdjacentElement("afterend", controls);
+    const sharedRow = el("indianChatComposerRow");
+    if (sharedRow && composer.parentElement !== sharedRow) sharedRow.append(input, send);
     return controls;
   }
 
@@ -234,9 +244,12 @@ import {
   }
 
   function renderGroupMessages(rows) {
+    groupMessageRows = Array.isArray(rows) ? rows.slice() : [];
     const box = el("chatMessages");
     if (!box) return;
     box.replaceChildren();
+    const term = String(groupMessageSearch || "").trim().toLowerCase();
+    rows = groupMessageRows.filter(message => !term || String(message.text || "").toLowerCase().includes(term) || String(message.senderName || "").toLowerCase().includes(term));
     if (!rows.length) {
       const empty = document.createElement("p");
       empty.className = "chatEmpty";
@@ -261,6 +274,7 @@ import {
   }
 
   function renderGroupHeader() {
+    document.body.classList.add("indian-chat-open", "indian-chat-group");
     const title = el("chatTitle");
     const presence = el("chatPresence");
     const avatar = el("chatProfileAvatar");
@@ -276,9 +290,17 @@ import {
       avatar.textContent = "👥";
       avatar.setAttribute("aria-label", "Group conversation");
     }
-    if (personalComposer) personalComposer.style.display = "none";
+    if (personalComposer) personalComposer.style.display = "block";
+    const personalText = el("messageText"), personalSend = el("sendMessageButton");
+    const groupText = el("indianUnifiedGroupText"), groupSend = el("indianUnifiedGroupSend");
+    if (personalText) personalText.hidden = true;
+    if (personalSend) personalSend.hidden = true;
+    if (groupText) { groupText.hidden = false; groupText.style.display = "block"; }
+    if (groupSend) { groupSend.hidden = true; groupSend.style.display = "flex"; }
+    const groupLabel = document.querySelector('label[for="indianUnifiedGroupText"]');
+    if (groupLabel) groupLabel.classList.add("sr-only");
     if (typing) typing.hidden = true;
-    if (headerActions) headerActions.style.display = "none";
+    if (headerActions) headerActions.style.display = "";
     if (controls) {
       controls.hidden = false;
       const memberArea = el("indianUnifiedGroupMemberArea");
@@ -289,23 +311,33 @@ import {
   function closeGroupMode() {
     if (!groupMode) return;
     groupMode = false;
+    document.body.classList.remove("indian-chat-group");
     if (messagesUnsubscribe) {
       messagesUnsubscribe();
       messagesUnsubscribe = null;
     }
     activeGroupId = "";
     activeGroup = null;
+    groupMessageRows = [];
+    groupMessageSearch = "";
     const controls = el("indianUnifiedGroupControls");
     const personalComposer = el("messageComposer");
     const typing = el("chatTypingStatus");
     const headerActions = document.querySelector("#messagesLayout .chatHeaderActions");
     if (controls) controls.hidden = true;
     if (personalComposer) personalComposer.style.display = "";
+    const personalText = el("messageText"), personalSend = el("sendMessageButton");
+    const groupText = el("indianUnifiedGroupText"), groupSend = el("indianUnifiedGroupSend");
+    if (personalText) personalText.hidden = false;
+    if (personalSend) personalSend.hidden = false;
+    if (groupText) { groupText.hidden = true; groupText.style.display = "none"; }
+    if (groupSend) { groupSend.hidden = true; groupSend.style.display = "none"; }
     if (typing) typing.hidden = false;
     if (headerActions) headerActions.style.display = "";
   }
 
   function openGroup(groupId) {
+    document.body.classList.add("indian-chat-open", "indian-chat-group");
     const group = groupCache.find(item => item.id === groupId) ||
       (activeGroup?.id === groupId ? activeGroup : null);
     if (!group) return;
@@ -486,6 +518,12 @@ import {
     }
   }
 
+  window.indianFilterGroupMessages = function(value) {
+    groupMessageSearch = safe(value,120).toLowerCase();
+    renderGroupMessages(groupMessageRows);
+  };
+  window.indianCloseGroupMode = closeGroupMode;
+
   function refreshChatList() {
     if (typeof window.renderConversationList === "function") {
       window.renderConversationList();
@@ -510,6 +548,8 @@ import {
       clearGroupMessageListeners();
       closeGroupMode();
       groupCache = [];
+      groupMessageRows = [];
+      groupMessageSearch = "";
       activeGroup = null;
       activeGroupId = "";
       renderGroupCards();

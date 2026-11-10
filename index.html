@@ -244,6 +244,7 @@ body.indian-chat-group #messageText,body.indian-chat-group #sendMessageButton{di
 body.indian-chat-group #indianUnifiedGroupText{display:block!important}
 body.indian-chat-group #indianUnifiedGroupSend[hidden]{display:none!important}
 body.indian-chat-group #indianUnifiedGroupSend:not([hidden]){display:flex!important}
+body.indian-chat-group .chatHeaderMore .messageConversationTools{display:none!important}
 @media(min-width:760px){body.indian-chat-open .chatHeader{padding-left:18px!important;padding-right:18px!important}body.indian-chat-open #messageComposer{padding-left:18px!important;padding-right:18px!important}.indian-chat-composer-row{max-width:1100px;margin:0 auto}body.indian-chat-open #messagesSection .chatMessages{padding-left:max(18px,calc((100vw - 1050px)/2))!important;padding-right:max(18px,calc((100vw - 1050px)/2))!important}}
 body.indian-chat-open button:focus-visible,body.indian-chat-open input:focus-visible,body.indian-chat-open textarea:focus-visible,body.indian-chat-open summary:focus-visible{outline:3px solid #ff9f43!important;outline-offset:2px!important}
 </style>
@@ -1007,7 +1008,7 @@ function setupIndianChatComposerUI(){
  const mic=document.createElement("button");mic.type="button";mic.id="indianChatVoiceTypingButton";mic.className="indian-chat-tool";mic.textContent="🎙";mic.title="Voice typing";mic.setAttribute("aria-label","Start voice typing");mic.addEventListener("click",indianStartChatVoiceTyping);
  const label=composer.querySelector('label[for="messageText"]'),input=document.getElementById("messageText");if(label)label.classList.add("sr-only");
  if(input){input.placeholder="Message";input.rows=1;row.append(mic,input);}else row.append(mic);
- const attach=composer.querySelector(".messageAttachmentDetails");if(attach){attach.classList.add("indian-chat-attachment");const sum=attach.querySelector("summary");if(sum){sum.textContent="＋";sum.setAttribute("aria-label","Attach photo or video");}row.appendChild(attach);}
+ const attach=composer.querySelector(".messageAttachmentDetails");if(attach){attach.classList.add("indian-chat-attachment");const sum=attach.querySelector("summary");if(sum){sum.textContent="＋";sum.setAttribute("aria-label","Attach photo or video");sum.addEventListener("click",event=>{if(document.body.classList.contains("indian-chat-group")){event.preventDefault();const status=document.getElementById("messageDraftStatus");if(status)status.textContent="Photo and video attachments for group chats will be added in a later update.";}});}row.appendChild(attach);}
  const menu=document.createElement("details");menu.id="indianChatMoreOptions";menu.className="indian-chat-more";
  const sum=document.createElement("summary");sum.textContent="⋮";sum.title="More message options";sum.setAttribute("aria-label","More message options");
  const panel=document.createElement("div");panel.id="indianChatMorePanel";panel.className="indian-chat-more-panel";menu.append(sum,panel);

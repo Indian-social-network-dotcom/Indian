@@ -344,7 +344,6 @@ import {
     if (controls) controls.hidden = true;
     const memberArea = el("indianUnifiedGroupMemberArea");
     if (memberArea) memberArea.hidden = true;
-    if (controls) controls.hidden = true;
     if (personalComposer) personalComposer.style.display = "";
     const personalText = el("messageText"), personalSend = el("sendMessageButton");
     const groupText = el("indianUnifiedGroupText"), groupSend = el("indianUnifiedGroupSend");

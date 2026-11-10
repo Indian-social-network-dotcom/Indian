@@ -474,8 +474,7 @@ import {
         senderId: currentUser.uid,
         senderName: safe(currentUser.displayName || currentUser.email || "Indian User", 60),
         text: message,
-        createdAt: serverTimestamp(),
-        createdAtMs: Date.now()
+        createdAt: serverTimestamp()
       });
       if (input) input.value = "";
       setStatus("");

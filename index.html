@@ -2021,6 +2021,7 @@ function openConversation(personId){
     renderChat(personId);
     if(window.firebaseIndianMessages){
         window.firebaseIndianMessages.subscribe(personId);
+        window.firebaseIndianMessages.markRead(personId).catch(function(error){console.warn("Incoming message read receipt check failed.",error);});
     }
 
     const textBox = document.getElementById("messageText");
@@ -5359,6 +5360,7 @@ window.openFirebaseAccount = openFirebaseAccount;
 ========================================================== */
 const firestoreMessageUnsubs = new Map();
 const firestoreMessageBuckets = new Map();
+const firestoreReadUpdatesInFlight = new Set();
 
 function setFirebaseMessageStatus(message){
     const el = document.getElementById("firebaseMessageStatus");
@@ -5442,6 +5444,34 @@ function applyFirestoreConversation(personId){
     }
 }
 
+async function markFirestoreIncomingMessagesRead(personId){
+    if(!firebaseDb || !firebaseCurrentUser) return;
+    if(selectedConversationPersonId !== personId) return;
+    if(!document.body.classList.contains("indian-chat-open") || document.visibilityState !== "visible") return;
+    const bucket=firestoreMessageBuckets.get(String(personId));
+    if(!bucket || !bucket.incoming) return;
+    const currentUid=firebaseCurrentUser.uid;
+    const updates=[];
+    bucket.incoming.forEach(function(message,messageId){
+        if(!message || !message.firestoreId || message.receiverUid!==currentUid || message.senderUid===currentUid || message.status==="read") return;
+        if(firestoreReadUpdatesInFlight.has(messageId)) return;
+        firestoreReadUpdatesInFlight.add(messageId);
+        const update=updateDoc(doc(firebaseDb,"messages",message.firestoreId),{read:true})
+            .then(function(){
+                message.status="read";
+                if(selectedConversationPersonId===personId && document.body.classList.contains("indian-chat-open") && document.visibilityState==="visible"){
+                    renderChat(personId);
+                }
+            })
+            .catch(function(error){
+                console.warn("Incoming message read receipt could not be saved. Check the receiver read-only Firestore rule.",error);
+            })
+            .finally(function(){firestoreReadUpdatesInFlight.delete(messageId);});
+        updates.push(update);
+    });
+    await Promise.all(updates);
+}
+
 function subscribeFirestoreMessages(personId){
     if(!firebaseDb || !firebaseCurrentUser){
         setFirebaseMessageStatus("Sign in to start chatting.");
@@ -5505,6 +5535,7 @@ function subscribeFirestoreMessages(personId){
         });
         incomingReady = true;
         applyFirestoreConversation(personId);
+        markFirestoreIncomingMessagesRead(personId).catch(function(error){console.warn("Incoming message read receipt check failed.",error);});
         if(outgoingReady && incomingReady) setFirebaseMessageStatus("Firebase Messages connected for " + (person ? person.name : "this user") + ".");
     }, function(error){
         setFirebaseMessageStatus("Firebase Messages read failed: " + sanitizePlainText(error.message, 250));
@@ -5732,6 +5763,7 @@ async function setIndianFirestoreLiveStatus(isLiveNow, startedAtMs, liveTitle){
 
 window.firebaseIndianMessages = {
     subscribe: subscribeFirestoreMessages,
+    markRead: markFirestoreIncomingMessagesRead,
     save: saveFirestoreMessage,
     update: updateFirestoreMessage,
     remove: deleteFirestoreMessage,

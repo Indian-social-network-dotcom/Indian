@@ -6,6 +6,8 @@ Separate mixed public profile documents into narrowly scoped Firestore collectio
 
 Working branch: `security/public-profiles-migration`
 
+Testing scope: currently three owner-controlled testing accounts. There are no public users yet, according to the project owner. We can use staged per-owner migration for these accounts rather than preparing a bulk migration for a large user base. Do not delete the three accounts or their legacy documents.
+
 Authoritative Rules baseline: the user's downloaded `indian-firestore-rules-read-receipt.txt`. Preserve its personal Messages Read Receipt rules and all Group Chat rules unchanged unless a separately reviewed migration requires a specific helper change.
 
 ## Current data and code dependencies
@@ -34,30 +36,31 @@ Current app dependencies found:
 - `userTyping/{uid}`: recipient-targeted typing state; reads must be scoped to the intended recipient.
 - `userLiveStatus/{uid}`: live-session state and title.
 - `messageReactions/{uid_messageId}`: one user's reaction for one message, with an owner UID and message ID.
-
-Collection names and exact schemas must be finalized against the complete client code before implementation.
+- `publicProfileMigrations/{uid}`: per-owner migration completion marker and verification report. This collection is internal and must not be publicly readable.
 
 ## Migration constraints
 
 1. Do not delete or overwrite legacy fields until the new records have been copied and verified.
 2. Do not switch legacy `publicProfiles` to owner-only reads while the app still relies on it for People, Stories, presence, live status, reactions, Uran, or Group Chat member search.
-3. A signed-in browser client cannot safely rewrite or delete another user's legacy document under owner-only write rules. A one-time full migration therefore needs either an authorized Admin migration or a staged per-owner migration.
-4. During a staged migration, the app must tolerate users who have not yet migrated. The final restrictive Rules phase must not happen until migration coverage is verified.
+3. A signed-in browser client can safely copy only its own legacy document under owner-only write rules. With only three owner-controlled testing accounts, run the migration separately while each account is signed in.
+4. During a staged migration, the app must tolerate users who have not yet migrated. The final restrictive Rules phase must not happen until all three accounts are verified.
 5. Story interaction Rules must check `userStories` after story migration.
 6. Keep personal Messages Read Receipt rules and Group Chat rules unchanged.
 7. Never expose typing records to users other than the intended recipient.
-8. Keep old and new data writes synchronized during the transition, with explicit rollback instructions.
+8. Keep old and new data synchronized during the transition, with explicit rollback instructions.
+9. Do not delete any Firebase Authentication account or legacy `publicProfiles` document as a shortcut.
 
 ## Required implementation phases
 
-### Phase A — audit and compatibility layer
+### Phase A — audit and migration scaffold
 - Enumerate every read/write of the legacy fields and all consumers of the global profile arrays.
-- Add helpers for loading new collections with a legacy fallback.
-- Add dual writes for the current user's data.
-- Add a per-owner migration routine that copies and verifies that user's own legacy data.
+- Define the new collection shapes and a copy-only per-owner migration routine.
+- Verify copied records before writing the completion marker.
+- Keep the routine dormant until the new Firestore Rules are reviewed and approved.
 - Do not tighten legacy read Rules yet.
 
-### Phase B — feature migration
+### Phase B — compatibility and feature migration
+- Add new-collection readers with legacy fallback and dual writes for the current user's data.
 - Move Stories and update the story viewer, cleanup, and `hasActiveStory` Rules helper.
 - Move presence and recipient-targeted typing.
 - Move live status.
@@ -65,7 +68,7 @@ Collection names and exact schemas must be finalized against the complete client
 - Keep public profile fields available to People, Uran, and Group Chat member search.
 
 ### Phase C — verification
-Test at least two accounts and two devices:
+Test all three controlled accounts and at least two devices:
 - Sign-up/login and profile name, bio, photo
 - People search and Group Chat member search
 - Story photo, video, music, expiry, views, likes and emoji reactions
@@ -75,17 +78,19 @@ Test at least two accounts and two devices:
 - Uran creator profile, views, comments and follow
 - Personal Messages and Read Receipt
 - Group Chat create, member search, send, receive and delete
-- Existing un-migrated users and rollback
+- Migration behavior for each of the three accounts and rollback
 
 ### Phase D — final security tightening
-- Verify migration coverage for every existing profile.
+- Verify migration coverage for all three existing test profiles.
 - Verify legacy documents no longer contain story, presence, typing, live or reaction data.
 - Only then restrict legacy collection access and remove compatibility reads/writes.
 - Publish Rules only after explicit user approval.
 
 ## Current status
 
-- A separate working branch has been created.
-- No application source has been changed.
+- Separate working branch: `security/public-profiles-migration`.
+- Full dependency audit completed for the known `index.html` and `group-chat.js` consumers.
+- Added a standalone copy-only migration scaffold; it is not loaded by the live page and cannot run yet.
+- No application behavior has changed.
 - No Firestore Rules have been published.
 - No Firebase data has been migrated, overwritten or deleted.

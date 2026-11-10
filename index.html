@@ -2672,6 +2672,7 @@ async function sendMessageCore(){
         }
         cancelMessageEdit();
         textBox.value = "";
+        if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
         try { sessionStorage.removeItem("indian_chat_draft_" + selectedConversationPersonId); } catch(e) {}
         updateMessageComposerStatus();
         renderChat(selectedConversationPersonId);

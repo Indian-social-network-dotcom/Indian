@@ -190,6 +190,65 @@
 .messagePollOption[aria-pressed=true]{border-color:#ff9800;font-weight:700}
 .messagePollMeta{font-size:.82rem;opacity:.8}
 </style>
+
+<style id="indianWhatsAppChatStyles">
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+body.indian-chat-open{padding:0!important;overflow:hidden!important;background:#f2f5f3}
+body.indian-chat-open #indianTopHeader,body.indian-chat-open #indianActionBar,body.indian-chat-open #indianBottomNav,body.indian-chat-open footer{display:none!important}
+body.indian-chat-open #mainContent{margin:0!important;padding:0!important;max-width:none!important;width:100%!important}
+body.indian-chat-open #mainContent>*:not(#messagesSection){display:none!important}
+body.indian-chat-open #messagesSection{display:block!important;position:fixed!important;inset:0!important;z-index:10000!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;padding:0!important;box-sizing:border-box;background:#f2f5f3;overflow:hidden!important;border:0!important;border-radius:0!important}
+body.indian-chat-open #messagesSection>h2,body.indian-chat-open #messagesSection>#indianGroupStatus,body.indian-chat-open #messagesSection>#firebaseMessageStatus,body.indian-chat-open #messagesSection>#indianUnifiedMessageSearch,body.indian-chat-open #messagesSection>#messageUserResults{display:none!important}
+body:not(.indian-chat-open) #messagesLayout{grid-template-columns:1fr!important}
+#messagesLayout .chatPanel{display:none}
+body.indian-chat-open #messagesLayout{display:block!important;height:100%!important;margin:0!important;padding:0!important}
+body.indian-chat-open .messagesSidebar{display:none!important}
+body.indian-chat-open .chatPanel{display:flex!important;flex-direction:column!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-height:none!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#f2f5f3!important;overflow:hidden!important}
+body.indian-chat-open .chatHeader{position:relative!important;z-index:3!important;flex:0 0 auto!important;display:flex!important;align-items:center!important;gap:7px!important;min-height:62px!important;padding:calc(7px + env(safe-area-inset-top,0px)) 8px 7px!important;border:0!important;border-bottom:1px solid #d8e2dc!important;border-radius:0!important;background:#fff!important;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+body.indian-chat-open .indian-chat-back{flex:0 0 36px;width:36px;height:42px;border:0;border-radius:9px;background:transparent;color:#173b2c;font-size:28px;cursor:pointer}
+body.indian-chat-open .chatHeaderIdentity{flex:1 1 auto;min-width:0;gap:7px}
+body.indian-chat-open .chatHeaderAvatar{width:40px;height:40px;flex-basis:40px}
+body.indian-chat-open .chatHeaderText h3{font-size:15px;line-height:1.2}
+body.indian-chat-open .chatHeaderText .messageConversationMeta{font-size:11px}
+body.indian-chat-open .chatHeaderActions{display:flex!important;align-items:center;gap:3px;flex:0 0 auto}
+body.indian-chat-open .messageCallActions{display:flex!important;gap:3px;margin:0!important}
+body.indian-chat-open .messageCallActions .chatIconButton{width:35px!important;min-width:35px!important;height:37px!important;padding:0!important;border-radius:9px!important;font-size:18px!important}
+body.indian-chat-open .chatHeaderMore>summary{width:32px;height:36px}
+body.indian-chat-open #chatTypingStatus{flex:0 0 auto;min-height:0;margin:0;padding:2px 12px;background:#fff}
+body.indian-chat-open #messagesSection .chatMessages{flex:1 1 auto!important;min-height:0!important;max-height:none!important;height:auto!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding:12px 10px 18px!important;border:0!important;background:#eaf0eb!important}
+body.indian-chat-open #messageComposer{display:block!important;flex:0 0 auto!important;position:relative!important;z-index:4!important;margin:0!important;padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px))!important;border:0!important;border-top:1px solid #d8e2dc!important;background:#fff!important;box-shadow:0 -2px 9px rgba(0,0,0,.05)}
+body.indian-chat-open #messageComposer>label[for="messageText"]{display:none!important}
+body.indian-chat-open #messageText,body.indian-chat-open #indianUnifiedGroupText{flex:1 1 auto!important;width:100%!important;min-width:0!important;min-height:42px!important;max-height:112px!important;height:42px!important;resize:none!important;box-sizing:border-box!important;padding:10px 12px!important;margin:0!important;border:1px solid #cbd8d0!important;border-radius:22px!important;background:#f8faf9!important;font:inherit!important;font-size:16px!important}
+.indian-chat-composer-row{display:flex;align-items:center;gap:5px;width:100%;min-width:0}
+.indian-chat-tool,.indian-chat-send,.indian-chat-more>summary,.indian-chat-attachment>summary{display:flex;align-items:center;justify-content:center;flex:0 0 38px;width:38px;height:42px;box-sizing:border-box;border:0;border-radius:50%;background:transparent;color:#17412f;font:inherit;font-size:21px;cursor:pointer;list-style:none}
+.indian-chat-attachment>summary::-webkit-details-marker,.indian-chat-more>summary::-webkit-details-marker{display:none}
+.indian-chat-attachment>summary{border:1px solid #d8e2dc;border-radius:50%;font-size:23px}
+.indian-chat-send{display:flex!important;background:#176b45!important;color:#fff!important;font-size:13px!important;font-weight:700!important}
+.indian-chat-send[hidden]{display:none!important}
+.indian-chat-more{position:relative;flex:0 0 38px}
+.indian-chat-more>summary{font-size:26px}
+.indian-chat-more-panel{position:absolute;right:0;bottom:50px;z-index:20;display:flex;flex-direction:column;gap:7px;width:min(86vw,320px);max-height:min(65vh,560px);overflow:auto;padding:12px;border:1px solid #d5e0d9;border-radius:14px;background:#fff;color:#173b2c;box-shadow:0 12px 32px rgba(0,0,0,.2)}
+.indian-chat-menu-option{width:100%;min-height:44px;padding:9px 11px;border:1px solid #e0e8e3;border-radius:9px;background:#f7faf8;color:#173b2c;text-align:left;font:inherit}
+#indianChatPreviousSearch{width:100%;min-height:42px;box-sizing:border-box;padding:9px;border:1px solid #cbd8d0;border-radius:9px;font:inherit}
+#indianChatPreviousSearch[hidden]{display:none}
+body.indian-chat-open .messageAttachmentDetails[open] .messageAttachControls{position:absolute;bottom:58px;left:8px;right:8px;z-index:12;max-height:55vh;overflow:auto;box-shadow:0 8px 26px rgba(0,0,0,.18)}
+body.indian-chat-open .messageSendRow{display:contents}
+body.indian-chat-open .indianMessageExtras{display:grid;gap:8px;margin:0}
+body.indian-chat-open .indianMessageFeature{width:100%}
+body.indian-chat-open .chatCallStatus{display:block;font-size:11px;padding:2px 8px;min-height:0}
+body.indian-chat-open #messageCharCount,body.indian-chat-open #messageDraftStatus,body.indian-chat-open #indianMessagePushResult{font-size:11px;margin:2px 4px}
+body.indian-chat-open #indianUnifiedGroupMemberArea{display:block}
+body.indian-chat-open #indianUnifiedGroupMemberArea[hidden]{display:none!important}
+body.indian-chat-group #messageText,body.indian-chat-group #sendMessageButton{display:none!important}
+body.indian-chat-group #indianUnifiedGroupText{display:block!important}
+body.indian-chat-group #indianUnifiedGroupSend[hidden]{display:none!important}
+body.indian-chat-group #indianUnifiedGroupSend:not([hidden]){display:flex!important}
+body.indian-chat-group .indianMessageExtras,body.indian-chat-group .messageClearDraftButton{display:none!important}
+body.indian-chat-group .chatHeaderMore .messageConversationTools{display:none!important}
+@media(min-width:760px){body.indian-chat-open .chatHeader{padding-left:18px!important;padding-right:18px!important}body.indian-chat-open #messageComposer{padding-left:18px!important;padding-right:18px!important}.indian-chat-composer-row{max-width:1100px;margin:0 auto}body.indian-chat-open #messagesSection .chatMessages{padding-left:max(18px,calc((100vw - 1050px)/2))!important;padding-right:max(18px,calc((100vw - 1050px)/2))!important}}
+body.indian-chat-open .messageCallActions button:disabled{opacity:.45;cursor:not-allowed}
+body.indian-chat-open button:focus-visible,body.indian-chat-open input:focus-visible,body.indian-chat-open textarea:focus-visible,body.indian-chat-open summary:focus-visible{outline:3px solid #ff9f43!important;outline-offset:2px!important}
+</style>
 </head>
 
 <body class="auth-required auth-initializing">
@@ -613,8 +672,8 @@ Search registered users, places, posts or help requests:
 </details>
 </div>
 <div class="messageCallActions" aria-label="Voice and video call options">
-<button type="button" class="chatIconButton" onclick="startIndianVoiceCall()" aria-label="Voice call" title="Voice call">📞 Voice call</button>
-<button type="button" class="chatIconButton" onclick="startIndianVideoCall()" aria-label="Video call" title="Video call">📹 Video call</button>
+<button type="button" class="chatIconButton" onclick="startIndianVoiceCall()" aria-label="Start voice call" title="Voice call">📞</button>
+<button type="button" class="chatIconButton" onclick="startIndianVideoCall()" aria-label="Start video call" title="Video call">📹</button>
 </div>
 <div id="indianCallStatus" class="chatCallStatus" role="status" aria-live="polite"></div>
 
@@ -939,6 +998,51 @@ Indian — Connect • Help • Share • Live
 
 
 <script>
+
+function setupIndianChatComposerUI(){
+ const header=document.querySelector("#messagesLayout .chatHeader"),composer=document.getElementById("messageComposer");
+ if(!header||!composer||document.getElementById("indianChatComposerRow"))return;
+ const back=document.createElement("button");back.type="button";back.id="indianChatBackButton";back.className="indian-chat-back";back.textContent="←";back.title="Back to Chats";back.setAttribute("aria-label","Back to Chats");back.addEventListener("click",indianCloseChatView);header.insertBefore(back,header.firstChild);
+ const actions=header.querySelector(".chatHeaderActions"),calls=composer.querySelector(".messageCallActions");
+ if(actions&&calls){calls.querySelectorAll("button").forEach((b,i)=>{b.textContent=i===0?"📞":"📹";b.classList.add("indian-chat-call-icon");});actions.insertBefore(calls,actions.firstChild);}
+ const row=document.createElement("div");row.id="indianChatComposerRow";row.className="indian-chat-composer-row";
+ const mic=document.createElement("button");mic.type="button";mic.id="indianChatVoiceTypingButton";mic.className="indian-chat-tool";mic.textContent="🎙";mic.title="Voice typing";mic.setAttribute("aria-label","Start voice typing");mic.addEventListener("click",indianStartChatVoiceTyping);
+ const label=composer.querySelector('label[for="messageText"]'),input=document.getElementById("messageText");if(label)label.classList.add("sr-only");
+ if(input){input.placeholder="Message";input.rows=1;row.append(mic,input);}else row.append(mic);
+ const attach=composer.querySelector(".messageAttachmentDetails");if(attach){attach.classList.add("indian-chat-attachment");const sum=attach.querySelector("summary");if(sum){sum.textContent="＋";sum.setAttribute("aria-label","Attach photo or video");sum.addEventListener("click",event=>{if(document.body.classList.contains("indian-chat-group")){event.preventDefault();const status=document.getElementById("messageDraftStatus");if(status)status.textContent="Photo and video attachments for group chats will be added in a later update.";}});}row.appendChild(attach);}
+ const menu=document.createElement("details");menu.id="indianChatMoreOptions";menu.className="indian-chat-more";
+ const sum=document.createElement("summary");sum.textContent="⋮";sum.title="More message options";sum.setAttribute("aria-label","More message options");
+ const panel=document.createElement("div");panel.id="indianChatMorePanel";panel.className="indian-chat-more-panel";menu.append(sum,panel);
+ const send=document.getElementById("sendMessageButton");if(send)send.classList.add("indian-chat-send");row.appendChild(menu);if(send)row.appendChild(send);composer.appendChild(row);
+ const groupInput=document.getElementById("indianUnifiedGroupText"),groupSend=document.getElementById("indianUnifiedGroupSend");
+ if(groupInput&&!row.contains(groupInput)){const attachPoint=row.querySelector(".indian-chat-attachment");row.insertBefore(groupInput,attachPoint||menu);}
+ if(groupSend&&!row.contains(groupSend))menu.insertAdjacentElement("afterend",groupSend);
+ const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="indian-chat-menu-option";searchButton.textContent="Search Previous Messages";
+ searchButton.addEventListener("click",()=>{const q=document.getElementById("indianChatPreviousSearch");if(q){q.hidden=false;q.focus();}});
+ const search=document.createElement("input");search.type="search";search.id="indianChatPreviousSearch";search.placeholder="Search previous messages";search.setAttribute("aria-label","Search previous messages in this chat");search.hidden=true;
+ search.addEventListener("input",()=>{if(document.body.classList.contains("indian-chat-group")){if(window.indianFilterGroupMessages)window.indianFilterGroupMessages(search.value);}else{messageSearchQuery=search.value;if(selectedConversationPersonId!==null)renderChat(selectedConversationPersonId);}});
+ panel.append(searchButton,search);
+ const extras=composer.querySelector(".indianMessageExtras");if(extras)panel.appendChild(extras);
+ const clear=composer.querySelector(".messageClearDraftButton");if(clear)panel.appendChild(clear);
+ const groupControls=document.getElementById("indianUnifiedGroupControls"),members=document.getElementById("indianUnifiedGroupMemberArea");
+ if(groupControls)panel.appendChild(groupControls);else if(members)panel.appendChild(members);
+
+ function updateSend(){const active=document.body.classList.contains("indian-chat-group")?document.getElementById("indianUnifiedGroupText"):input;const p=document.getElementById("messagePhotoInput"),v=document.getElementById("messageVideoInput");const files=!!((p&&p.files&&p.files.length)||(v&&v.files&&v.files.length));if(send)send.hidden=!(!!(active&&active.value.trim())||files);}
+ if(input)input.addEventListener("input",updateSend);["messagePhotoInput","messageVideoInput"].forEach(id=>{const n=document.getElementById(id);if(n)n.addEventListener("change",updateSend);});if(send)send.hidden=true;window.indianUpdateChatSendVisibility=updateSend;
+}
+function indianStartChatVoiceTyping(){
+ const field=document.body.classList.contains("indian-chat-group")?document.getElementById("indianUnifiedGroupText"):document.getElementById("messageText"),SR=window.SpeechRecognition||window.webkitSpeechRecognition,status=document.getElementById("messageDraftStatus"),button=document.getElementById("indianChatVoiceTypingButton");
+ if(!field)return;
+ if(window.__indianChatRecognition){try{window.__indianChatRecognition.stop();}catch(e){}window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing");}if(status)status.textContent="Voice typing stopped.";return;}
+ if(!SR){if(status)status.textContent="Voice typing is not supported here. Try Microsoft Edge or Chrome.";return;}
+ const rec=new SR();window.__indianChatRecognition=rec;rec.lang="hi-IN";rec.continuous=true;rec.interimResults=false;
+ if(button){button.textContent="■";button.setAttribute("aria-label","Stop voice typing");}
+ rec.onresult=function(e){let words="";for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)words+=e.results[i][0].transcript;}if(words){field.value=(field.value?field.value+" ":"")+words;field.dispatchEvent(new Event("input",{bubbles:true}));field.focus();if(window.indianUpdateChatSendVisibility)window.indianUpdateChatSendVisibility();}};
+ rec.onerror=function(){if(status)status.textContent="Voice typing could not start. Check microphone permission.";};
+ rec.onend=function(){if(window.__indianChatRecognition===rec)window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing");}};
+ try{rec.start();if(status)status.textContent="Listening… speak now.";}catch(error){window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing");}if(status)status.textContent="Voice typing could not start. Check microphone permission.";}
+}
+document.addEventListener("DOMContentLoaded",setupIndianChatComposerUI);
 
 /* =========================
    GLOBAL STATE
@@ -1553,7 +1657,8 @@ function getMessagesForPerson(personId){
 function openMessages(){
     const section = document.getElementById("messagesSection");
     if(!section) return;
-
+    document.body.classList.remove("indian-chat-open");
+    if(typeof window.indianCloseGroupMode==="function")window.indianCloseGroupMode();
     section.style.display = "block";
     section.scrollIntoView({behavior:"smooth", block:"start"});
     section.focus();
@@ -1856,11 +1961,28 @@ async function indianOpenMessageFromNotification(messageId){
 }
 window.indianOpenMessageFromNotification = indianOpenMessageFromNotification;
 
+function indianOpenChatView(){
+    document.body.classList.add("indian-chat-open");
+    const section=document.getElementById("messagesSection");if(section)section.style.display="block";
+    const announcer=document.getElementById("indianRouteAnnouncer");if(announcer)announcer.textContent="Chat opened.";
+}
+function indianCloseChatView(){
+    if(window.__indianChatRecognition){try{window.__indianChatRecognition.stop();}catch(e){}window.__indianChatRecognition=null;}
+    const mic=document.getElementById("indianChatVoiceTypingButton");
+    if(mic){mic.textContent="🎙";mic.setAttribute("aria-label","Start voice typing");}
+    document.body.classList.remove("indian-chat-open");
+    if(typeof window.indianCloseGroupMode==="function")window.indianCloseGroupMode();
+    const list=document.getElementById("conversationList");
+    if(list){const first=list.querySelector("button, [tabindex='0']");if(first)first.focus();else list.focus();}
+    const announcer=document.getElementById("indianRouteAnnouncer");if(announcer)announcer.textContent="Back to Chats.";
+}
+window.indianCloseChatView=indianCloseChatView;
 function openConversation(personId){
     const person = peopleData.find(function(p){ return p.id === personId; });
     if(!person) return;
 
     selectedConversationPersonId = personId;
+    indianOpenChatView();
     editingMessageIndex = null;
     selectedReplyMessageIndex = null;
     messageSearchQuery = "";
@@ -1870,6 +1992,8 @@ function openConversation(personId){
 
     const searchBox = document.getElementById("messageSearchBox");
     if(searchBox) searchBox.value = "";
+    const previousSearch = document.getElementById("indianChatPreviousSearch");
+    if(previousSearch) previousSearch.value = "";
     const unifiedSearch = document.getElementById("conversationSearchBox");
     if(unifiedSearch) unifiedSearch.value = "";
     conversationSearchQuery = "";
@@ -1895,6 +2019,7 @@ function openConversation(personId){
         try { savedDraft = sessionStorage.getItem(draftKey) || ""; } catch(e) {}
         textBox.value = savedDraft;
         updateMessageComposerStatus();
+        if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
         const draftStatus = document.getElementById("messageDraftStatus");
         if(draftStatus && savedDraft) draftStatus.textContent = "Draft restored.";
         setTimeout(function(){ textBox.focus(); }, 100);
@@ -2345,6 +2470,7 @@ function removeSelectedMessagePhoto(){
     const input = document.getElementById("messagePhotoInput");
     if(input) input.value = "";
     updateMessageAttachmentLabels();
+    if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
 }
 
 function removeSelectedMessageVideo(){
@@ -2352,6 +2478,7 @@ function removeSelectedMessageVideo(){
     const input = document.getElementById("messageVideoInput");
     if(input) input.value = "";
     updateMessageAttachmentLabels();
+    if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
 }
 
 function clearCurrentConversation(){
@@ -2553,6 +2680,7 @@ async function sendMessageCore(){
         }
         cancelMessageEdit();
         textBox.value = "";
+        if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
         try { sessionStorage.removeItem("indian_chat_draft_" + selectedConversationPersonId); } catch(e) {}
         updateMessageComposerStatus();
         renderChat(selectedConversationPersonId);
@@ -2643,6 +2771,8 @@ async function sendMessageCore(){
     }, 800);
 
     textBox.value = "";
+    const chatSendButton = document.getElementById("sendMessageButton");
+    if(chatSendButton) chatSendButton.hidden = true;
     window.__indianMessageLastSuccessfulSendAt = Date.now();
     try { sessionStorage.removeItem("indian_chat_draft_" + selectedConversationPersonId); } catch(e) {}
     updateMessageComposerStatus();
@@ -2783,6 +2913,7 @@ function updateMessageComposerMode(){
     if(noticeText && editingMessageIndex !== null && person){
         noticeText.textContent = "Editing your message to " + person.name + ".";
     }
+    if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
 }
 
 function toggleMessageSearch(){
@@ -2931,6 +3062,7 @@ function clearMessageDraft(){
     if(videoInput) videoInput.value = "";
 
     updateMessageAttachmentLabels();
+    if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
 
     if(textBox){
         textBox.focus();

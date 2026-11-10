@@ -106,3 +106,15 @@ Test all three controlled accounts and at least two devices:
 - The existing app still writes and reads the legacy `publicProfiles` fields directly. The new collections are not yet integrated into the live app code.
 - The draft has not been compiled or tested with the Firestore Emulator. Query compatibility, exact field validation, and per-feature read/write behavior remain to be verified before publication.
 - No Rules were published, no Firebase data was changed, and no application source file was modified in this review step.
+
+
+## Compatibility audit — 2026-11-10
+
+- Confirmed the global `publicProfiles` snapshot in `index.html` currently supplies identity, Stories, presence/typing, Live People, and shared message-reaction totals.
+- Confirmed `group-chat.js` still reads `publicProfiles` to search group members. This must remain available for public identity fields throughout the migration.
+- Confirmed the current app writes story, presence, typing, live-session and message-reaction data only to the legacy profile document. No separated-collection listeners or dual-write compatibility layer is installed yet.
+- Important blocker: the current Rules draft's `hasActiveStory` helper checks only `userStories`, while the current website still stores active stories in `publicProfiles`. Publishing that draft before the app migration would break creation of Story view/like/reaction records for unmigrated accounts.
+- Therefore the Rules draft remains review-only and must not be published. The compatibility implementation must first add new-collection readers with legacy fallback and safe transition writes, then be tested across the three accounts.
+- Strengthened `public-profile-migration.js`: it now refuses to mark migration complete if an existing target document conflicts with the legacy data, and it re-reads and verifies every copied target record (including each reaction) before writing the completion marker. It still never deletes or overwrites legacy documents.
+- The migration helper remains dormant and is not loaded by `index.html`.
+- No application runtime code was changed. No Firestore Rules were published. No Firebase data was changed or deleted. Read Receipt and Group Chat Rules were not edited.

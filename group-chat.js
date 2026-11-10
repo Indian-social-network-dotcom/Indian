@@ -117,6 +117,7 @@ import {
     const menuPanel = el("indianChatMorePanel");
     if (menuPanel) menuPanel.appendChild(controls);
     else messages.insertAdjacentElement("afterend", controls);
+    controls.hidden = true;
     const sharedRow = el("indianChatComposerRow");
     if (sharedRow && composer.parentElement !== sharedRow) sharedRow.append(input, send);
     return controls;
@@ -310,6 +311,7 @@ import {
     if (headerActions) headerActions.style.display = "";
     if (controls) {
       controls.hidden = false;
+      controls.style.marginTop = "0";
       const memberArea = el("indianUnifiedGroupMemberArea");
       if (memberArea) memberArea.hidden = !(activeGroup?.admins || []).includes(currentUser?.uid);
     }

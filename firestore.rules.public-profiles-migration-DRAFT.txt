@@ -887,9 +887,10 @@ service cloud.firestore {
     // Separated public story records. Stories remain visible to signed-in users.
     match /userStories/{userId} {
       allow read: if signedIn();
-      allow create, update, delete: if signedIn()
-                                    && request.auth.uid == userId
-                                    && request.resource.data.uid == userId;
+      allow create, update: if signedIn()
+                            && request.auth.uid == userId
+                            && request.resource.data.uid == userId;
+      allow delete: if signedIn() && request.auth.uid == userId;
     }
 
     // Presence is readable by signed-in users; only the owner can write it.
@@ -929,12 +930,13 @@ service cloud.firestore {
       allow create: if signedIn()
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.messageId is string
-                    && reactionId == request.auth.uid + '_'
-                       + request.resource.data.messageId.replace('/', '%2F');
+                    && reactionId.size() <= 800;
       allow update: if signedIn()
                     && resource.data.uid == request.auth.uid
                     && request.resource.data.uid == resource.data.uid
                     && request.resource.data.messageId == resource.data.messageId
+                    && request.resource.data.emoji is string
+                    && request.resource.data.emoji.size() <= 8
                     && request.resource.data.diff(resource.data)
                          .affectedKeys().hasOnly(['emoji', 'createdAtMs']);
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;

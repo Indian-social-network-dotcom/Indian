@@ -1006,9 +1006,10 @@ function setupIndianChatComposerUI(){
  const actions=header.querySelector(".chatHeaderActions"),calls=composer.querySelector(".messageCallActions");
  if(actions&&calls){calls.querySelectorAll("button").forEach((b,i)=>{b.textContent=i===0?"📞":"📹";b.classList.add("indian-chat-call-icon");});actions.insertBefore(calls,actions.firstChild);}
  const row=document.createElement("div");row.id="indianChatComposerRow";row.className="indian-chat-composer-row";
- const mic=document.createElement("button");mic.type="button";mic.id="indianChatVoiceTypingButton";mic.className="indian-chat-tool";mic.textContent="🎙";mic.title="Voice typing";mic.setAttribute("aria-label","Start voice typing");mic.addEventListener("click",indianStartChatVoiceTyping);
+ const mic=document.createElement("button");mic.type="button";mic.id="indianChatVoiceTypingButton";mic.className="indian-chat-tool";mic.textContent="🎙";mic.title="Voice typing";mic.setAttribute("aria-label","Start voice typing in Hindi");mic.addEventListener("click",indianStartChatVoiceTyping);
+ const voiceLang=document.createElement("select");voiceLang.id="indianChatVoiceTypingLanguage";voiceLang.className="indian-chat-voice-language";voiceLang.setAttribute("aria-label","Voice typing language");voiceLang.innerHTML='<option value="hi-IN">Hindi</option><option value="en-IN">English</option><option value="ur-IN">Urdu</option>';
  const label=composer.querySelector('label[for="messageText"]'),input=document.getElementById("messageText");if(label)label.classList.add("sr-only");
- if(input){input.placeholder="Message";input.rows=1;row.append(mic,input);}else row.append(mic);
+ row.append(mic,voiceLang);if(input){input.placeholder="Message";input.rows=1;row.append(input);}
  const attach=composer.querySelector(".messageAttachmentDetails");if(attach){attach.classList.add("indian-chat-attachment");const sum=attach.querySelector("summary");if(sum){sum.textContent="＋";sum.setAttribute("aria-label","Attach photo or video");sum.addEventListener("click",event=>{if(document.body.classList.contains("indian-chat-group")){event.preventDefault();const status=document.getElementById("messageDraftStatus");if(status)status.textContent="Photo and video attachments for group chats will be added in a later update.";}});}row.appendChild(attach);}
  const menu=document.createElement("details");menu.id="indianChatMoreOptions";menu.className="indian-chat-more";
  const sum=document.createElement("summary");sum.textContent="⋮";sum.title="More message options";sum.setAttribute("aria-label","More message options");
@@ -1031,16 +1032,16 @@ function setupIndianChatComposerUI(){
  if(input)input.addEventListener("input",updateSend);["messagePhotoInput","messageVideoInput"].forEach(id=>{const n=document.getElementById(id);if(n)n.addEventListener("change",updateSend);});if(send)send.hidden=true;window.indianUpdateChatSendVisibility=updateSend;
 }
 function indianStartChatVoiceTyping(){
- const field=document.body.classList.contains("indian-chat-group")?document.getElementById("indianUnifiedGroupText"):document.getElementById("messageText"),SR=window.SpeechRecognition||window.webkitSpeechRecognition,status=document.getElementById("messageDraftStatus"),button=document.getElementById("indianChatVoiceTypingButton");
+ const field=document.body.classList.contains("indian-chat-group")?document.getElementById("indianUnifiedGroupText"):document.getElementById("messageText"),SR=window.SpeechRecognition||window.webkitSpeechRecognition,status=document.getElementById("messageDraftStatus"),button=document.getElementById("indianChatVoiceTypingButton"),language=document.getElementById("indianChatVoiceTypingLanguage");
  if(!field)return;
- if(window.__indianChatRecognition){try{window.__indianChatRecognition.stop();}catch(e){}window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing");}if(status)status.textContent="Voice typing stopped.";return;}
+ if(window.__indianChatRecognition){try{window.__indianChatRecognition.stop();}catch(e){}window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing in "+(language&&language.selectedOptions[0]?language.selectedOptions[0].text:"Hindi"));}if(status)status.textContent="Voice typing stopped.";return;}
  if(!SR){if(status)status.textContent="Voice typing is not supported here. Try Microsoft Edge or Chrome.";return;}
- const rec=new SR();window.__indianChatRecognition=rec;rec.lang="hi-IN";rec.continuous=true;rec.interimResults=false;
+ const rec=new SR();window.__indianChatRecognition=rec;rec.lang=language?language.value:"hi-IN";rec.continuous=true;rec.interimResults=false;
  if(button){button.textContent="■";button.setAttribute("aria-label","Stop voice typing");}
  rec.onresult=function(e){let words="";for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)words+=e.results[i][0].transcript;}if(words){field.value=(field.value?field.value+" ":"")+words;field.dispatchEvent(new Event("input",{bubbles:true}));field.focus();if(window.indianUpdateChatSendVisibility)window.indianUpdateChatSendVisibility();}};
- rec.onerror=function(){if(status)status.textContent="Voice typing could not start. Check microphone permission.";};
- rec.onend=function(){if(window.__indianChatRecognition===rec)window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing");}};
- try{rec.start();if(status)status.textContent="Listening… speak now.";}catch(error){window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing");}if(status)status.textContent="Voice typing could not start. Check microphone permission.";}
+ rec.onerror=function(){if(status)status.textContent="Voice typing could not start. Check microphone permission."};
+ rec.onend=function(){if(window.__indianChatRecognition===rec)window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing in "+(language&&language.selectedOptions[0]?language.selectedOptions[0].text:"Hindi"));}};
+ try{rec.start();if(status)status.textContent="Listening… speak now.";}catch(error){window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing in "+(language&&language.selectedOptions[0]?language.selectedOptions[0].text:"Hindi"));}if(status)status.textContent="Voice typing could not start. Check microphone permission.";}
 }
 document.addEventListener("DOMContentLoaded",setupIndianChatComposerUI);
 
@@ -8311,7 +8312,7 @@ window.openIndianGames=function(){window.location.href='games.html';};
     lang.addEventListener('change',function(){if(activeRecognition&&activeField===field){try{activeRecognition.stop();}catch(e){}}button.textContent='🎤 Start voice typing ('+lang.options[lang.selectedIndex].text+')';});
     row.append(button,lang);field.insertAdjacentElement('afterend',row);row.appendChild(status);
   }
-  function setupVoiceTyping(){addVoiceControl('postBox','hi-IN');addVoiceControl('helpBox','hi-IN');addVoiceControl('messageText','hi-IN');addVoiceControl('searchBox','hi-IN');}
+  function setupVoiceTyping(){addVoiceControl('postBox','hi-IN');addVoiceControl('helpBox','hi-IN');addVoiceControl('searchBox','hi-IN');}
 
   // Save the request owner status only through the existing Firebase helpRequests document.
   function applyHelpFilter(){var filter=byId('helpStatusFilter');if(!filter)return;document.querySelectorAll('#helpContainer .helpRequest').forEach(function(card){var status=card.dataset.helpStatus||'Open';card.hidden=filter.value!=='all'&&filter.value!==status;});}

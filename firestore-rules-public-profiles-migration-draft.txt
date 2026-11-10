@@ -10,8 +10,8 @@ service cloud.firestore {
     function hasActiveStory(ownerUid, storyId) {
       let newPath = /databases/$(database)/documents/userStories/$(ownerUid);
       let oldPath = /databases/$(database)/documents/publicProfiles/$(ownerUid);
-      let newStories = get(newPath).data.activeStories;
-      let oldProfile = get(oldPath).data;
+      let newStories = exists(newPath) ? get(newPath).data.activeStories : [];
+      let oldProfile = exists(oldPath) ? get(oldPath).data : {};
 
       return (
         exists(newPath)
@@ -954,7 +954,8 @@ service cloud.firestore {
     }
 
     match /publicProfileMigrations/{userId} {
-      allow read, create, update: if signedIn()
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create, update: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.uid == userId;
       allow delete: if false;

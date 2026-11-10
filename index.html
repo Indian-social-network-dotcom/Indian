@@ -5472,6 +5472,12 @@ async function markFirestoreIncomingMessagesRead(personId){
     await Promise.all(updates);
 }
 
+document.addEventListener("visibilitychange",function(){
+    if(document.visibilityState==="visible" && selectedConversationPersonId!==null && document.body.classList.contains("indian-chat-open")){
+        markFirestoreIncomingMessagesRead(selectedConversationPersonId).catch(function(error){console.warn("Incoming message read receipt check failed after returning to the page.",error);});
+    }
+});
+
 function subscribeFirestoreMessages(personId){
     if(!firebaseDb || !firebaseCurrentUser){
         setFirebaseMessageStatus("Sign in to start chatting.");

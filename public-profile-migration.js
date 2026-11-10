@@ -16,7 +16,7 @@ function cleanStoryList(value, nowMs) {
 }
 
 function safeDocPart(value) {
-  return encodeURIComponent(String(value || "")).replace(/%/g, "_");
+  return encodeURIComponent(String(value || ""));
 }
 
 window.runIndianPublicProfileMigration = async function () {

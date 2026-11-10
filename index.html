@@ -1026,11 +1026,16 @@ function setupIndianChatComposerUI(){
  if(input)input.addEventListener("input",updateSend);["messagePhotoInput","messageVideoInput"].forEach(id=>{const n=document.getElementById(id);if(n)n.addEventListener("change",updateSend);});if(send)send.hidden=true;window.indianUpdateChatSendVisibility=updateSend;
 }
 function indianStartChatVoiceTyping(){
- const field=document.body.classList.contains("indian-chat-group")?document.getElementById("indianUnifiedGroupText"):document.getElementById("messageText"),SR=window.SpeechRecognition||window.webkitSpeechRecognition,status=document.getElementById("messageDraftStatus");
- if(!field)return;if(!SR){if(status)status.textContent="Voice typing is not supported here. Try Microsoft Edge or Chrome.";return;}
- const rec=new SR();rec.lang="hi-IN";rec.continuous=true;rec.interimResults=false;
+ const field=document.body.classList.contains("indian-chat-group")?document.getElementById("indianUnifiedGroupText"):document.getElementById("messageText"),SR=window.SpeechRecognition||window.webkitSpeechRecognition,status=document.getElementById("messageDraftStatus"),button=document.getElementById("indianChatVoiceTypingButton");
+ if(!field)return;
+ if(window.__indianChatRecognition){try{window.__indianChatRecognition.stop();}catch(e){}window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing");}if(status)status.textContent="Voice typing stopped.";return;}
+ if(!SR){if(status)status.textContent="Voice typing is not supported here. Try Microsoft Edge or Chrome.";return;}
+ const rec=new SR();window.__indianChatRecognition=rec;rec.lang="hi-IN";rec.continuous=true;rec.interimResults=false;
+ if(button){button.textContent="■";button.setAttribute("aria-label","Stop voice typing");}
  rec.onresult=function(e){let words="";for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)words+=e.results[i][0].transcript;}if(words){field.value=(field.value?field.value+" ":"")+words;field.dispatchEvent(new Event("input",{bubbles:true}));field.focus();if(window.indianUpdateChatSendVisibility)window.indianUpdateChatSendVisibility();}};
- rec.onerror=function(){if(status)status.textContent="Voice typing could not start. Check microphone permission.";};rec.start();if(status)status.textContent="Listening… speak now.";
+ rec.onerror=function(){if(status)status.textContent="Voice typing could not start. Check microphone permission.";};
+ rec.onend=function(){if(window.__indianChatRecognition===rec)window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing");}};
+ try{rec.start();if(status)status.textContent="Listening… speak now.";}catch(error){window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing");}if(status)status.textContent="Voice typing could not start. Check microphone permission.";}
 }
 document.addEventListener("DOMContentLoaded",setupIndianChatComposerUI);
 
@@ -2456,6 +2461,7 @@ function removeSelectedMessagePhoto(){
     const input = document.getElementById("messagePhotoInput");
     if(input) input.value = "";
     updateMessageAttachmentLabels();
+    if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
 }
 
 function removeSelectedMessageVideo(){
@@ -2463,6 +2469,7 @@ function removeSelectedMessageVideo(){
     const input = document.getElementById("messageVideoInput");
     if(input) input.value = "";
     updateMessageAttachmentLabels();
+    if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
 }
 
 function clearCurrentConversation(){
@@ -2896,6 +2903,7 @@ function updateMessageComposerMode(){
     if(noticeText && editingMessageIndex !== null && person){
         noticeText.textContent = "Editing your message to " + person.name + ".";
     }
+    if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
 }
 
 function toggleMessageSearch(){
@@ -3044,6 +3052,7 @@ function clearMessageDraft(){
     if(videoInput) videoInput.value = "";
 
     updateMessageAttachmentLabels();
+    if(typeof window.indianUpdateChatSendVisibility === "function") window.indianUpdateChatSendVisibility();
 
     if(textBox){
         textBox.focus();

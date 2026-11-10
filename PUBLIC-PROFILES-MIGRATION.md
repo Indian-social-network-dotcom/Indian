@@ -1,0 +1,91 @@
+# Public Profiles Security Migration
+
+## Scope
+
+Separate mixed public profile documents into narrowly scoped Firestore collections without changing the live site or publishing Firestore Rules during the preparation phase.
+
+Working branch: `security/public-profiles-migration`
+
+Authoritative Rules baseline: the user's downloaded `indian-firestore-rules-read-receipt.txt`. Preserve its personal Messages Read Receipt rules and all Group Chat rules unchanged unless a separately reviewed migration requires a specific helper change.
+
+## Current data and code dependencies
+
+### `publicProfiles/{uid}`
+
+Currently contains or may contain:
+- `uid`, `displayName`, `bio`, `photoURL`
+- `activeStories` (story media, captions, music/audio data, timestamps and expiry)
+- `liveSession`
+- `presenceOnline`, `presenceAtMs`, `lastSeenAtMs`
+- `typingToUid`, `typingAtMs`
+- `messageReactions`
+
+Current app dependencies found:
+- `index.html`: People discovery, own profile hydration, presence/typing display, story viewer, live people, reaction totals, story creation/cleanup, profile editing, Uran profile/view/comment/follow functions.
+- `group-chat.js`: searches `publicProfiles` to find group members by display name.
+- Firestore Rules: `hasActiveStory(ownerUid, storyId)` reads `publicProfiles/{ownerUid}.activeStories` for `storyInteractions` creation.
+- Uran reads public profile fields for creator details, views, comments and follow records.
+
+## Proposed target collections
+
+- `publicProfiles/{uid}`: only public identity fields: `uid`, `displayName`, `bio`, `photoURL`, and timestamps.
+- `userStories/{uid}`: active story records and last-story timestamp. Keep existing max-three and 24-hour expiry behavior.
+- `userPresence/{uid}`: online and last-seen timestamps.
+- `userTyping/{uid}`: recipient-targeted typing state; reads must be scoped to the intended recipient.
+- `userLiveStatus/{uid}`: live-session state and title.
+- `messageReactions/{uid_messageId}`: one user's reaction for one message, with an owner UID and message ID.
+
+Collection names and exact schemas must be finalized against the complete client code before implementation.
+
+## Migration constraints
+
+1. Do not delete or overwrite legacy fields until the new records have been copied and verified.
+2. Do not switch legacy `publicProfiles` to owner-only reads while the app still relies on it for People, Stories, presence, live status, reactions, Uran, or Group Chat member search.
+3. A signed-in browser client cannot safely rewrite or delete another user's legacy document under owner-only write rules. A one-time full migration therefore needs either an authorized Admin migration or a staged per-owner migration.
+4. During a staged migration, the app must tolerate users who have not yet migrated. The final restrictive Rules phase must not happen until migration coverage is verified.
+5. Story interaction Rules must check `userStories` after story migration.
+6. Keep personal Messages Read Receipt rules and Group Chat rules unchanged.
+7. Never expose typing records to users other than the intended recipient.
+8. Keep old and new data writes synchronized during the transition, with explicit rollback instructions.
+
+## Required implementation phases
+
+### Phase A — audit and compatibility layer
+- Enumerate every read/write of the legacy fields and all consumers of the global profile arrays.
+- Add helpers for loading new collections with a legacy fallback.
+- Add dual writes for the current user's data.
+- Add a per-owner migration routine that copies and verifies that user's own legacy data.
+- Do not tighten legacy read Rules yet.
+
+### Phase B — feature migration
+- Move Stories and update the story viewer, cleanup, and `hasActiveStory` Rules helper.
+- Move presence and recipient-targeted typing.
+- Move live status.
+- Move message reactions and shared totals.
+- Keep public profile fields available to People, Uran, and Group Chat member search.
+
+### Phase C — verification
+Test at least two accounts and two devices:
+- Sign-up/login and profile name, bio, photo
+- People search and Group Chat member search
+- Story photo, video, music, expiry, views, likes and emoji reactions
+- Online/last-seen and typing visibility to the correct recipient only
+- Live status start/end and Live People
+- Message reaction totals and synchronization
+- Uran creator profile, views, comments and follow
+- Personal Messages and Read Receipt
+- Group Chat create, member search, send, receive and delete
+- Existing un-migrated users and rollback
+
+### Phase D — final security tightening
+- Verify migration coverage for every existing profile.
+- Verify legacy documents no longer contain story, presence, typing, live or reaction data.
+- Only then restrict legacy collection access and remove compatibility reads/writes.
+- Publish Rules only after explicit user approval.
+
+## Current status
+
+- A separate working branch has been created.
+- No application source has been changed.
+- No Firestore Rules have been published.
+- No Firebase data has been migrated, overwritten or deleted.

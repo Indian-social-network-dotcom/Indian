@@ -301,9 +301,19 @@ import {
     if (personalComposer) personalComposer.style.display = "block";
     const personalText = el("messageText"), personalSend = el("sendMessageButton");
     const groupText = el("indianUnifiedGroupText"), groupSend = el("indianUnifiedGroupSend");
-    if (personalText) personalText.hidden = true;
-    if (personalSend) personalSend.hidden = true;
-    if (groupText) { groupText.hidden = false; groupText.style.display = "block"; }
+    // Only the group composer field is visible while a group is open.
+    if (personalText) {
+      personalText.hidden = true;
+      personalText.style.setProperty("display", "none", "important");
+    }
+    if (personalSend) {
+      personalSend.hidden = true;
+      personalSend.style.setProperty("display", "none", "important");
+    }
+    if (groupText) {
+      groupText.hidden = false;
+      groupText.style.setProperty("display", "block", "important");
+    }
     if (groupSend) {
       groupSend.hidden = !(groupText && groupText.value.trim());
       groupSend.style.display = groupSend.hidden ? "none" : "flex";
@@ -347,9 +357,19 @@ import {
     if (personalComposer) personalComposer.style.display = "";
     const personalText = el("messageText"), personalSend = el("sendMessageButton");
     const groupText = el("indianUnifiedGroupText"), groupSend = el("indianUnifiedGroupSend");
-    if (personalText) personalText.hidden = false;
-    if (personalSend) personalSend.hidden = false;
-    if (groupText) { groupText.hidden = true; groupText.style.display = "none"; }
+    // Restore the personal composer and keep the group field fully hidden.
+    if (personalText) {
+      personalText.hidden = false;
+      personalText.style.removeProperty("display");
+    }
+    if (personalSend) {
+      personalSend.hidden = false;
+      personalSend.style.removeProperty("display");
+    }
+    if (groupText) {
+      groupText.hidden = true;
+      groupText.style.setProperty("display", "none", "important");
+    }
     if (groupSend) { groupSend.hidden = true; groupSend.style.display = "none"; }
     if (typing) typing.hidden = false;
     if (headerActions) headerActions.style.display = "";

@@ -1014,6 +1014,9 @@ function setupIndianChatComposerUI(){
  const sum=document.createElement("summary");sum.textContent="⋮";sum.title="More message options";sum.setAttribute("aria-label","More message options");
  const panel=document.createElement("div");panel.id="indianChatMorePanel";panel.className="indian-chat-more-panel";menu.append(sum,panel);
  const send=document.getElementById("sendMessageButton");if(send)send.classList.add("indian-chat-send");row.appendChild(menu);if(send)row.appendChild(send);composer.appendChild(row);
+ const groupInput=document.getElementById("indianUnifiedGroupText"),groupSend=document.getElementById("indianUnifiedGroupSend");
+ if(groupInput&&!row.contains(groupInput)){const attachPoint=row.querySelector(".indian-chat-attachment");row.insertBefore(groupInput,attachPoint||menu);}
+ if(groupSend&&!row.contains(groupSend))menu.insertAdjacentElement("afterend",groupSend);
  const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="indian-chat-menu-option";searchButton.textContent="Search Previous Messages";
  searchButton.addEventListener("click",()=>{const q=document.getElementById("indianChatPreviousSearch");if(q){q.hidden=false;q.focus();}});
  const search=document.createElement("input");search.type="search";search.id="indianChatPreviousSearch";search.placeholder="Search previous messages";search.setAttribute("aria-label","Search previous messages in this chat");search.hidden=true;
@@ -1021,7 +1024,8 @@ function setupIndianChatComposerUI(){
  panel.append(searchButton,search);
  const extras=composer.querySelector(".indianMessageExtras");if(extras)panel.appendChild(extras);
  const clear=composer.querySelector(".messageClearDraftButton");if(clear)panel.appendChild(clear);
- const members=document.getElementById("indianUnifiedGroupMemberArea");if(members)panel.appendChild(members);
+ const groupControls=document.getElementById("indianUnifiedGroupControls"),members=document.getElementById("indianUnifiedGroupMemberArea");
+ if(groupControls)panel.appendChild(groupControls);else if(members)panel.appendChild(members);
 
  function updateSend(){const active=document.body.classList.contains("indian-chat-group")?document.getElementById("indianUnifiedGroupText"):input;const p=document.getElementById("messagePhotoInput"),v=document.getElementById("messageVideoInput");const files=!!((p&&p.files&&p.files.length)||(v&&v.files&&v.files.length));if(send)send.hidden=!(!!(active&&active.value.trim())||files);}
  if(input)input.addEventListener("input",updateSend);["messagePhotoInput","messageVideoInput"].forEach(id=>{const n=document.getElementById(id);if(n)n.addEventListener("change",updateSend);});if(send)send.hidden=true;window.indianUpdateChatSendVisibility=updateSend;

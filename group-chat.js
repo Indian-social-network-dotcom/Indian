@@ -67,7 +67,8 @@ import {
     label.textContent = "Group message";
     const input = document.createElement("textarea");
     input.id = "indianUnifiedGroupText";
-    input.rows = 3;
+    input.setAttribute("aria-label", "Write a group message");
+    input.rows = 1;
     input.maxLength = 2000;
     input.placeholder = "Write a group message…";
     input.style.cssText = "display:block;width:100%;box-sizing:border-box;padding:10px;margin:6px 0;";
@@ -302,7 +303,7 @@ import {
     if (typing) typing.hidden = true;
     if (headerActions) headerActions.style.display = "";
     if (controls) {
-      controls.hidden = false;
+      controls.hidden = true;
       const memberArea = el("indianUnifiedGroupMemberArea");
       if (memberArea) memberArea.hidden = !(activeGroup?.admins || []).includes(currentUser?.uid);
     }
@@ -325,6 +326,8 @@ import {
     const typing = el("chatTypingStatus");
     const headerActions = document.querySelector("#messagesLayout .chatHeaderActions");
     if (controls) controls.hidden = true;
+    const memberArea = el("indianUnifiedGroupMemberArea");
+    if (memberArea) memberArea.hidden = true;
     if (personalComposer) personalComposer.style.display = "";
     const personalText = el("messageText"), personalSend = el("sendMessageButton");
     const groupText = el("indianUnifiedGroupText"), groupSend = el("indianUnifiedGroupSend");
@@ -337,10 +340,10 @@ import {
   }
 
   function openGroup(groupId) {
-    document.body.classList.add("indian-chat-open", "indian-chat-group");
     const group = groupCache.find(item => item.id === groupId) ||
       (activeGroup?.id === groupId ? activeGroup : null);
     if (!group) return;
+    document.body.classList.add("indian-chat-open", "indian-chat-group");
 
     groupMode = true;
     activeGroupId = groupId;
@@ -509,6 +512,7 @@ import {
         createdAt: serverTimestamp()
       });
       if (input) input.value = "";
+      if (send) send.hidden = true;
       setStatus("");
     } catch (error) {
       console.error("Indian group send error", error);

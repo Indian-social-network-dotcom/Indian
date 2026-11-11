@@ -324,3 +324,14 @@ The user has now explicitly requested receiver-side Read Receipt support in the 
 - Emulator tests now cover successful receiver read marking, denial of receiver text changes/reset/delete, denial for unrelated users, sender edit/delete, and legacy messages with no `read` field.
 - CI is configured to compile and test `firestore.rules.public-profiles-migration-FINAL-REVIEW.txt`, not just the working draft.
 - This is still branch-only work. It does not publish production Rules or update the live website. Production rollout still requires comparing against the actually active Firebase Console Rules and a separate explicit approval.
+
+
+### Confirmed final-review CI — GitHub Actions Run #40 (2026-11-11)
+
+- Run: https://github.com/Indian-social-network-dotcom/Indian/actions/runs/42994240929
+- Result: success. The workflow copied `firestore.rules.public-profiles-migration-FINAL-REVIEW.txt` into the isolated Firestore Emulator project and compiled it.
+- All 12 emulator tests passed (0 failed, 0 skipped), including receiver-only Read Receipt updates, rejection of receiver text changes/reset/delete, legacy messages without a `read` field, and existing Group Chat authorization.
+- JavaScript syntax checks passed for all 4 inline app modules and the migration helper.
+- npm audit reported 0 vulnerabilities.
+- This validates Rules compilation, emulator authorization tests and JavaScript syntax only. It does not constitute browser/device testing, production Rules publication, migration-helper execution, or data cleanup.
+- The tested changes remain on `security/public-profiles-migration`; `main`, the live website, production Firestore Rules and production data were not changed by this rollout work.

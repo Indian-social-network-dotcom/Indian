@@ -51,7 +51,7 @@ a{color:#ffd180}
 <p class="muted small">Online race mein 2 players honge. Room banakar invite bhejein; friend join karega to race start hogi.</p>
 </section>
 <section class="panel" aria-label="Race game">
-<div id="scene" role="group" aria-label="Three dimensional Indian Racing track"><div id="trackMap" aria-label="Race track map. Your position is green and opponent position is red."><canvas id="trackMapCanvas" width="280" height="340" aria-hidden="true"></canvas><div id="mapLegend"><span><i class="mapDot" style="background:#20d878"></i>You</span><span><i class="mapDot" style="background:#ff3030"></i>Opponent</span></div></div></div><p id="mapStatus" class="muted small" role="status" aria-live="polite">Track map: race shuru hone par positions dikhenge.</p>
+<div id="scene" role="group" aria-label="Three dimensional Indian Racing track"><div id="trackMap" aria-label="Race track map. Your position is green and opponent position is red."><canvas id="trackMapCanvas" width="280" height="340" aria-hidden="true"></canvas><div id="mapLegend"><span><i class="mapDot" style="background:#20d878"></i>You</span><span><i class="mapDot" style="background:#ff3030"></i>Opponent</span></div></div></div><p id="mapStatus" class="muted small">Track map: race shuru hone par positions dikhenge.</p>
 <div class="hud">
 <div>Speed: <strong id="speed">0</strong> km/h</div>
 <div>Distance: <strong id="distance">0</strong> m</div>
@@ -217,7 +217,7 @@ function init3D(){
  renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(host.clientWidth,host.clientHeight);renderer.shadowMap.enabled=true;host.appendChild(renderer.domElement);
  scene.add(new THREE.HemisphereLight(0xffffff,0x52634e,2));
  const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-20,35,15);scene.add(sun);
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,2000),new THREE.MeshStandardMaterial({color:0x347447}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-1,-700);scene.add(ground);
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,2000),new THREE.MeshStandardMaterial({color:0x347447}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-5,-700);scene.add(ground);
  const vertices=[],indices=[],samples=300;
  for(let i=0;i<=samples;i++){const p=-60+(TRACK_LENGTH+120)*i/samples,z=-p,x=trackX(p),y=trackY(p);vertices.push(x-TRACK_HALF,y,z,x+TRACK_HALF,y,z);if(i<samples){const k=i*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}}
  const roadGeo=new THREE.BufferGeometry();roadGeo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));roadGeo.setIndex(indices);roadGeo.computeVertexNormals();
@@ -234,7 +234,7 @@ function init3D(){
 function syncWorld(){
  const ownX=trackX(distance)+lane*2.3,ownY=trackY(distance);
  car.position.set(ownX,ownY,-distance);car.rotation.y=Math.atan(trackSlopeX(distance));car.rotation.z=-trackSlopeY(distance)*.45+(right?-.035:0)+(left?.035:0);
- if(opponentState&&opponentUid){const od=Number(opponentState.distance||0);opponentCar.position.set(trackX(od)+Number(opponentState.lane||0)*2.3,trackY(od),-od+distance);opponentCar.rotation.y=Math.atan(trackSlopeX(od));opponentCar.visible=Math.abs(od-distance)<650;}else opponentCar.visible=false;
+ if(opponentState&&opponentUid){const od=Number(opponentState.distance||0);opponentCar.position.set(trackX(od)+Number(opponentState.lane||0)*2.3,trackY(od),-od);opponentCar.rotation.y=Math.atan(trackSlopeX(od));opponentCar.visible=Math.abs(od-distance)<650;}else opponentCar.visible=false;
  camera.position.x+=(ownX*.72-camera.position.x)*.12;camera.position.y+=(ownY+7.5-camera.position.y)*.1;camera.position.z=-distance+13;camera.lookAt(trackX(distance+24),trackY(distance+24)+1,-distance-24);drawTrackMap();
 }
 async function pushRaceState(){

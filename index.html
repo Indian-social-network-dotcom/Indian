@@ -2120,7 +2120,7 @@ function openConversation(personId){
         try{
             const invite=JSON.parse(pendingInviteRaw);
             if(invite&&invite.joinUrl&&invite.roomId&&invite.game){
-                const gameNames={ttt:'Tic-Tac-Toe',quiz:'Rapid Quiz Battle',draw:'Draw & Guess',dice:'Mini Ludo / Dice Race'};
+                const gameNames={ttt:'Tic-Tac-Toe',quiz:'Rapid Quiz Battle',draw:'Draw & Guess',dice:'Mini Ludo / Dice Race',racing:'Indian Racing'};
                 const inviteText='🏁 Indian Game Challenge!\nAapko '+(gameNames[invite.game]||'game')+' mein invite kiya gaya hai.\nRoom ID: '+invite.roomId+'\nJoin Game: '+invite.joinUrl;
                 const draftKey='indian_chat_draft_'+personId;
                 const existing=textBox.value||'';

@@ -106,7 +106,7 @@ window.runIndianPublicProfileMigration = async function () {
   }
 
   const typingAtMs = Number(legacy.typingAtMs) || 0;
-  const typingIsFresh = !!legacy.typingToUid && nowMs - typingAtMs < 7000;
+  const typingIsFresh = !!legacy.typingToUid && typingAtMs > 0 && typingAtMs <= nowMs && nowMs - typingAtMs < 7000;
   if (legacy.typingToUid !== undefined || legacy.typingAtMs !== undefined) {
     await ensureCopied(targets.typing, {
       uid,

@@ -18,6 +18,11 @@ header h1{font-size:1.2rem;color:var(--orange);margin:0;flex:1}.wrap{width:min(1
 .status{background:#17232e;border:1px solid #40505f;padding:10px;border-radius:9px;margin:8px 0}.muted{color:var(--muted)}
 #scene{height:min(58vh,520px);min-height:300px;background:#15232b;border-radius:12px;overflow:hidden;position:relative}
 #scene canvas{display:block;width:100%;height:100%;touch-action:none}
+#trackMap{position:absolute;right:10px;top:10px;width:154px;height:210px;background:rgba(8,15,22,.9);border:1px solid #b7c8d8;border-radius:10px;padding:6px;z-index:2;pointer-events:none}
+#trackMap canvas{width:100%;height:170px;display:block}
+#mapLegend{font-size:11px;display:flex;justify-content:space-around;gap:4px;color:#fff}
+.mapDot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px}
+@media(max-width:520px){#trackMap{width:116px;height:166px;right:6px;top:6px}#trackMap canvas{height:128px}#mapLegend{font-size:9px}}
 .hud{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin:10px 0}
 .hud strong{color:var(--orange);font-size:1.15rem}.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
 .controls button{min-height:58px;font-weight:800;touch-action:none;user-select:none}
@@ -46,7 +51,7 @@ a{color:#ffd180}
 <p class="muted small">Online race mein 2 players honge. Room banakar invite bhejein; friend join karega to race start hogi.</p>
 </section>
 <section class="panel" aria-label="Race game">
-<div id="scene" role="img" aria-label="Three dimensional car racing road. Use steering, accelerator, brake and nitro controls below."></div>
+<div id="scene" role="group" aria-label="Three dimensional Indian Racing track"><div id="trackMap" aria-label="Race track map. Your position is green and opponent position is red."><canvas id="trackMapCanvas" width="280" height="340" aria-hidden="true"></canvas><div id="mapLegend"><span><i class="mapDot" style="background:#20d878"></i>You</span><span><i class="mapDot" style="background:#ff3030"></i>Opponent</span></div></div></div><p id="mapStatus" class="muted small">Track map: race shuru hone par positions dikhenge.</p>
 <div class="hud">
 <div>Speed: <strong id="speed">0</strong> km/h</div>
 <div>Distance: <strong id="distance">0</strong> m</div>
@@ -95,17 +100,19 @@ try{
 
 async function createRace(){
  if(!user||roomId)return;
+ hitObstacles.clear();distance=0;speed=0;lane=0;nitro=100;finished=false;
  const id=randomId(),name=playerName();
  const data={type:'racing',status:'waiting',createdBy:user.uid,players:[{uid:user.uid,name}],createdAt:serverTimestamp(),updatedAt:serverTimestamp(),state:{track:'city',finishDistance:FINISH_DISTANCE}};
  try{
   await setDoc(roomRef(id),data);
-  roomId=id;room=data;$('roomInput').value=id;mode='online';
+  roomId=id;room=data;$('roomInput').value=id;mode='online';updatePlayerCarColors();
   await setDoc(raceRef(id,user.uid),{uid:user.uid,name,distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
   watchRoom();raceStatus('Race room '+id+' ban gaya. Friend ko invite bhejein. Friend join karega to race shuru hogi.');status('Room ready. Friend ka intezar hai.');
  }catch(e){raceStatus('Room create nahi hua: '+e.message+' Rules update zaroori ho sakta hai.');}
 }
 async function joinRace(raw){
  if(!user||!raw)return;
+ hitObstacles.clear();distance=0;speed=0;lane=0;nitro=100;finished=false;
  const id=String(raw).trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(id)){raceStatus('Room ID 6 characters ka hona chahiye.');return;}
  try{
   await runTransaction(db,async tx=>{
@@ -115,7 +122,7 @@ async function joinRace(raw){
    if(r.players.length>=2||r.status!=='waiting')throw Error('Room full hai ya race shuru ho chuki hai.');
    tx.update(ref,{players:[...r.players,{uid:user.uid,name:playerName()}],status:'playing',updatedAt:serverTimestamp()});
   });
-  roomId=id;$('roomInput').value=id;mode='online';
+  roomId=id;$('roomInput').value=id;mode='online';const joinedSnap=await getDoc(roomRef(id));room=joinedSnap.data();updatePlayerCarColors();
   await setDoc(raceRef(id,user.uid),{uid:user.uid,name:playerName(),distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
   watchRoom();raceStatus('Aap race mein shamil ho gaye. Race shuru! Accelerator dabayein.');
  }catch(e){raceStatus('Join nahi hua: '+e.message);}
@@ -124,7 +131,7 @@ function watchRoom(){
  if(roomUnsub)roomUnsub();
  roomUnsub=onSnapshot(roomRef(roomId),snap=>{
   if(!snap.exists()){raceStatus('Room nahi mila.');return;}
-  room=snap.data();
+  room=snap.data();updatePlayerCarColors();
   const other=room.players.find(p=>p.uid!==user.uid);opponentUid=other?.uid||'';
   if(opponentUnsub){opponentUnsub();opponentUnsub=null;}
   if(opponentUid){
@@ -143,7 +150,7 @@ async function inviteFriend(){
  catch(e){raceStatus('Invite ready nahi hua: browser session storage allow karein.');return;}
  location.href=new URL('./index.html#messages',location.href).href;
 }
-function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;finished=false;raceStatus('Solo Practice shuru. Accelerator dabayein. Finish distance 1500 metre hai.');}
+function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;finished=false;hitObstacles.clear();room=null;opponentState=null;opponentCar.visible=false;updatePlayerCarColors();raceStatus('Solo Practice shuru. Accelerator dabayein. Finish distance 1500 metre hai.');}
 function leaveOnline(reset=true){
  if(roomUnsub)roomUnsub();if(opponentUnsub)opponentUnsub();roomUnsub=null;opponentUnsub=null;roomId='';room=null;opponentUid='';opponentState=null;
  if(reset)mode='idle';
@@ -156,7 +163,30 @@ window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','Ar
 window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=false;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=false;if(e.key==='ArrowUp'||e.key.toLowerCase()==='w')accelerating=false;if(e.key==='ArrowDown'||e.key.toLowerCase()==='s')braking=false;if(e.code==='Space')boosting=false;});
 window.addEventListener('blur',()=>{left=right=accelerating=braking=boosting=false;});
 
-let scene,camera,renderer,car,opponentCar,roadMarks=[],scenery=[],clock=new THREE.Clock();
+let scene,camera,renderer,car,opponentCar,roadMarks=[],scenery=[],obstacles=[],hitObstacles=new Set(),clock=new THREE.Clock();
+const TRACK_HALF=6,TRACK_LENGTH=FINISH_DISTANCE;
+function trackX(s){return 5.2*Math.sin(s*.0052)+2.1*Math.sin(s*.014);}
+function trackY(s){return 1.15*Math.sin(s*.007)+.48*Math.sin(s*.019);}
+function trackSlopeX(s){return (trackX(s+1)-trackX(s-1))*.5;}
+function trackSlopeY(s){return (trackY(s+1)-trackY(s-1))*.5;}
+function setBodyColor(vehicle,color){if(vehicle?.children?.[0]?.material?.color)vehicle.children[0].material.color.setHex(color);}
+function updatePlayerCarColors(){
+ if(!car||!opponentCar)return;
+ const myIndex=room?.players?.findIndex(p=>p.uid===user?.uid)??0;
+ setBodyColor(car,myIndex===1?0x20c878:0xff3030);
+ setBodyColor(opponentCar,myIndex===1?0xff3030:0x20c878);
+}
+function drawTrackMap(){
+ const canvas=$('trackMapCanvas'),ctx=canvas?.getContext('2d');if(!ctx)return;
+ const w=canvas.width,h=canvas.height,pad=24;ctx.clearRect(0,0,w,h);ctx.fillStyle='#101820';ctx.fillRect(0,0,w,h);
+ const pts=[];for(let p=0;p<=TRACK_LENGTH;p+=8){pts.push([w/2+(trackX(p)/11)*(w*.34),pad+(p/TRACK_LENGTH)*(h-pad*2)]);}
+ ctx.lineWidth=22;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#78838c';ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();
+ ctx.lineWidth=2;ctx.strokeStyle='#f4e7ae';ctx.setLineDash([7,8]);ctx.stroke();ctx.setLineDash([]);
+ const mark=(p,color,laneValue)=>{const x=w/2+(trackX(p)/11)*(w*.34)+(laneValue||0)*2.4;const y=pad+(Math.max(0,Math.min(TRACK_LENGTH,p))/TRACK_LENGTH)*(h-pad*2);ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();};
+ mark(distance,'#20d878',lane);if(opponentState&&opponentUid)mark(Number(opponentState.distance||0),'#ff3030',Number(opponentState.lane||0));
+ ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.fillText('START',8,h-8);ctx.fillText('FINISH',8,15);
+ $('mapStatus').textContent='Track map: aap '+Math.round(distance)+' metre par hain'+(opponentState?' aur opponent '+Math.round(Number(opponentState.distance||0))+' metre par hai.':'.');
+}
 function makeCar(color){
  const group=new THREE.Group(),body=new THREE.Mesh(new THREE.BoxGeometry(1.65,.48,3.1),new THREE.MeshStandardMaterial({color,metalness:.35,roughness:.35}));
  body.position.y=.62;group.add(body);
@@ -168,38 +198,44 @@ function makeCar(color){
 }
 function addTree(x,z){
  const g=new THREE.Group(),trunk=new THREE.Mesh(new THREE.CylinderGeometry(.13,.18,1.4,7),new THREE.MeshStandardMaterial({color:0x76502e}));trunk.position.y=.7;g.add(trunk);
- const crown=new THREE.Mesh(new THREE.ConeGeometry(.9,2.3,8),new THREE.MeshStandardMaterial({color:0x176b3a}));crown.position.y=2.25;g.add(crown);g.position.set(x,0,z);scene.add(g);scenery.push(g);
+ const crown=new THREE.Mesh(new THREE.ConeGeometry(.9,2.3,8),new THREE.MeshStandardMaterial({color:0x176b3a}));crown.position.y=2.25;g.add(crown);g.position.set(x,trackY(-z),z);scene.add(g);scenery.push(g);
 }
 function addBuilding(x,z){
  const h=4+Math.random()*10,w=3+Math.random()*3;
  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,4),new THREE.MeshStandardMaterial({color:[0x607d8b,0x8d6e63,0x455a64,0x546e7a][Math.floor(Math.random()*4)]}));
- m.position.set(x,h/2,z);scene.add(m);scenery.push(m);
+ m.position.set(x,trackY(-z)+h/2,z);scene.add(m);scenery.push(m);
+}
+function addObstacle(p,laneValue,index){
+ const group=new THREE.Group();
+ const base=new THREE.Mesh(new THREE.CylinderGeometry(.48,.58,.9,10),new THREE.MeshStandardMaterial({color:index%2?0xffb52e:0xe64b36,roughness:.72}));base.position.y=.48;group.add(base);
+ const stripe=new THREE.Mesh(new THREE.TorusGeometry(.47,.07,6,12),new THREE.MeshStandardMaterial({color:0xf5f5f5}));stripe.rotation.x=Math.PI/2;stripe.position.y=.56;group.add(stripe);
+ group.position.set(trackX(p)+laneValue*2.3,trackY(p),-p);scene.add(group);obstacles.push({s:p,lane:laneValue,mesh:group});
 }
 function init3D(){
- const host=$('scene');scene=new THREE.Scene();scene.background=new THREE.Color(0x8ec9e8);scene.fog=new THREE.Fog(0x8ec9e8,45,180);
- camera=new THREE.PerspectiveCamera(62,host.clientWidth/host.clientHeight,.1,500);camera.position.set(0,6.5,12);camera.lookAt(0,1,-12);
+ const host=$('scene');scene=new THREE.Scene();scene.background=new THREE.Color(0x8ec9e8);scene.fog=new THREE.Fog(0x8ec9e8,65,240);
+ camera=new THREE.PerspectiveCamera(62,host.clientWidth/host.clientHeight,.1,500);camera.position.set(0,8,13);camera.lookAt(0,1,-20);
  renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(host.clientWidth,host.clientHeight);renderer.shadowMap.enabled=true;host.appendChild(renderer.domElement);
  scene.add(new THREE.HemisphereLight(0xffffff,0x52634e,2));
  const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-20,35,15);scene.add(sun);
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,2000),new THREE.MeshStandardMaterial({color:0x347447}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-.12,-700);scene.add(ground);
- const road=new THREE.Mesh(new THREE.PlaneGeometry(12,2000),new THREE.MeshStandardMaterial({color:0x30343a,roughness:1}));road.rotation.x=-Math.PI/2;road.position.set(0,0,-700);scene.add(road);
- for(let z=5;z>-1500;z-=16){for(const x of [-2,2]){const mark=new THREE.Mesh(new THREE.BoxGeometry(.12,.025,6),new THREE.MeshBasicMaterial({color:0xf7f0d0}));mark.position.set(x,.025,z);scene.add(mark);roadMarks.push(mark);}}
- for(let z=-15;z>-1450;z-=35){addTree(-10-Math.random()*8,z);addTree(10+Math.random()*8,z-15);if(Math.random()>.48){addBuilding(-20-Math.random()*10,z-20);addBuilding(20+Math.random()*10,z-35);}}
- car=makeCar(0xff7b18);car.position.set(0,0,0);scene.add(car);
- opponentCar=makeCar(0x16a5ff);opponentCar.position.set(2.4,0,-35);opponentCar.visible=false;scene.add(opponentCar);
- const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};new ResizeObserver(resize).observe(host);
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,2000),new THREE.MeshStandardMaterial({color:0x347447}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-5,-700);scene.add(ground);
+ const vertices=[],indices=[],samples=300;
+ for(let i=0;i<=samples;i++){const p=-60+(TRACK_LENGTH+120)*i/samples,z=-p,x=trackX(p),y=trackY(p);vertices.push(x-TRACK_HALF,y,z,x+TRACK_HALF,y,z);if(i<samples){const k=i*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}}
+ const roadGeo=new THREE.BufferGeometry();roadGeo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));roadGeo.setIndex(indices);roadGeo.computeVertexNormals();
+ scene.add(new THREE.Mesh(roadGeo,new THREE.MeshStandardMaterial({color:0x30343a,roughness:1,side:THREE.DoubleSide})));
+ const edgeMat=new THREE.MeshStandardMaterial({color:0xf1e5b8});
+ for(const side of [-1,1]){const pts=[];for(let p=0;p<=TRACK_LENGTH;p+=8)pts.push(new THREE.Vector3(trackX(p)+side*(TRACK_HALF-.12),trackY(p)+.08,-p));scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),500,.12,6,false),edgeMat));}
+ for(let p=8;p<TRACK_LENGTH;p+=22){const mark=new THREE.Mesh(new THREE.BoxGeometry(.13,.035,5),new THREE.MeshBasicMaterial({color:0xf7f0d0}));mark.position.set(trackX(p),trackY(p)+.045,-p);mark.rotation.y=-Math.atan(trackSlopeX(p));scene.add(mark);roadMarks.push(mark);}
+ for(let p=15;p<TRACK_LENGTH;p+=42){addTree(trackX(p)-TRACK_HALF-5,-p);addTree(trackX(p)+TRACK_HALF+5,-p-14);if(p%84<42){addBuilding(trackX(p)-TRACK_HALF-14,-p-24);addBuilding(trackX(p)+TRACK_HALF+14,-p-38);}}
+ [[115,-.72],[245,.72],[390,0],[535,-.72],[690,.72],[835,0],[980,-.72],[1130,.72],[1285,0],[1410,-.72]].forEach((o,i)=>addObstacle(o[0],o[1],i));
+ car=makeCar(0xff3030);car.position.set(trackX(0),trackY(0),0);scene.add(car);
+ opponentCar=makeCar(0x20c878);opponentCar.position.set(trackX(0),trackY(0),-25);opponentCar.visible=false;scene.add(opponentCar);
+ const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};new ResizeObserver(resize).observe(host);drawTrackMap();
 }
 function syncWorld(){
- const offset=distance;
- for(const m of roadMarks){let z=m.position.z+(offset%1504);if(z>12)z-=1504;m.position.z=z;}
- for(const o of scenery){let z=o.position.z+offset%1450;if(z>30)z-=1450;o.position.z=z;}
- car.position.x=lane*2.65;car.rotation.z=(right?-.06:0)+(left?.06:0);
- if(opponentState&&opponentUid){
-  const delta=Number(opponentState.distance||0)-distance;
-  opponentCar.position.set(Number(opponentState.lane||0)*2.65,.02,-Math.max(-100,Math.min(130,delta*.22)));
-  opponentCar.visible=Math.abs(delta)<600;
- }else opponentCar.visible=false;
- camera.position.x+=(car.position.x*.32-camera.position.x)*.08;camera.lookAt(car.position.x*.25,1,-15);
+ const ownX=trackX(distance)+lane*2.3,ownY=trackY(distance);
+ car.position.set(ownX,ownY,-distance);car.rotation.y=-Math.atan(trackSlopeX(distance));car.rotation.z=-trackSlopeY(distance)*.45+(right?-.035:0)+(left?.035:0);
+ if(opponentState&&opponentUid){const od=Number(opponentState.distance||0);opponentCar.position.set(trackX(od)+Number(opponentState.lane||0)*2.3,trackY(od),-od);opponentCar.rotation.y=-Math.atan(trackSlopeX(od));opponentCar.visible=Math.abs(od-distance)<650;}else opponentCar.visible=false;
+ camera.position.x+=(ownX*.72-camera.position.x)*.12;camera.position.y+=(ownY+7.5-camera.position.y)*.1;camera.position.z=-distance+13;camera.lookAt(trackX(distance+24),trackY(distance+24)+1,-distance-24);drawTrackMap();
 }
 async function pushRaceState(){
  if(syncBusy||mode!=='online'||!roomId||!user||!room||room.status!=='playing')return;
@@ -221,6 +257,7 @@ function animate(now){
   if(boosting&&nitro>0&&speed>8){speed=Math.min(245,speed+115*dt);nitro=Math.max(0,nitro-34*dt);}else nitro=Math.min(100,nitro+7*dt);
   if(left)lane=Math.max(-1.15,lane-1.8*dt);if(right)lane=Math.min(1.15,lane+1.8*dt);
   distance+=speed/3.6*dt;
+  for(const item of obstacles){if(!hitObstacles.has(item.s)&&distance>=item.s-2.5&&distance<=item.s+2.5&&Math.abs(lane-item.lane)<.34){hitObstacles.add(item.s);speed=Math.max(0,speed-65);raceStatus('Badhha! Car takra gayi. Speed kam ho gayi.');}}
   if(distance>=FINISH_DISTANCE)finishRace();
   if(mode==='online'&&now-lastSync>500){lastSync=now;pushRaceState();}
   $('speed').textContent=Math.round(speed);$('distance').textContent=Math.round(distance);$('nitro').textContent=Math.round(nitro);

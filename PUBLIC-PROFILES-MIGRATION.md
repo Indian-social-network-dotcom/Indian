@@ -118,3 +118,26 @@ Test all three controlled accounts and at least two devices:
 - Strengthened `public-profile-migration.js`: it now refuses to mark migration complete if an existing target document conflicts with the legacy data, and it re-reads and verifies every copied target record (including each reaction) before writing the completion marker. It still never deletes or overwrites legacy documents.
 - The migration helper remains dormant and is not loaded by `index.html`.
 - No application runtime code was changed. No Firestore Rules were published. No Firebase data was changed or deleted. Read Receipt and Group Chat Rules were not edited.
+
+
+## Compatibility implementation design — 2026-11-11
+
+Before changing runtime code, the staged transition is clarified:
+
+1. Keep `publicProfiles/{uid}` readable for public identity and legacy fallback. Keep its identity fields (`uid`, `displayName`, `bio`, `photoURL`) available to People, Uran and Group Chat.
+2. Add independent listeners for `userStories`, `userPresence`, `userLiveStatus`, and `messageReactions`. During transition, combine new records with legacy values without duplicating stories or reactions; new records take precedence only when that owner's migration marker is verified.
+3. Typing must not use a collection-wide listener: the draft explicitly denies `list` on `userTyping`. Read the specific sender's typing document only for the currently open conversation, with the recipient UID check enforced by Rules. Clear/unsubscribe on conversation change and sign-out.
+4. Writes must be staged. Until the new Rules are published, new collection writes will be denied. Compatibility writes must catch that expected permission denial and preserve the legacy write path. After the transitional Rules are approved and published, test new writes and legacy fallback on all three accounts before any legacy fields are removed.
+5. Do not change the story interaction Rules helper to depend exclusively on `userStories` until the story document exists for the owner; retain a safe legacy-aware transition check during staged migration.
+6. The current migration scaffold is copy-only and dormant. It must run only after transitional Rules permit the owner to read/write the new collections and the owner-only migration marker. It must never clear legacy data.
+
+### Detailed source audit findings
+- The Firebase module already imports `doc`, `getDoc`, `getDocs`, `setDoc`, `updateDoc`, `collection`, `query`, `where`, `onSnapshot`, and `serverTimestamp`; no additional Firestore imports are needed in that module.
+- Existing profile snapshot is at `loadFirebasePublicProfiles()`; it currently aggregates identity, presence, typing, stories, live sessions, and reactions from `publicProfiles`.
+- Story creation and expiry cleanup read/write `activeStories` on the current user's legacy profile.
+- Presence heartbeat and pagehide write presence fields on the legacy profile.
+- Typing writes recipient UID and timestamp on the legacy profile; the current UI consumes it from the global profile array.
+- Live status writes `liveSession` on the legacy profile.
+- Message reaction writes an owner-scoped map on the legacy profile; the global profile snapshot calculates shared totals from that map.
+- The code has not yet been modified for the compatibility layer. This is intentional: changing only the writer or only the listener would make the app inconsistent during the staged Rules transition.
+- No Rules published and no Firebase data changed.

@@ -335,3 +335,6 @@ The user has now explicitly requested receiver-side Read Receipt support in the 
 - npm audit reported 0 vulnerabilities.
 - This validates Rules compilation, emulator authorization tests and JavaScript syntax only. It does not constitute browser/device testing, production Rules publication, migration-helper execution, or data cleanup.
 - The tested changes remain on `security/public-profiles-migration`; `main`, the live website, production Firestore Rules and production data were not changed by this rollout work.
+
+
+Final rollout review branch is based on the current main branch and intentionally excludes unrelated historical commits and obsolete duplicate review copies.

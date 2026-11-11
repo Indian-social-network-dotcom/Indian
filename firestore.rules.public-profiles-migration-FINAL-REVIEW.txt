@@ -552,7 +552,7 @@ service cloud.firestore {
                     && request.resource.data.players.size() == 1
                     && request.resource.data.players[0].uid == request.auth.uid
                     && request.resource.data.status == 'waiting'
-                    && request.resource.data.type in ['ttt', 'quiz', 'draw', 'dice'];
+                    && request.resource.data.type in ['ttt', 'quiz', 'draw', 'dice', 'racing'];
 
       allow update: if validJoin()
                     || (isPlayer(resource.data)
@@ -576,6 +576,52 @@ service cloud.firestore {
                     && get(/databases/$(database)/documents/games/$(gameId)).data.createdBy == request.auth.uid;
 
         allow update, delete: if false;
+      }
+
+      // Live position records for Indian Racing. Each racer may write only their own record.
+      match /racePlayers/{playerUid} {
+        function parentGame() {
+          return get(/databases/$(database)/documents/games/$(gameId)).data;
+        }
+
+        function isRacePlayer() {
+          return signedIn()
+            && parentGame().type == 'racing'
+            && parentGame().players is list
+            && parentGame().players.size() >= 1
+            && parentGame().players.size() <= 2
+            && (parentGame().players[0].uid == request.auth.uid
+                || (parentGame().players.size() == 2
+                    && parentGame().players[1].uid == request.auth.uid));
+        }
+
+        allow read: if isRacePlayer();
+
+        allow create, update: if isRacePlayer()
+          && playerUid == request.auth.uid
+          && request.resource.data.keys().hasAll([
+            'uid', 'name', 'distance', 'lane', 'speed', 'finished', 'updatedAtMs'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'uid', 'name', 'distance', 'lane', 'speed', 'finished', 'updatedAtMs'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 40
+          && request.resource.data.distance is number
+          && request.resource.data.distance >= 0
+          && request.resource.data.distance <= 100000
+          && request.resource.data.lane is number
+          && request.resource.data.lane >= -1.2
+          && request.resource.data.lane <= 1.2
+          && request.resource.data.speed is number
+          && request.resource.data.speed >= 0
+          && request.resource.data.speed <= 260
+          && request.resource.data.finished is bool
+          && request.resource.data.updatedAtMs is number;
+
+        allow delete: if false;
       }
     }
 

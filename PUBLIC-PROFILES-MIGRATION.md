@@ -258,3 +258,14 @@ Updated `index.html` on the migration branch only:
 - Tightened message reaction create validation: exact four-field schema, owner UID, string message ID, emoji length <= 8, numeric timestamp. Added negative emulator tests for oversized emoji and unexpected fields.
 - Upgraded test-only dependencies to firebase@13.2.0 and @firebase/rules-unit-testing@6.0.0 based on current package releases. The next CI run must confirm that this removes the advisories and that the test APIs remain compatible.
 - These changes remain isolated to the migration branch. Production Rules are unpublished; no Firebase data has been migrated or deleted.
+
+
+## Latest validation and dependency hardening — 2026-11-11
+
+- GitHub Actions Run #21 completed successfully: https://github.com/Indian-social-network-dotcom/Indian/actions/runs/42974336708
+- The latest run includes the schema-version startup-race fix, Node.js 24, Firebase test SDK 13.2.0, Rules Unit Testing 6.0.0, and the pinned @grpc/grpc-js 1.14.7 override.
+- npm audit now reports 0 vulnerabilities (0 high, 0 moderate, 0 low, 0 critical).
+- All 4 inline module scripts and the migration helper passed JavaScript syntax validation.
+- Firestore Emulator tests: 11 passed, 0 failed. This includes the new negative reaction tests for oversized emoji and unexpected fields, plus Group Chat and personal Read Receipt tests.
+- npm still reports some deprecation and install-script review warnings; these are not npm audit vulnerabilities. Do not blindly approve install scripts. The emulator workflow completed successfully despite these warnings.
+- Runtime/browser testing with the three test accounts is still outstanding. Production Rules are not published, migration helper has not run, and no Firestore data was changed or deleted.

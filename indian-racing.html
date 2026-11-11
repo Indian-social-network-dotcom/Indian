@@ -38,17 +38,17 @@ a{color:#ffd180}
 <section class="panel" aria-labelledby="roomTitle">
 <h2 id="roomTitle">Online Race</h2>
 <p id="connectionStatus" class="status" role="status" aria-live="polite">Firebase se connect ho raha hai…</p>
-<div class="row">
+<div class="row" id="roomSetupFields">
 <label class="field">Player name<input id="playerName" maxlength="40" autocomplete="nickname" placeholder="Aapka naam"></label>
 <label class="field">Room ID<input id="roomInput" maxlength="8" autocomplete="off" placeholder="Friend ka Room ID"></label>
 </div>
-<div class="row" style="margin-top:10px">
+<div class="row" id="roomSetupActions" style="margin-top:10px">
 <button type="button" class="primary" id="createBtn" disabled>Create Race Room</button>
 <button type="button" id="joinBtn" disabled>Join Race</button>
 <button type="button" id="inviteBtn" disabled>Invite Friend in Messages</button>
 <button type="button" id="practiceBtn">Solo Practice</button>
 </div>
-<p class="muted small">Online race mein 2 players honge. Room banakar invite bhejein; friend join karega to race start hogi.</p>
+<p class="muted small" id="roomSetupHelp">Online race mein 2 players honge. Room banakar invite bhejein; friend join karega to race start hogi.</p>
 </section>
 <section class="panel" aria-label="Race game">
 <div id="scene" role="group" aria-label="Three dimensional Indian Racing track"><div id="trackMap" aria-label="Race track map. Your position is green and opponent position is red."><canvas id="trackMapCanvas" width="280" height="340" aria-hidden="true"></canvas><div id="mapLegend"><span><i class="mapDot" style="background:#20d878"></i>You</span><span><i class="mapDot" style="background:#ff3030"></i>Opponent</span></div></div></div><p id="mapStatus" class="muted small">Track map: race shuru hone par positions dikhenge.</p>
@@ -82,7 +82,7 @@ const $=id=>document.getElementById(id);
 let auth,db,user=null,roomId='',room=null,roomUnsub=null,opponentUnsub=null,opponentState=null;
 let mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false,reversing=false,direction=1;
 let lastFrame=0,lastSync=0,finished=false,opponentUid='',localWon=false,syncBusy=false,crashCount=0,audioEnabled=true,audioCtx=null,engineOsc=null,engineGain=null;
-const FINISH_DISTANCE=1500;
+const FINISH_DISTANCE=3000;
 function status(t){$('connectionStatus').textContent=t}function raceStatus(t){$('raceStatus').textContent=t}
 function unlockAudio(){
  if(!audioEnabled||audioCtx)return;
@@ -114,17 +114,32 @@ $('soundBtn').addEventListener('click',()=>{
 document.addEventListener('pointerdown',unlockAudio,{capture:true});
 document.addEventListener('keydown',unlockAudio,{capture:true});
 function playerName(){return String($('playerName').value||user?.displayName||user?.email?.split('@')[0]||'Indian Player').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,40)||'Indian Player'}
+function hideRoomSetup(){['roomSetupFields','roomSetupActions','roomSetupHelp'].forEach(id=>$(id)?.classList.add('hidden'));}
+function showRoomSetup(){['roomSetupFields','roomSetupActions','roomSetupHelp'].forEach(id=>$(id)?.classList.remove('hidden'));}
+async function restoreWaitingRoom(){
+ try{
+  const saved=JSON.parse(sessionStorage.getItem('indianRacingWaitingRoom')||'null');
+  if(!saved||saved.uid!==user?.uid||!saved.roomId)return;
+  const snap=await getDoc(roomRef(saved.roomId));
+  if(!snap.exists()){sessionStorage.removeItem('indianRacingWaitingRoom');return;}
+  const data=snap.data();
+  if(data.type!=='racing'||!data.players?.some(p=>p.uid===user.uid)||data.status==='finished'){sessionStorage.removeItem('indianRacingWaitingRoom');return;}
+  roomId=saved.roomId;room=data;mode='online';distance=0;speed=0;lane=0;nitro=100;finished=false;opponentUid='';opponentState=null;
+  $('roomInput').value=roomId;hideRoomSetup();updatePlayerCarColors();watchRoom();
+  raceStatus(data.status==='playing'?'Friend join ho chuka hai. Race shuru! Accelerator dabayein.':'Room '+roomId+' ready hai. Friend ke invitation link kholne ka intezar hai.');
+ }catch(e){}
+}
 function roomRef(id){return doc(db,'games',id)}
 function raceRef(id,uid){return doc(db,'games',id,'racePlayers',uid)}
 function randomId(){return Math.random().toString(36).slice(2,8).toUpperCase()}
-$('backBtn').addEventListener('click',()=>{leaveOnline();location.href='./games.html';});
+$('backBtn').addEventListener('click',()=>{leaveOnline();try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}location.href='./games.html';});
 
 try{
  const app=initializeApp(firebaseConfig);auth=getAuth(app);db=getFirestore(app);
  onAuthStateChanged(auth,u=>{
   user=u;
   if(u){$('playerName').value=$('playerName').value||u.displayName||u.email?.split('@')[0]||'Indian Player';status('Firebase connected. Signed in: '+(u.displayName||u.email||'Indian account'));$('createBtn').disabled=false;$('joinBtn').disabled=false;$('inviteBtn').disabled=false;
-   const p=new URLSearchParams(location.search),join=p.get('join');if(join&&!roomId)joinRace(join);
+   const p=new URLSearchParams(location.search),join=p.get('join');if(join&&!roomId){hideRoomSetup();joinRace(join);}else restoreWaitingRoom();
   }else{status('Online race ke liye Indian account mein sign in karein. Solo Practice bina sign-in ke chalega.');}
  });
 }catch(e){status('Firebase connection error: '+e.message);}
@@ -167,7 +182,7 @@ function watchRoom(){
   if(opponentUnsub){opponentUnsub();opponentUnsub=null;}
   if(opponentUid){
    opponentUnsub=onSnapshot(raceRef(roomId,opponentUid),s=>{opponentState=s.exists()?s.data():null;});
-   raceStatus('Opponent: '+other.name+'. Race live hai. Finish line '+FINISH_DISTANCE+' metre.');
+   hideRoomSetup();try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}raceStatus('Opponent: '+other.name+'. Race shuru! Finish line '+FINISH_DISTANCE+' metre. Accelerator dabayein.');
   }else raceStatus('Friend ke join karne ka intezar hai. Room ID '+roomId+'.');
   if(room.status==='finished'){
    finished=true;speed=0;accelerating=braking=boosting=false;
@@ -181,11 +196,14 @@ async function inviteFriend(){
  if(room&&room.status!=='waiting'){raceStatus('Race shuru ho chuki hai. Naya room banakar invite bhejein.');return;}
  if(!roomId){await createRace();if(!roomId)return;}
  const joinUrl=new URL('./games.html',location.href);joinUrl.searchParams.set('join',roomId);joinUrl.searchParams.set('game','racing');
- try{sessionStorage.setItem('indianPendingGameInvite',JSON.stringify({game:'racing',roomId,joinUrl:joinUrl.href}));}
- catch(e){raceStatus('Invite ready nahi hua: browser session storage allow karein.');return;}
+ try{
+  sessionStorage.setItem('indianPendingGameInvite',JSON.stringify({game:'racing',roomId,joinUrl:joinUrl.href}));
+  sessionStorage.setItem('indianRacingWaitingRoom',JSON.stringify({game:'racing',roomId,uid:user.uid}));
+ }catch(e){raceStatus('Invite ready nahi hua: browser session storage allow karein.');return;}
+ hideRoomSetup();raceStatus('Invite bhejne ke liye Messages khul raha hai. Wapas aane par yahan sirf waiting status rahega. Friend link kholega to race apne aap shuru hogi.');
  location.href=new URL('./index.html#messages',location.href).href;
 }
-function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;crashCount=0;$('hits').textContent='0 / 3';hitObstacles.clear();room=null;opponentState=null;opponentCar.visible=false;updatePlayerCarColors();raceStatus('Solo Practice shuru. Accelerator dabayein. Finish distance 1500 metre hai.');}
+function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;crashCount=0;$('hits').textContent='0 / 3';hitObstacles.clear();room=null;opponentState=null;opponentCar.visible=false;updatePlayerCarColors();showRoomSetup();raceStatus('Solo Practice shuru. Accelerator dabayein. Finish distance '+FINISH_DISTANCE+' metre hai.');}
 function leaveOnline(reset=true){
  if(roomUnsub)roomUnsub();if(opponentUnsub)opponentUnsub();roomUnsub=null;opponentUnsub=null;roomId='';room=null;opponentUid='';opponentState=null;
  if(reset)mode='idle';
@@ -199,9 +217,9 @@ window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key.toLowerCase()=
 window.addEventListener('blur',()=>{left=right=accelerating=braking=boosting=reversing=false;});
 
 let scene,camera,renderer,car,opponentCar,roadMarks=[],scenery=[],obstacles=[],hitObstacles=new Set(),clock=new THREE.Clock();
-const TRACK_HALF=6,TRACK_LENGTH=FINISH_DISTANCE;
-function trackX(s){return 5.2*Math.sin(s*.0052)+2.1*Math.sin(s*.014);}
-function trackY(s){return 1.15*Math.sin(s*.007)+.48*Math.sin(s*.019);}
+const TRACK_HALF=7,TRACK_LENGTH=FINISH_DISTANCE;
+function trackX(s){return 4.8*Math.sin(s*.0023)+1.7*Math.sin(s*.0065)+.55*Math.sin(s*.014);}
+function trackY(s){return 1.4*Math.sin(s*.0035)+.65*Math.sin(s*.009);}
 function trackSlopeX(s){return (trackX(s+1)-trackX(s-1))*.5;}
 function trackSlopeY(s){return (trackY(s+1)-trackY(s-1))*.5;}
 function setBodyColor(vehicle,color){if(vehicle?.children?.[0]?.material?.color)vehicle.children[0].material.color.setHex(color);}
@@ -217,18 +235,27 @@ function drawTrackMap(){
  const pts=[];for(let p=0;p<=TRACK_LENGTH;p+=8){pts.push([w/2+(trackX(p)/11)*(w*.34),pad+(p/TRACK_LENGTH)*(h-pad*2)]);}
  ctx.lineWidth=22;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#78838c';ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();
  ctx.lineWidth=2;ctx.strokeStyle='#f4e7ae';ctx.setLineDash([7,8]);ctx.stroke();ctx.setLineDash([]);
- const mark=(p,color,laneValue)=>{const x=w/2+(trackX(p)/11)*(w*.34)+(laneValue||0)*2.4;const y=pad+(Math.max(0,Math.min(TRACK_LENGTH,p))/TRACK_LENGTH)*(h-pad*2);ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();};
+ const mark=(p,color,laneValue)=>{const x=w/2+(trackX(p)/14)*(w*.34)+(laneValue||0)*1.45;const y=pad+(Math.max(0,Math.min(TRACK_LENGTH,p))/TRACK_LENGTH)*(h-pad*2);ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();};
  mark(distance,'#20d878',lane);if(opponentState&&opponentUid)mark(Number(opponentState.distance||0),'#ff3030',Number(opponentState.lane||0));
  ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.fillText('START',8,h-8);ctx.fillText('FINISH',8,15);
  $('mapStatus').textContent='Track map: aap '+Math.round(distance)+' metre par hain'+(opponentState?' aur opponent '+Math.round(Number(opponentState.distance||0))+' metre par hai.':'.');
 }
 function makeCar(color){
- const group=new THREE.Group(),body=new THREE.Mesh(new THREE.BoxGeometry(1.65,.48,3.1),new THREE.MeshStandardMaterial({color,metalness:.35,roughness:.35}));
- body.position.y=.62;group.add(body);
- const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.18,.58,1.45),new THREE.MeshStandardMaterial({color:0x172d3c,metalness:.25,roughness:.2}));cabin.position.set(0,1.08,-.25);group.add(cabin);
- const bumper=new THREE.Mesh(new THREE.BoxGeometry(1.72,.2,.28),new THREE.MeshStandardMaterial({color:0x20252b}));bumper.position.set(0,.45,-1.5);group.add(bumper);
- for(const x of [-.88,.88])for(const z of [-.95,.95]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.18,16),new THREE.MeshStandardMaterial({color:0x111111}));w.rotation.z=Math.PI/2;w.position.set(x,.35,z);group.add(w);}
- const lights=new THREE.Mesh(new THREE.BoxGeometry(1.2,.12,.08),new THREE.MeshBasicMaterial({color:0xff3322}));lights.position.set(0,.68,1.57);group.add(lights);
+ const group=new THREE.Group(),body=new THREE.Mesh(new THREE.BoxGeometry(1.85,.5,3.55),new THREE.MeshStandardMaterial({color,metalness:.58,roughness:.27}));
+ body.position.y=.66;group.add(body);
+ const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.28,.62,1.55),new THREE.MeshStandardMaterial({color:0x102333,metalness:.48,roughness:.16}));cabin.position.set(0,1.18,-.18);group.add(cabin);
+ const bumper=new THREE.Mesh(new THREE.BoxGeometry(1.98,.22,.32),new THREE.MeshStandardMaterial({color:0x10151b,metalness:.6,roughness:.3}));bumper.position.set(0,.43,-1.78);group.add(bumper);
+ for(const x of [-.98,.98])for(const z of [-1.08,1.08]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.2,20),new THREE.MeshStandardMaterial({color:0x080a0d,metalness:.2,roughness:.8}));w.rotation.z=Math.PI/2;w.position.set(x,.38,z);group.add(w);}
+ const trimMat=new THREE.MeshStandardMaterial({color:0x15191e,metalness:.7,roughness:.25});
+ const hood=new THREE.Mesh(new THREE.BoxGeometry(1.55,.13,1.05),new THREE.MeshStandardMaterial({color:0x202b35,metalness:.7,roughness:.24}));hood.position.set(0,.94,-1.08);group.add(hood);
+ const splitter=new THREE.Mesh(new THREE.BoxGeometry(2.12,.1,.48),trimMat);splitter.position.set(0,.32,-1.91);group.add(splitter);
+ for(const x of [-.58,.58]){const lamp=new THREE.Mesh(new THREE.BoxGeometry(.48,.13,.08),new THREE.MeshBasicMaterial({color:0x9feaff}));lamp.position.set(x,.76,-1.82);group.add(lamp);const fin=new THREE.Mesh(new THREE.BoxGeometry(.12,.28,1.65),trimMat);fin.position.set(x*1.55,.55,.05);group.add(fin);}
+ const spoilerSupports=new THREE.Mesh(new THREE.BoxGeometry(1.15,.38,.12),trimMat);spoilerSupports.position.set(0,1.13,1.45);group.add(spoilerSupports);
+ const spoiler=new THREE.Mesh(new THREE.BoxGeometry(2.05,.13,.48),new THREE.MeshStandardMaterial({color:0x20252b,metalness:.75,roughness:.22}));spoiler.position.set(0,1.34,1.52);group.add(spoiler);
+ const tailLights=new THREE.Mesh(new THREE.BoxGeometry(1.45,.13,.08),new THREE.MeshBasicMaterial({color:0xff2020}));tailLights.position.set(0,.76,1.8);group.add(tailLights);
+ const stripeMat=new THREE.MeshStandardMaterial({color:0xffc247,emissive:0x5b2500,metalness:.6,roughness:.3});
+ for(const x of [-.28,.28]){const stripe=new THREE.Mesh(new THREE.BoxGeometry(.1,.035,2.45),stripeMat);stripe.position.set(x,.93,-.05);group.add(stripe);}
+ const underglow=new THREE.Mesh(new THREE.BoxGeometry(1.7,.035,2.8),new THREE.MeshBasicMaterial({color:0x00d9ff,transparent:true,opacity:.48}));underglow.position.y=.25;group.add(underglow);
  return group;
 }
 function addTree(x,z){
@@ -247,21 +274,27 @@ function addObstacle(p,laneValue,index){
  group.position.set(trackX(p)+laneValue*2.3,trackY(p),-p);scene.add(group);obstacles.push({s:p,lane:laneValue,mesh:group});
 }
 function init3D(){
- const host=$('scene');scene=new THREE.Scene();scene.background=new THREE.Color(0x8ec9e8);scene.fog=new THREE.Fog(0x8ec9e8,65,240);
+ const host=$('scene');scene=new THREE.Scene();scene.background=new THREE.Color(0x11182d);scene.fog=new THREE.Fog(0x26304a,75,270);
  camera=new THREE.PerspectiveCamera(62,host.clientWidth/host.clientHeight,.1,500);camera.position.set(0,8,13);camera.lookAt(0,1,-20);
  renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(host.clientWidth,host.clientHeight);renderer.shadowMap.enabled=true;host.appendChild(renderer.domElement);
  scene.add(new THREE.HemisphereLight(0xffffff,0x52634e,2));
  const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-20,35,15);scene.add(sun);
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,2000),new THREE.MeshStandardMaterial({color:0x347447}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-5,-700);scene.add(ground);
- const vertices=[],indices=[],samples=300;
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(700,3600),new THREE.MeshStandardMaterial({color:0x243b36}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-5,-1450);scene.add(ground);
+ const vertices=[],indices=[],samples=600;
  for(let i=0;i<=samples;i++){const p=-60+(TRACK_LENGTH+120)*i/samples,z=-p,x=trackX(p),y=trackY(p);vertices.push(x-TRACK_HALF,y,z,x+TRACK_HALF,y,z);if(i<samples){const k=i*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}}
  const roadGeo=new THREE.BufferGeometry();roadGeo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));roadGeo.setIndex(indices);roadGeo.computeVertexNormals();
  scene.add(new THREE.Mesh(roadGeo,new THREE.MeshStandardMaterial({color:0x30343a,roughness:1,side:THREE.DoubleSide})));
- const edgeMat=new THREE.MeshStandardMaterial({color:0xf1e5b8});
- for(const side of [-1,1]){const pts=[];for(let p=0;p<=TRACK_LENGTH;p+=8)pts.push(new THREE.Vector3(trackX(p)+side*(TRACK_HALF-.12),trackY(p)+.08,-p));scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),500,.12,6,false),edgeMat));}
- for(let p=8;p<TRACK_LENGTH;p+=22){const mark=new THREE.Mesh(new THREE.BoxGeometry(.13,.035,5),new THREE.MeshBasicMaterial({color:0xf7f0d0}));mark.position.set(trackX(p),trackY(p)+.045,-p);mark.rotation.y=-Math.atan(trackSlopeX(p));scene.add(mark);roadMarks.push(mark);}
+ const edgeMat=new THREE.MeshStandardMaterial({color:0xffd36a,emissive:0x503000,metalness:.5});
+ const neonMat=new THREE.MeshStandardMaterial({color:0x18c9ff,emissive:0x07516c,metalness:.55});
+ for(const side of [-1,1]){
+  const pts=[],outer=[];for(let p=0;p<=TRACK_LENGTH;p+=8){pts.push(new THREE.Vector3(trackX(p)+side*(TRACK_HALF-.12),trackY(p)+.08,-p));outer.push(new THREE.Vector3(trackX(p)+side*(TRACK_HALF+.85),trackY(p)+.62,-p));}
+  scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),700,.14,8,false),edgeMat));
+  scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(outer),700,.075,6,false),neonMat));
+  for(let p=10;p<TRACK_LENGTH;p+=18){const curb=new THREE.Mesh(new THREE.BoxGeometry(.52,.17,3.2),new THREE.MeshStandardMaterial({color:(Math.floor(p/18)%2)?0xf5f5f5:0xe53935,roughness:.75}));curb.position.set(trackX(p)+side*(TRACK_HALF-.18),trackY(p)+.11,-p);curb.rotation.y=-Math.atan(trackSlopeX(p));scene.add(curb);}
+ }
+ for(let p=8;p<TRACK_LENGTH;p+=24){const mark=new THREE.Mesh(new THREE.BoxGeometry(.16,.04,6),new THREE.MeshBasicMaterial({color:0xd7f3ff}));mark.position.set(trackX(p),trackY(p)+.045,-p);mark.rotation.y=-Math.atan(trackSlopeX(p));scene.add(mark);roadMarks.push(mark);}
  for(let p=15;p<TRACK_LENGTH;p+=42){addTree(trackX(p)-TRACK_HALF-5,-p);addTree(trackX(p)+TRACK_HALF+5,-p-14);if(p%84<42){addBuilding(trackX(p)-TRACK_HALF-14,-p-24);addBuilding(trackX(p)+TRACK_HALF+14,-p-38);}}
- [[115,-.72],[245,.72],[390,0],[535,-.72],[690,.72],[835,0],[980,-.72],[1130,.72],[1285,0],[1410,-.72]].forEach((o,i)=>addObstacle(o[0],o[1],i));
+ [[180,-1.8],[360,1.8],[540,0],[760,-1.8],[940,1.8],[1160,0],[1380,-1.8],[1580,1.8],[1800,0],[2020,-1.8],[2240,1.8],[2460,0],[2680,-1.8],[2880,1.8]].forEach((o,i)=>addObstacle(o[0],o[1],i));
  car=makeCar(0xff3030);car.position.set(trackX(0),trackY(0),0);scene.add(car);
  opponentCar=makeCar(0x20c878);opponentCar.position.set(trackX(0),trackY(0),-25);opponentCar.visible=false;scene.add(opponentCar);
  const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};new ResizeObserver(resize).observe(host);drawTrackMap();
@@ -303,7 +336,7 @@ function animate(now){
   }
   if(braking)speed=Math.max(0,speed-145*dt);
   if(boosting&&!reversing&&direction===1&&nitro>0&&speed>8){speed=Math.min(245,speed+115*dt);nitro=Math.max(0,nitro-34*dt);}else nitro=Math.min(100,nitro+7*dt);
-  if(left)lane=Math.max(-1.15,lane-1.8*dt);if(right)lane=Math.min(1.15,lane+1.8*dt);
+  if(left)lane=Math.max(-2.55,lane-2.5*dt);if(right)lane=Math.min(2.55,lane+2.5*dt);
   distance+=direction*speed/3.6*dt;distance=Math.max(0,Math.min(FINISH_DISTANCE,distance));
   for(const item of obstacles){if(!hitObstacles.has(item.s)&&distance>=item.s-2.5&&distance<=item.s+2.5&&Math.abs(lane-item.lane)<.34){
    hitObstacles.add(item.s);crashCount++;$('hits').textContent=crashCount+' / 3';speed=Math.max(0,speed-65);playCollisionSound();

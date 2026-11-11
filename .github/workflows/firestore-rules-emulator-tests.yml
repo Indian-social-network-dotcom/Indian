@@ -1,0 +1,37 @@
+name: Firestore Rules Emulator Tests
+
+on:
+  push:
+    branches:
+      - security/public-profiles-migration
+    paths:
+      - 'firestore.rules.public-profiles-migration-DRAFT.txt'
+      - 'firestore-rules-tests/**'
+      - '.github/workflows/firestore-rules-emulator-tests.yml'
+  pull_request:
+    branches:
+      - security/public-profiles-migration
+    paths:
+      - 'firestore.rules.public-profiles-migration-DRAFT.txt'
+      - 'firestore-rules-tests/**'
+      - '.github/workflows/firestore-rules-emulator-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: firestore-rules-tests/package.json
+      - name: Install test dependencies
+        working-directory: firestore-rules-tests
+        run: npm install
+      - name: Compile Rules and run emulator tests
+        working-directory: firestore-rules-tests
+        run: npx --yes firebase-tools emulators:exec --only firestore --project demo-indian-public-profile-migration "npm test"

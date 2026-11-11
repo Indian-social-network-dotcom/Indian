@@ -300,3 +300,13 @@ Updated `index.html` on the migration branch only:
 - Therefore, do not assume the migration draft is byte-for-byte based on the Rules currently active in production. Before any production publication, obtain/export the actually active Firebase Rules and compare them with this draft.
 - Preserve all live-only changes from the active Rules, including current Messages, Group Chat, notifications, games, and other collections. Do not replace live Rules with this draft until a complete three-way review (active production Rules, user-supplied baseline, migration draft) is complete.
 - This check is a rollout blocker; emulator success does not establish that the draft is safe to publish over the currently active production Rules.
+
+## Comparison against the user's current Rules upload — 2026-11-11
+
+- The user identified the uploaded 876-line Rules file as the Rules to use for this review. Treat it as the current baseline supplied by the user.
+- The migration draft's Personal Messages authorization logic now matches that file: sender-only update/delete. The receiver-side Read Receipt update grant is intentionally absent.
+- The entire Group Chat Rules block was compared after whitespace/comment normalization and is identical to the uploaded file.
+- Existing rules for users, posts, comments, replies, follows, likes, notifications, Help Requests, Help Offers, reward profiles/events, personal Messages, Games, Uran Shorts, and Calls were compared after whitespace/comment normalization and match the uploaded file.
+- The intended Rules logic changes are limited to the Story interaction lookup helper (to support separated userStories while retaining legacy fallback) and the newly added separated profile collections/migration marker. The publicProfiles owner/read permissions remain unchanged.
+- Emulator validation of the revised draft passed in Run #27: 11/11 tests passed, including receiver-side Read Receipt update denied and Group Chat membership access.
+- Before a production publish, confirm the Firebase Console has not received any Rules edits since the user's upload. No production publication has been performed.

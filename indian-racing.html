@@ -217,7 +217,7 @@ async function inviteFriend(){
  if(!user){raceStatus('Pehle Indian account mein sign in karein.');return;}
  if(room&&room.status!=='waiting'){raceStatus('Race shuru ho chuki hai. Naya room banakar invite bhejein.');return;}
  if(!roomId){await createRace();if(!roomId)return;}
- const joinUrl=new URL('./games.html',location.href);joinUrl.searchParams.set('join',roomId);joinUrl.searchParams.set('game','racing');
+ const joinUrl=new URL('./indian-racing.html',location.href);joinUrl.searchParams.set('join',roomId);joinUrl.searchParams.set('game','racing');
  try{
   sessionStorage.setItem('indianPendingGameInvite',JSON.stringify({game:'racing',roomId,joinUrl:joinUrl.href}));
   sessionStorage.setItem('indianRacingWaitingRoom',JSON.stringify({game:'racing',roomId,uid:user.uid}));

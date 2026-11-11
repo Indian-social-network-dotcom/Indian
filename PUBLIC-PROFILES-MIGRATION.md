@@ -281,3 +281,15 @@ Updated `index.html` on the migration branch only:
 
 - Additional helper hardening (commit `896019c8159c6f64570251f8a156bd261f936c7e`): legacy reaction emoji values are now validated as strings within the Rules limit. The helper stops safely on malformed or oversized values instead of silently truncating them and potentially changing a user's reaction.
 - The workflow is configured to run on pushes to this migration branch when `public-profile-migration.js` changes. The GitHub connector did not expose a workflow run/status for the newest commits during this check, so the latest three fixes remain **not yet CI-verified**. The previous confirmed Run #21 applies to the earlier commit only.
+
+## Confirmed latest CI result — 2026-11-11
+
+- GitHub Actions Run #24 completed successfully on the current migration-branch head commit `896019c8159c6f64570251f8a156bd261f936c7e`.
+- Run URL: https://github.com/Indian-social-network-dotcom/Indian/actions/runs/42975202945
+- The workflow completed all steps successfully, including dependency installation, npm audit, JavaScript syntax checks, Rules file preparation, Firestore Emulator startup, Rules compilation and tests.
+- npm audit reported 0 vulnerabilities (0 info, 0 low, 0 moderate, 0 high, 0 critical).
+- JavaScript syntax check passed for all 4 inline module scripts in `index.html`; `public-profile-migration.js` passed `node --check`.
+- Firestore Emulator tests: 11 passed, 0 failed, 0 skipped. The passing tests include separated profile collections, recipient-only typing access, strict reaction validation, Story interaction legacy fallback, personal Messages Read Receipt and Group Chat access.
+- The log contains expected permission-denied messages from negative security tests; the test runner reports all 11 tests passed and the job conclusion is success.
+- This confirms emulator and syntax validation for the latest helper fix. It does not replace browser/device testing with the three test accounts.
+- No production Rules were published, no migration helper was run, no Firestore data or legacy fields were changed or deleted, and `main` remains untouched.

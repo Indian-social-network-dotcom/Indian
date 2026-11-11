@@ -125,7 +125,10 @@ async function cancelWaitingRoom(){
  if(!user||!roomId){showRoomSetup();$('waitingRoomActions').hidden=true;return;}
  try{
   const snap=await getDoc(roomRef(roomId));
-  if(snap.exists()&&snap.data().status==='waiting'&&snap.data().createdBy===user.uid){
+  if(snap.exists()){
+   const current=snap.data();
+   if(current.status!=='waiting')throw Error('Dost join kar chuka hai; race shuru ho gayi hai.');
+   if(current.createdBy!==user.uid)throw Error('Sirf room banane wala player waiting cancel kar sakta hai.');
    await updateDoc(roomRef(roomId),{status:'finished',updatedAt:serverTimestamp()});
   }
   try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}

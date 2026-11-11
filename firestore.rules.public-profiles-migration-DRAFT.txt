@@ -936,8 +936,17 @@ service cloud.firestore {
     match /messageReactions/{reactionId} {
       allow read: if signedIn();
       allow create: if signedIn()
+                    && request.resource.data.keys().hasAll([
+                      'uid', 'messageId', 'emoji', 'createdAtMs'
+                    ])
+                    && request.resource.data.keys().hasOnly([
+                      'uid', 'messageId', 'emoji', 'createdAtMs'
+                    ])
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.messageId is string
+                    && request.resource.data.emoji is string
+                    && request.resource.data.emoji.size() <= 8
+                    && request.resource.data.createdAtMs is number
                     && reactionId.size() <= 800;
       allow update: if signedIn()
                     && resource.data.uid == request.auth.uid

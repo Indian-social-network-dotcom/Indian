@@ -202,3 +202,9 @@ Updated `index.html` on the migration branch only:
 - Browser/runtime tests are still required for three accounts: public People discovery, Story create/view/expiry/interactions, presence/last-seen, Live People, reactions, typing visibility to only the intended recipient, Group Chat member lookup, and personal message Read Receipts.
 - A listener that receives permission-denied before Rules publication terminates; reload the page after the reviewed Rules are deliberately published to establish the new listeners.
 - No migration helper was executed, no Firebase document was changed by this work, and no production Rules were published.
+
+
+### Dual-write retry consistency correction
+
+- Message reaction writes now calculate one `reactionCreatedAtMs` value and use it in both the legacy profile map and the separated `messageReactions` document (commit `685ffc5caaca047c466b325fe1e5c476a0d52ef8`).
+- This prevents the migration helper from detecting a false conflict caused by two timestamps generated milliseconds apart when it compares the old and new records.

@@ -5767,6 +5767,10 @@ let indianPresenceHeartbeat=null;
 let indianPresenceDisplayTimer=null;
 let indianTypingExpiry=null;
 let indianLastTypingWriteAt=0;
+function indianOwnProfileUsesSeparatedSchema(uid){
+    const own=(window.indianFirebaseAllProfiles||[]).find(function(profile){return profile.uid===uid;});
+    return !!(own&&Number(own.profileSchemaVersion)>=2);
+}
 async function writeIndianPresence(isOnline,lastSeenAtMs){
     if(!firebaseDb||!firebaseCurrentUser)return;
     const uid=firebaseCurrentUser.uid;
@@ -5803,16 +5807,20 @@ window.indianSetMessageTyping=async function(personId,isTyping){
     if(isTyping){
         indianTypingExpiry=setTimeout(function(){
             if(firebaseDb&&firebaseCurrentUser&&firebaseCurrentUser.uid===uid){
-                setDoc(doc(firebaseDb,"publicProfiles",uid),{typingToUid:"",typingAtMs:0},{merge:true}).catch(function(){});
+                if(!indianOwnProfileUsesSeparatedSchema(uid)){
+                    setDoc(doc(firebaseDb,"publicProfiles",uid),{typingToUid:"",typingAtMs:0},{merge:true}).catch(function(){});
+                }
                 deleteDoc(doc(firebaseDb,"userTyping",uid)).catch(function(error){console.warn("Separated typing clear is waiting for migration Rules:",error);});
             }
         },6500);
         if(now-indianLastTypingWriteAt<1800)return;
     }
     indianLastTypingWriteAt=now;
-    await setDoc(doc(firebaseDb,"publicProfiles",uid),{
-        uid:uid,typingToUid:isTyping?peerUid:"",typingAtMs:isTyping?now:0
-    },{merge:true});
+    if(!indianOwnProfileUsesSeparatedSchema(uid)){
+        await setDoc(doc(firebaseDb,"publicProfiles",uid),{
+            uid:uid,typingToUid:isTyping?peerUid:"",typingAtMs:isTyping?now:0
+        },{merge:true});
+    }
     if(isTyping){
         await setDoc(doc(firebaseDb,"userTyping",uid),{uid:uid,typingToUid:peerUid,typingAtMs:now},{merge:true})
             .catch(function(error){console.warn("Separated typing write is waiting for migration Rules:",error);});
@@ -5858,9 +5866,12 @@ window.addEventListener("pagehide",function(){
     if(firebaseDb&&firebaseCurrentUser){
         const uid=firebaseCurrentUser.uid;
         const now=Date.now();
-        setDoc(doc(firebaseDb,"publicProfiles",uid),{
-            uid:uid,presenceOnline:false,presenceAtMs:now,lastSeenAtMs:now,typingToUid:"",typingAtMs:0
-        },{merge:true}).catch(function(){});
+        const legacyOfflinePatch={uid:uid,presenceOnline:false,presenceAtMs:now,lastSeenAtMs:now};
+        if(!indianOwnProfileUsesSeparatedSchema(uid)){
+            legacyOfflinePatch.typingToUid="";
+            legacyOfflinePatch.typingAtMs=0;
+        }
+        setDoc(doc(firebaseDb,"publicProfiles",uid),legacyOfflinePatch,{merge:true}).catch(function(){});
         setDoc(doc(firebaseDb,"userPresence",uid),{
             uid:uid,presenceOnline:false,presenceAtMs:now,lastSeenAtMs:now
         },{merge:true}).catch(function(){});

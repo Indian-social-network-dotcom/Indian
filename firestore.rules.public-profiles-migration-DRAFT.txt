@@ -11,24 +11,32 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Migration draft: validate a story against the separated story document.
-    function hasActiveStory(ownerUid, storyId) {
-      let storyDoc = get(
-        /databases/$(database)/documents/userStories/$(ownerUid)
-      ).data;
-
-      return storyDoc.keys().hasAny(['activeStories'])
-        && storyDoc.activeStories is list
+    // Check the first three active stories in either the separated or legacy record.
+    // The legacy fallback keeps Story interactions working during staged migration.
+    function storyListContains(stories, storyId) {
+      return stories is list
         && (
-          (storyDoc.activeStories.size() > 0
-            && storyDoc.activeStories[0].id == storyId)
+          (stories.size() > 0 && stories[0].id == storyId)
           ||
-          (storyDoc.activeStories.size() > 1
-            && storyDoc.activeStories[1].id == storyId)
+          (stories.size() > 1 && stories[1].id == storyId)
           ||
-          (storyDoc.activeStories.size() > 2
-            && storyDoc.activeStories[2].id == storyId)
+          (stories.size() > 2 && stories[2].id == storyId)
         );
+    }
+
+    function hasActiveStory(ownerUid, storyId) {
+      let separatedPath = /databases/$(database)/documents/userStories/$(ownerUid);
+      let legacyPath = /databases/$(database)/documents/publicProfiles/$(ownerUid);
+
+      return (
+        exists(separatedPath)
+        && get(separatedPath).data.keys().hasAny(['activeStories'])
+        && storyListContains(get(separatedPath).data.activeStories, storyId)
+      ) || (
+        exists(legacyPath)
+        && get(legacyPath).data.keys().hasAny(['activeStories'])
+        && storyListContains(get(legacyPath).data.activeStories, storyId)
+      );
     }
 
     match /users/{userId} {
@@ -109,9 +117,6 @@ service cloud.firestore {
                     && request.resource.data.viewedAtMs is number
                     && request.resource.data.liked == false
                     && request.resource.data.reaction == ''
-                    && exists(
-                      /databases/$(database)/documents/userStories/$(request.resource.data.ownerUid)
-                    )
                     && hasActiveStory(
                       request.resource.data.ownerUid,
                       request.resource.data.storyId

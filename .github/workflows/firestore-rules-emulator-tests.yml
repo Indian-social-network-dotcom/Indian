@@ -17,6 +17,8 @@ on:
     paths:
       - 'firestore.rules.public-profiles-migration-DRAFT.txt'
       - 'firestore-rules-tests/**'
+      - 'index.html'
+      - 'public-profile-migration.js'
       - '.github/workflows/firestore-rules-emulator-tests.yml'
 
 permissions:

@@ -16,7 +16,13 @@ function cleanStoryList(value, nowMs) {
 }
 
 function safeDocPart(value) {
-  return encodeURIComponent(String(value || ""));
+  const original = String(value || "");
+  if (!original) throw new Error("Reaction message ID is empty; migration stopped safely.");
+  const encoded = encodeURIComponent(original);
+  if (encoded.length > 700) {
+    throw new Error("Reaction message ID is too long to migrate safely; no legacy data was changed.");
+  }
+  return encoded;
 }
 
 window.runIndianPublicProfileMigration = async function () {
@@ -47,6 +53,8 @@ window.runIndianPublicProfileMigration = async function () {
     ? legacy.liveSession : null;
   const reactions = legacy.messageReactions && typeof legacy.messageReactions === "object"
     ? legacy.messageReactions : {};
+  const legacyUpdatedAtMs = Number(legacy.updatedAtMs) ||
+    (legacy.updatedAt && typeof legacy.updatedAt.toMillis === "function" ? legacy.updatedAt.toMillis() : 0);
 
   const targets = {
     stories: doc(db, "userStories", uid),
@@ -118,12 +126,16 @@ window.runIndianPublicProfileMigration = async function () {
     const emoji = typeof value === "string" ? value : String(value?.emoji || "");
     if (!emoji) continue;
     const reactionId = uid + "_" + safeDocPart(messageId);
+    if (reactionId.length > 800) {
+      throw new Error("Reaction document ID is too long for the migration Rules; no legacy data was changed.");
+    }
     const reactionRef = doc(db, "messageReactions", reactionId);
     await ensureCopied(reactionRef, {
       uid,
       messageId: String(messageId),
       emoji: emoji.slice(0, 8),
-      createdAtMs: Number(value?.createdAtMs) || nowMs
+      // Stable fallback: retries must produce the same record, not a new Date.now().
+      createdAtMs: Number(value?.createdAtMs) || legacyUpdatedAtMs
     });
     reactionCount++;
   }

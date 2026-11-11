@@ -310,3 +310,17 @@ Updated `index.html` on the migration branch only:
 - The intended Rules logic changes are limited to the Story interaction lookup helper (to support separated userStories while retaining legacy fallback) and the newly added separated profile collections/migration marker. The publicProfiles owner/read permissions remain unchanged.
 - Emulator validation of the revised draft passed in Run #27: 11/11 tests passed, including receiver-side Read Receipt update denied and Group Chat membership access.
 - Before a production publish, confirm the Firebase Console has not received any Rules edits since the user's upload. No production publication has been performed.
+
+
+
+## Read Receipt permission and runtime implementation — 2026-11-11 (supersedes earlier sender-only-only notes)
+
+The user has now explicitly requested receiver-side Read Receipt support in the current migration revision. This section supersedes earlier planning statements that said not to add receiver Read Receipt permission.
+
+- Personal message sender retains the existing update/delete permission.
+- The authenticated receiver may change only the `read` field from `false` (or absent on a legacy message) to `true`.
+- Receiver cannot reset `read` to false, edit message text or attachments, change sender/receiver IDs, or delete the message.
+- `index.html` now marks incoming messages read when their personal conversation is opened or its existing subscription is reused. It only attempts updates for incoming messages addressed to the signed-in user. The existing chat renderer already displays `✓✓ Read` when the Firestore message has `read: true`.
+- Emulator tests now cover successful receiver read marking, denial of receiver text changes/reset/delete, denial for unrelated users, sender edit/delete, and legacy messages with no `read` field.
+- CI is configured to compile and test `firestore.rules.public-profiles-migration-FINAL-REVIEW.txt`, not just the working draft.
+- This is still branch-only work. It does not publish production Rules or update the live website. Production rollout still requires comparing against the actually active Firebase Console Rules and a separate explicit approval.

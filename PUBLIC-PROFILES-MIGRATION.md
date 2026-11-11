@@ -175,3 +175,10 @@ Before changing runtime code, the staged transition is clarified:
 - A signed-in recipient can now read a missing sender typing document as an empty/nonexistent result; when the document exists, only its owner or the UID in `typingToUid` can read it.
 - Collection listing remains denied. This does not grant a collection-wide typing listener or expose another user's typing document.
 - Draft remains uncompiled and unpublished. Runtime typing listener has not yet been switched to the recipient-specific document.
+
+
+## Duplicate Rules draft clarification — 2026-11-11
+
+- The branch contained two similarly named Rules draft files. The older `firestore-rules-public-profiles-migration-draft.txt` has now been clearly marked obsolete and must not be published.
+- The current working draft is only `firestore.rules.public-profiles-migration-DRAFT.txt`.
+- Neither file is approved for publication. The current draft still requires Firestore Emulator compilation and compatibility tests.

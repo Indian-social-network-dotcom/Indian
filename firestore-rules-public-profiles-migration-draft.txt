@@ -1,3 +1,4 @@
+// OBSOLETE REVIEW COPY — DO NOT PUBLISH. Use firestore.rules.public-profiles-migration-DRAFT.txt only; that file contains the current reviewed transition changes.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {

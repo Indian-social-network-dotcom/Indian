@@ -53,8 +53,6 @@ window.runIndianPublicProfileMigration = async function () {
     ? legacy.liveSession : null;
   const reactions = legacy.messageReactions && typeof legacy.messageReactions === "object"
     ? legacy.messageReactions : {};
-  const legacyUpdatedAtMs = Number(legacy.updatedAtMs) ||
-    (legacy.updatedAt && typeof legacy.updatedAt.toMillis === "function" ? legacy.updatedAt.toMillis() : 0);
 
   const targets = {
     stories: doc(db, "userStories", uid),
@@ -135,7 +133,8 @@ window.runIndianPublicProfileMigration = async function () {
       messageId: String(messageId),
       emoji: emoji.slice(0, 8),
       // Stable fallback: retries must produce the same record, not a new Date.now().
-      createdAtMs: Number(value?.createdAtMs) || legacyUpdatedAtMs
+      // Legacy string reactions have no timestamp; zero is a stable retry-safe fallback.
+      createdAtMs: Number(value?.createdAtMs) || 0
     });
     reactionCount++;
   }

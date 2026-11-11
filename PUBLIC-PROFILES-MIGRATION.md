@@ -214,3 +214,12 @@ Updated `index.html` on the migration branch only:
 
 - Migration now uses `createdAtMs: 0` for legacy reaction values that have no timestamp (commit `725e80f42935e545cc9b233078e26d59cd20b99b`).
 - It no longer derives that fallback from the public profile's `updatedAt`, which can change during normal presence/story writes and otherwise create a false conflict on a later retry.
+
+
+## Branch integrity check — 2026-11-11
+
+- Current migration branch is 32 commits ahead of `main`; it has no commits behind `main` at the time of this check.
+- Changed paths are limited to this migration plan, the current Rules review draft, the obsolete duplicate Rules warning file, `index.html`, and `public-profile-migration.js`.
+- Verified `group-chat.js` has the same Git blob SHA on the migration branch and `main`.
+- Static delimiter checks passed for the edited application sections, the Rules draft, and the migration helper. This is not a JavaScript parser check, Firestore Rules compilation, emulator test, or browser test.
+- Production branch, live Firestore Rules, and Firebase data have not been changed by this work.

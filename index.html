@@ -2049,8 +2049,16 @@ function openConversation(personId){
     }
     personId = person.id;
 
+    // Show the personal chat first. Group cleanup and typing presence are
+    // secondary features and must never prevent the chat screen from opening.
+    selectedConversationPersonId = personId;
+    indianOpenChatView();
+
     // Switching to a personal chat must always clear any leftover group composer.
-    if(typeof window.indianCloseGroupMode === "function") window.indianCloseGroupMode();
+    if(typeof window.indianCloseGroupMode === "function"){
+        try { window.indianCloseGroupMode(); }
+        catch(error){ console.warn("Group mode cleanup failed before personal chat open.",error); }
+    }
     document.body.classList.remove("indian-chat-group");
     const staleGroupInput = document.getElementById("indianUnifiedGroupText");
     const staleGroupSend = document.getElementById("indianUnifiedGroupSend");
@@ -2059,9 +2067,8 @@ function openConversation(personId){
     if(staleGroupSend){ staleGroupSend.hidden = true; staleGroupSend.style.setProperty("display","none","important"); }
     if(staleGroupControls) staleGroupControls.hidden = true;
 
-    selectedConversationPersonId = personId;
-    startIndianTypingWatch(personId);
-    indianOpenChatView();
+    try { startIndianTypingWatch(personId); }
+    catch(error){ console.warn("Typing presence could not start; personal chat remains open.",error); }
     editingMessageIndex = null;
     selectedReplyMessageIndex = null;
     messageSearchQuery = "";

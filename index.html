@@ -5483,6 +5483,26 @@ function applyFirestoreConversation(personId){
     }
 }
 
+async function markFirestoreIncomingMessagesRead(personId){
+    if(!firebaseDb || !firebaseCurrentUser
+       || String(selectedConversationPersonId) !== String(personId)) return;
+    const bucket = firestoreMessageBuckets.get(String(personId));
+    if(!bucket) return;
+    const currentUid = firebaseCurrentUser.uid;
+    const updates = [];
+    bucket.incoming.forEach(function(message){
+        if(!message || message.receiverUid !== currentUid
+           || message.status === "read" || !message.firestoreId) return;
+        updates.push(
+            updateDoc(doc(firebaseDb, "messages", message.firestoreId), {read:true})
+                .catch(function(error){
+                    console.warn("Could not mark incoming message as read:", error);
+                })
+        );
+    });
+    if(updates.length) await Promise.all(updates);
+}
+
 function subscribeFirestoreMessages(personId){
     if(!firebaseDb || !firebaseCurrentUser){
         setFirebaseMessageStatus("Sign in to start chatting.");
@@ -5496,7 +5516,12 @@ function subscribeFirestoreMessages(personId){
     }
 
     const key = String(personId);
-    if(firestoreMessageUnsubs.has(key)) return true;
+    if(firestoreMessageUnsubs.has(key)){
+        markFirestoreIncomingMessagesRead(personId).catch(function(error){
+            console.warn("Incoming message Read Receipt update failed:", error);
+        });
+        return true;
+    }
 
     const currentUid = firebaseCurrentUser.uid;
     const person = typeof window.getIndianPersonById === "function" ? window.getIndianPersonById(personId) : null;
@@ -5546,6 +5571,11 @@ function subscribeFirestoreMessages(personId){
         });
         incomingReady = true;
         applyFirestoreConversation(personId);
+        if(String(selectedConversationPersonId) === key){
+            markFirestoreIncomingMessagesRead(personId).catch(function(error){
+                console.warn("Incoming message Read Receipt update failed:", error);
+            });
+        }
         if(outgoingReady && incomingReady) setFirebaseMessageStatus("Firebase Messages connected for " + (person ? person.name : "this user") + ".");
     }, function(error){
         setFirebaseMessageStatus("Firebase Messages read failed: " + sanitizePlainText(error.message, 250));

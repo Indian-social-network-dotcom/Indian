@@ -150,3 +150,11 @@ Before changing runtime code, the staged transition is clarified:
 - Reaction document IDs are validated before writes; empty or oversized IDs stop the migration with an explicit error rather than creating an invalid target path.
 - This is a migration-helper-only change. It does not run the helper, write Firebase data, alter Firestore Rules, change the live website, or touch Group Chat / Read Receipt code.
 - Runtime compatibility remains blocked on completing and validating the transitional Rules and the read/write integration. Do not publish the current Rules draft or run the migration yet.
+
+
+## Story Rules transition fix — 2026-11-11
+
+- Updated only the story-validation helper and its create-condition in `firestore.rules.public-profiles-migration-DRAFT.txt` (commit `41d1e1dd6122234e074001dd3c9e387d1afcbd9b`).
+- Story interactions now accept an active story found in either `userStories/{uid}` or the legacy `publicProfiles/{uid}.activeStories`. This avoids breaking views/likes/reactions for accounts that have not yet migrated.
+- The Group Chat Rules and Personal Messages Read Receipt Rules were not edited in this commit; only the story helper and its call site were changed.
+- This remains a draft only. It has not been compiled or tested in the Firestore Emulator and must not be published yet.

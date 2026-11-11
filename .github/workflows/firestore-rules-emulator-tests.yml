@@ -1,6 +1,7 @@
 name: Firestore Rules Emulator Tests
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - security/public-profiles-migration

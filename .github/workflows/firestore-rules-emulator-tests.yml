@@ -1,0 +1,57 @@
+name: Firestore Rules Emulator Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - review/public-profiles-rollout
+    paths:
+      - 'firestore.rules.public-profiles-migration-DRAFT.txt'
+      - 'firestore.rules.public-profiles-migration-FINAL-REVIEW.txt'
+      - 'firestore-rules-tests/**'
+      - 'index.html'
+      - 'firebase.emulator.json'
+      - 'public-profile-migration.js'
+      - '.github/workflows/firestore-rules-emulator-tests.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'firestore.rules.public-profiles-migration-DRAFT.txt'
+      - 'firestore.rules.public-profiles-migration-FINAL-REVIEW.txt'
+      - 'firestore-rules-tests/**'
+      - 'index.html'
+      - 'public-profile-migration.js'
+      - '.github/workflows/firestore-rules-emulator-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install test dependencies
+        working-directory: firestore-rules-tests
+        run: npm install
+      - name: Report exact npm security advisories
+        working-directory: firestore-rules-tests
+        run: |
+          npm audit --json > npm-audit.json || true
+          node --input-type=module -e "import fs from 'node:fs'; const a=JSON.parse(fs.readFileSync('npm-audit.json','utf8')); for (const [name,item] of Object.entries(a.vulnerabilities || {})) console.log(JSON.stringify({name,severity:item.severity,range:item.range,fixAvailable:item.fixAvailable,via:item.via.map(v=>typeof v==='string'?v:{name:v.name,title:v.title,url:v.url,range:v.range})})); console.log('Total:', JSON.stringify(a.metadata?.vulnerabilities || {}));"
+      - name: Check application JavaScript syntax
+        working-directory: firestore-rules-tests
+        run: npm run check:syntax
+      - name: Prepare Rules file inside emulator project
+        run: cp firestore.rules.public-profiles-migration-FINAL-REVIEW.txt firestore-rules-tests/firestore.rules
+      - name: Compile Rules and run emulator tests
+        working-directory: firestore-rules-tests
+        run: npx --yes firebase-tools emulators:exec --only firestore --project demo-indian-public-profile-migration "npm test"

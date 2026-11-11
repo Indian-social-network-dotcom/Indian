@@ -47,3 +47,14 @@ npm test
 ```
 
 These automated tests validate Rules behavior. The browser smoke test above is separate and is still required to validate actual app flows.
+
+
+## Current final-review Rules and Read Receipt coverage
+
+The workflow now loads `firestore.rules.public-profiles-migration-FINAL-REVIEW.txt` into the Firestore Emulator. The current test suite includes receiver-only Read Receipt behavior:
+- Receiver may change only `read` from false (or absent on a legacy message) to true.
+- Receiver may not edit text, reset the receipt, or delete the message.
+- An unrelated user may not change the receipt.
+- Sender retains the existing edit/delete behavior.
+
+The app's incoming personal-message listener marks unread messages read when the conversation is open. This behavior is validated by JavaScript syntax checks and must also be checked in the browser/device test. Emulator tests are isolated from production and do not deploy Rules.

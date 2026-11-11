@@ -153,6 +153,15 @@ window.runIndianPublicProfileMigration = async function () {
     }
   }
 
+  // Publish a non-sensitive version flag only after every separated record verifies.
+  // Clients can read this flag from the public identity document and avoid exposing
+  // partially copied records while the private migration marker remains owner-only.
+  await setDoc(doc(db, "publicProfiles", uid), {
+    uid,
+    profileSchemaVersion: 2,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+
   const report = {
     uid,
     status: "complete",

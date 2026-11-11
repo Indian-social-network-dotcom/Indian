@@ -234,3 +234,16 @@ Updated `index.html` on the migration branch only:
 - These files do not connect to the production Firebase project and contain no production credentials.
 - The workflow run result has not yet been independently confirmed in this review. Do not treat the harness as passing until GitHub Actions reports success and any test failures are resolved.
 - No production Rules were published; no migration helper was run; no Firestore data was changed.
+
+
+## Firestore Emulator validation — 2026-11-11
+
+- GitHub Actions Run #12 completed successfully: https://github.com/Indian-social-network-dotcom/Indian/actions/runs/42972026133
+- The workflow copied the current Rules draft into the emulator project before startup. The emulator log contained no missing-Rules-file warning and no default allow-all fallback warning.
+- JavaScript syntax validation passed for all 4 inline module scripts in `index.html`; `public-profile-migration.js` also passed `node --check`.
+- Firestore Emulator executed 11 tests; all 11 passed and 0 failed.
+- Coverage includes public profile owner writes, separated collections, recipient-only typing reads, private migration markers, separated and legacy Story interaction checks, personal Messages Read Receipt, and Group Chat membership/message access.
+- Run #11 is not counted as a valid Rules test result: it started without the copied Rules file and the emulator warned it would default to allowing all reads/writes. Run #12 includes the corrected preparation step and is the valid result.
+- This is Rules/emulator and JavaScript syntax validation only. It is not a browser/device feature test, not a production Rules deployment, and not proof that the migration helper has been run.
+- npm install reported 5 high-severity dependency advisories in the test dependency tree. Do not use `npm audit fix --force`; review the advisory paths and compatible upgrades separately.
+- Production Rules remain unpublished. Migration helper remains dormant. No Firebase data was migrated, overwritten or deleted. `main` and the live website were not changed.

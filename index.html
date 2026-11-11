@@ -5666,17 +5666,21 @@ window.indianVoteInMessagePoll=async function(messageId,optionId,personId){
 
 async function saveFirestoreMessageReaction(messageId, emoji){
     if(!firebaseDb || !firebaseCurrentUser || !messageId) throw new Error("Sign in to save message reactions.");
-    const ref = doc(firebaseDb, "publicProfiles", firebaseCurrentUser.uid);
-    const snap = await getDoc(ref);
-    const data = snap.exists() ? (snap.data() || {}) : {};
-    const reactions = Object.assign({}, data.messageReactions || {});
+    const uid=firebaseCurrentUser.uid;
+    const separated=indianOwnProfileUsesSeparatedSchema(uid);
+    const ref = doc(firebaseDb, "publicProfiles", uid);
     const reactionCreatedAtMs=Date.now();
-    reactions[String(messageId)] = {emoji:String(emoji).slice(0,8),createdAtMs:reactionCreatedAtMs};
-    const entries = Object.entries(reactions).sort((a,b)=>Number((a[1]||{}).createdAtMs||0)-Number((b[1]||{}).createdAtMs||0));
-    const limited = Object.fromEntries(entries.slice(-80));
-    if(snap.exists()) await updateDoc(ref,{messageReactions:limited,updatedAt:serverTimestamp()});
-    else await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||"Indian User",60),messageReactions:limited,updatedAt:serverTimestamp()},{merge:true});
-    const reactionDocId=firebaseCurrentUser.uid+"_"+encodeURIComponent(String(messageId));
+    if(!separated){
+        const snap = await getDoc(ref);
+        const data = snap.exists() ? (snap.data() || {}) : {};
+        const reactions = Object.assign({}, data.messageReactions || {});
+        reactions[String(messageId)] = {emoji:String(emoji).slice(0,8),createdAtMs:reactionCreatedAtMs};
+        const entries = Object.entries(reactions).sort((a,b)=>Number((a[1]||{}).createdAtMs||0)-Number((b[1]||{}).createdAtMs||0));
+        const limited = Object.fromEntries(entries.slice(-80));
+        if(snap.exists()) await updateDoc(ref,{messageReactions:limited,updatedAt:serverTimestamp()});
+        else await setDoc(ref,{uid:uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||"Indian User",60),messageReactions:limited,updatedAt:serverTimestamp()},{merge:true});
+    }
+    const reactionDocId=uid+"_"+encodeURIComponent(String(messageId));
     if(reactionDocId.length<=800){
         await setDoc(doc(firebaseDb,"messageReactions",reactionDocId),{
             uid:firebaseCurrentUser.uid,messageId:String(messageId),emoji:String(emoji).slice(0,8),createdAtMs:reactionCreatedAtMs
@@ -5690,17 +5694,19 @@ async function saveFirestoreMessageReaction(messageId, emoji){
 async function cleanupExpiredIndianStories(){
     try {
         if(!firebaseDb || !firebaseCurrentUser) return false;
-        const ref = doc(firebaseDb, "publicProfiles", firebaseCurrentUser.uid);
-        const snap = await getDoc(ref);
+        const uid=firebaseCurrentUser.uid;
+        const separated=indianOwnProfileUsesSeparatedSchema(uid);
+        const sourceRef=doc(firebaseDb,separated?"userStories":"publicProfiles",uid);
+        const snap = await getDoc(sourceRef);
         if(!snap.exists()) return false;
         const data = snap.data() || {};
         const nowMs = Date.now();
         const oldStories = Array.isArray(data.activeStories) ? data.activeStories : [];
         const activeStories = oldStories.filter(item => item && Number(item.expiresAt) > nowMs);
         if(activeStories.length !== oldStories.length){
-            await setDoc(ref, {activeStories: activeStories, updatedAt: serverTimestamp()}, {merge:true});
-            await setDoc(doc(firebaseDb,"userStories",firebaseCurrentUser.uid),{
-                uid:firebaseCurrentUser.uid,activeStories:activeStories,lastStoryAtMs:Number(data.lastStoryAtMs)||0
+            if(!separated) await setDoc(sourceRef, {activeStories: activeStories, updatedAt: serverTimestamp()}, {merge:true});
+            await setDoc(doc(firebaseDb,"userStories",uid),{
+                uid:uid,activeStories:activeStories,lastStoryAtMs:Number(data.lastStoryAtMs)||0
             },{merge:true}).catch(function(error){console.warn("Separated story cleanup is waiting for migration Rules:",error);});
         }
         return true;
@@ -5717,8 +5723,11 @@ async function saveIndianStoryRecord(story){
     const imageData=story && typeof story.imageData==="string" && story.imageData.startsWith("data:image/") && story.imageData.length<=70000?story.imageData:"";
     if(mediaType==="video" && !mediaUrl) throw new Error("Story video upload link is missing. Please upload the video again.");
     if(mediaType!=="video" && !imageData) throw new Error("The compressed story photo is missing or too large. Choose a smaller photo.");
-    const ref=doc(firebaseDb,"publicProfiles",firebaseCurrentUser.uid);
-    const snap=await getDoc(ref);
+    const uid=firebaseCurrentUser.uid;
+    const separated=indianOwnProfileUsesSeparatedSchema(uid);
+    const ref=doc(firebaseDb,"publicProfiles",uid);
+    const sourceRef=doc(firebaseDb,separated?"userStories":"publicProfiles",uid);
+    const snap=await getDoc(sourceRef);
     const data=snap.exists()?(snap.data()||{}):{};
     const nowMs=Date.now();
     const active=(Array.isArray(data.activeStories)?data.activeStories:[]).filter(item=>item && Number(item.expiresAt)>nowMs);
@@ -5730,9 +5739,11 @@ async function saveIndianStoryRecord(story){
     if(mediaUrl)record.mediaUrl=mediaUrl;
     active.push(record);
     const finalStories=active.slice(-3);
-    await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),activeStories:finalStories,lastStoryAtMs:nowMs,updatedAt:serverTimestamp()},{merge:true});
-    await setDoc(doc(firebaseDb,"userStories",firebaseCurrentUser.uid),{
-        uid:firebaseCurrentUser.uid,activeStories:finalStories,lastStoryAtMs:nowMs
+    if(!separated){
+        await setDoc(ref,{uid:uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),activeStories:finalStories,lastStoryAtMs:nowMs,updatedAt:serverTimestamp()},{merge:true});
+    }
+    await setDoc(doc(firebaseDb,"userStories",uid),{
+        uid:uid,activeStories:finalStories,lastStoryAtMs:nowMs
     },{merge:true}).catch(function(error){console.warn("Separated story write is waiting for migration Rules:",error);});
     return true;
 }
@@ -5740,12 +5751,15 @@ async function saveIndianStoryRecord(story){
 async function setIndianFirestoreLiveStatus(isLiveNow, startedAtMs, liveTitle){
     if(!firebaseDb || !firebaseCurrentUser) throw new Error("Sign in to share your live status.");
     const liveSession={isLive:!!isLiveNow,startedAtMs:isLiveNow?(Number(startedAtMs)||Date.now()):0,title:isLiveNow?sanitizePlainText(liveTitle||"",100):"",updatedAtMs:Date.now()};
-    await setDoc(doc(firebaseDb, "publicProfiles", firebaseCurrentUser.uid),{
-      uid:firebaseCurrentUser.uid,
-      displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),
-      liveSession:liveSession,updatedAt:serverTimestamp()
-    },{merge:true});
-    await setDoc(doc(firebaseDb,"userLiveStatus",firebaseCurrentUser.uid),{
+    const uid=firebaseCurrentUser.uid;
+    if(!indianOwnProfileUsesSeparatedSchema(uid)){
+        await setDoc(doc(firebaseDb, "publicProfiles", uid),{
+          uid:uid,
+          displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),
+          liveSession:liveSession,updatedAt:serverTimestamp()
+        },{merge:true});
+    }
+    await setDoc(doc(firebaseDb,"userLiveStatus",uid),{
         uid:firebaseCurrentUser.uid,liveSession:liveSession
     },{merge:true}).catch(function(error){console.warn("Separated live-status write is waiting for migration Rules:",error);});
     return true;
@@ -5777,7 +5791,9 @@ async function writeIndianPresence(isOnline,lastSeenAtMs){
     const now=Date.now();
     const patch={uid:uid,presenceOnline:!!isOnline,presenceAtMs:now};
     if(!isOnline)patch.lastSeenAtMs=Number(lastSeenAtMs)||now;
-    await setDoc(doc(firebaseDb,"publicProfiles",uid),patch,{merge:true});
+    if(!indianOwnProfileUsesSeparatedSchema(uid)){
+        await setDoc(doc(firebaseDb,"publicProfiles",uid),patch,{merge:true});
+    }
     await setDoc(doc(firebaseDb,"userPresence",uid),patch,{merge:true})
         .catch(function(error){console.warn("Separated presence write is waiting for migration Rules:",error);});
 }
@@ -5870,8 +5886,8 @@ window.addEventListener("pagehide",function(){
         if(!indianOwnProfileUsesSeparatedSchema(uid)){
             legacyOfflinePatch.typingToUid="";
             legacyOfflinePatch.typingAtMs=0;
+            setDoc(doc(firebaseDb,"publicProfiles",uid),legacyOfflinePatch,{merge:true}).catch(function(){});
         }
-        setDoc(doc(firebaseDb,"publicProfiles",uid),legacyOfflinePatch,{merge:true}).catch(function(){});
         setDoc(doc(firebaseDb,"userPresence",uid),{
             uid:uid,presenceOnline:false,presenceAtMs:now,lastSeenAtMs:now
         },{merge:true}).catch(function(){});

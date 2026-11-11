@@ -5673,6 +5673,14 @@ async function saveFirestoreMessageReaction(messageId, emoji){
     const limited = Object.fromEntries(entries.slice(-80));
     if(snap.exists()) await updateDoc(ref,{messageReactions:limited,updatedAt:serverTimestamp()});
     else await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||"Indian User",60),messageReactions:limited,updatedAt:serverTimestamp()},{merge:true});
+    const reactionDocId=firebaseCurrentUser.uid+"_"+encodeURIComponent(String(messageId));
+    if(reactionDocId.length<=800){
+        await setDoc(doc(firebaseDb,"messageReactions",reactionDocId),{
+            uid:firebaseCurrentUser.uid,messageId:String(messageId),emoji:String(emoji).slice(0,8),createdAtMs:Date.now()
+        },{merge:true}).catch(function(error){console.warn("Separated reaction write is waiting for migration Rules:",error);});
+    }else{
+        console.warn("Separated reaction write skipped because the message ID exceeds the migration Rules limit.");
+    }
     return true;
 }
 
@@ -5688,6 +5696,9 @@ async function cleanupExpiredIndianStories(){
         const activeStories = oldStories.filter(item => item && Number(item.expiresAt) > nowMs);
         if(activeStories.length !== oldStories.length){
             await setDoc(ref, {activeStories: activeStories, updatedAt: serverTimestamp()}, {merge:true});
+            await setDoc(doc(firebaseDb,"userStories",firebaseCurrentUser.uid),{
+                uid:firebaseCurrentUser.uid,activeStories:activeStories,lastStoryAtMs:Number(data.lastStoryAtMs)||0
+            },{merge:true}).catch(function(error){console.warn("Separated story cleanup is waiting for migration Rules:",error);});
         }
         return true;
     } catch(error) {
@@ -5715,18 +5726,25 @@ async function saveIndianStoryRecord(story){
     if(imageData)record.imageData=imageData;
     if(mediaUrl)record.mediaUrl=mediaUrl;
     active.push(record);
-    await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),activeStories:active.slice(-3),lastStoryAtMs:nowMs,updatedAt:serverTimestamp()},{merge:true});
+    const finalStories=active.slice(-3);
+    await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),activeStories:finalStories,lastStoryAtMs:nowMs,updatedAt:serverTimestamp()},{merge:true});
+    await setDoc(doc(firebaseDb,"userStories",firebaseCurrentUser.uid),{
+        uid:firebaseCurrentUser.uid,activeStories:finalStories,lastStoryAtMs:nowMs
+    },{merge:true}).catch(function(error){console.warn("Separated story write is waiting for migration Rules:",error);});
     return true;
 }
 
 async function setIndianFirestoreLiveStatus(isLiveNow, startedAtMs, liveTitle){
     if(!firebaseDb || !firebaseCurrentUser) throw new Error("Sign in to share your live status.");
+    const liveSession={isLive:!!isLiveNow,startedAtMs:isLiveNow?(Number(startedAtMs)||Date.now()):0,title:isLiveNow?sanitizePlainText(liveTitle||"",100):"",updatedAtMs:Date.now()};
     await setDoc(doc(firebaseDb, "publicProfiles", firebaseCurrentUser.uid),{
       uid:firebaseCurrentUser.uid,
       displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),
-      liveSession:{isLive:!!isLiveNow,startedAtMs:isLiveNow?(Number(startedAtMs)||Date.now()):0,title:isLiveNow?sanitizePlainText(liveTitle||"",100):"",updatedAtMs:Date.now()},
-      updatedAt:serverTimestamp()
+      liveSession:liveSession,updatedAt:serverTimestamp()
     },{merge:true});
+    await setDoc(doc(firebaseDb,"userLiveStatus",firebaseCurrentUser.uid),{
+        uid:firebaseCurrentUser.uid,liveSession:liveSession
+    },{merge:true}).catch(function(error){console.warn("Separated live-status write is waiting for migration Rules:",error);});
     return true;
 }
 
@@ -5753,6 +5771,8 @@ async function writeIndianPresence(isOnline,lastSeenAtMs){
     const patch={uid:uid,presenceOnline:!!isOnline,presenceAtMs:now};
     if(!isOnline)patch.lastSeenAtMs=Number(lastSeenAtMs)||now;
     await setDoc(doc(firebaseDb,"publicProfiles",uid),patch,{merge:true});
+    await setDoc(doc(firebaseDb,"userPresence",uid),patch,{merge:true})
+        .catch(function(error){console.warn("Separated presence write is waiting for migration Rules:",error);});
 }
 function startIndianPresence(){
     if(!firebaseDb||!firebaseCurrentUser)return;

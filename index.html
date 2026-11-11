@@ -6179,6 +6179,7 @@ else{
         if (indianFirebaseEmulatorMode) {
             connectAuthEmulator(firebaseAuth, "http://127.0.0.1:9099", {disableWarnings:true});
             connectFirestoreEmulator(firebaseDb, "127.0.0.1", 8080);
+            window.__indianFirebaseEmulatorsConnected = true;
             console.info("Indian is connected only to local Auth and Firestore Emulators.");
         }
 
@@ -8851,7 +8852,9 @@ window.openIndianGames=function(){window.location.href='games.html';};
 <script type="module" id="indianUranCloudSync">
 import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { connectAuthEmulator } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, getDocs, getDoc, query, where, orderBy, limit, startAfter, serverTimestamp, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { connectFirestoreEmulator } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 const config={apiKey:'AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs',authDomain:'indian-84a86.firebaseapp.com',projectId:'indian-84a86',storageBucket:'indian-84a86.firebasestorage.app',messagingSenderId:'333987809341',appId:'1:333987809341:web:27a351f770aa7b4e808254'};
 let auth,db,currentUser=null,stop=null,uranCursor=null,uranFirstSnapshotSeen=false,uranHasMore=false,uranLoadingMore=false;
 const URAN_PAGE_SIZE=10;
@@ -8859,7 +8862,18 @@ function mapUranDoc(d,user){const v=d.data()||{};return{id:d.id,mediaUrl:String(
 function mergeUranCache(freshItems){let existing=[];try{existing=JSON.parse(localStorage.getItem('indian_uran_youtube_links_v1')||'[]');}catch(e){}if(!Array.isArray(existing))existing=[];const map=new Map();existing.forEach(x=>{if(x&&x.id)map.set(String(x.id),x);});freshItems.forEach(x=>{if(x&&x.id)map.set(String(x.id),x);});const merged=[...map.values()].sort((a,b)=>(Number(b.addedAt)||0)-(Number(a.addedAt)||0)).slice(0,100);try{localStorage.setItem('indian_uran_youtube_links_v1',JSON.stringify(merged));}catch(e){}return merged;}
 async function loadMoreUranCloud(){if(!currentUser||uranLoadingMore||!uranHasMore||!uranCursor)return;uranLoadingMore=true;window.__indianUranLoadingMore=true;window.__indianUranHasMore=uranHasMore;try{const page=await getDocs(query(collection(db,'uranShorts'),orderBy('createdAt','desc'),startAfter(uranCursor),limit(URAN_PAGE_SIZE)));if(!page.docs.length){uranHasMore=false;}else{uranCursor=page.docs[page.docs.length-1];mergeUranCache(page.docs.map(d=>mapUranDoc(d,currentUser)));uranHasMore=page.docs.length===URAN_PAGE_SIZE;}window.__indianUranHasMore=uranHasMore;}finally{uranLoadingMore=false;window.__indianUranLoadingMore=false;}}
 window.indianUranLoadMoreCloud=loadMoreUranCloud;
-try{const app=getApps().length?getApp():initializeApp(config);auth=getAuth(app);db=getFirestore(app);onAuthStateChanged(auth,user=>{currentUser=user;if(stop){stop();stop=null;}uranCursor=null;uranFirstSnapshotSeen=false;uranHasMore=false;window.__indianUranHasMore=false;if(!user)return;const q=query(collection(db,'uranShorts'),orderBy('createdAt','desc'),limit(URAN_PAGE_SIZE));stop=onSnapshot(q,snapshot=>{const docs=snapshot.docs;if(!uranFirstSnapshotSeen){uranFirstSnapshotSeen=true;uranCursor=docs.length?docs[docs.length-1]:null;uranHasMore=docs.length===URAN_PAGE_SIZE;}mergeUranCache(docs.map(d=>mapUranDoc(d,user)));window.__indianUranHasMore=uranHasMore;if(typeof window.renderIndianUran==='function')window.renderIndianUran();},error=>{window.__indianUranHasMore=false;const status=document.getElementById('shortsStatus');if(status)status.textContent='Online Uran load nahi hua: '+error.message+' Firebase rules check karein.';});});
+try{
+const hasExistingApp=getApps().length>0;
+const emulatorMode=window.__indianFirebaseEmulatorMode===true;
+const emulatorConfig={apiKey:'demo-api-key',authDomain:'demo-indian-public-profile-migration.firebaseapp.com',projectId:'demo-indian-public-profile-migration',storageBucket:'demo-indian-public-profile-migration.appspot.com',messagingSenderId:'000000000000',appId:'1:000000000000:web:emulator'};
+const app=hasExistingApp?getApp():initializeApp(emulatorMode?emulatorConfig:config);
+auth=getAuth(app);db=getFirestore(app);
+if(emulatorMode&&!window.__indianFirebaseEmulatorsConnected){
+connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+connectFirestoreEmulator(db,'127.0.0.1',8080);
+window.__indianFirebaseEmulatorsConnected=true;
+}
+onAuthStateChanged(auth,user=>{currentUser=user;if(stop){stop();stop=null;}uranCursor=null;uranFirstSnapshotSeen=false;uranHasMore=false;window.__indianUranHasMore=false;if(!user)return;const q=query(collection(db,'uranShorts'),orderBy('createdAt','desc'),limit(URAN_PAGE_SIZE));stop=onSnapshot(q,snapshot=>{const docs=snapshot.docs;if(!uranFirstSnapshotSeen){uranFirstSnapshotSeen=true;uranCursor=docs.length?docs[docs.length-1]:null;uranHasMore=docs.length===URAN_PAGE_SIZE;}mergeUranCache(docs.map(d=>mapUranDoc(d,user)));window.__indianUranHasMore=uranHasMore;if(typeof window.renderIndianUran==='function')window.renderIndianUran();},error=>{window.__indianUranHasMore=false;const status=document.getElementById('shortsStatus');if(status)status.textContent='Online Uran load nahi hua: '+error.message+' Firebase rules check karein.';});});
 window.indianUranIsSignedIn=function(){return !!currentUser;};
 window.indianUranCloudAdd=async function(item){if(!currentUser)throw Error('Pehle Indian account mein sign in karein.');if(!item||!/^https:\/\/res\.cloudinary\.com\//.test(item.mediaUrl||''))throw Error('Cloudinary video URL valid nahi hai.');const videoRef=doc(collection(db,'uranShorts'));await setDoc(videoRef,{videoId:videoRef.id,mediaUrl:item.mediaUrl,publicId:String(item.publicId||''),caption:String(item.caption||'').slice(0,300),addedBy:currentUser.uid,addedByName:currentUser.displayName||currentUser.email||'Indian user',createdAt:serverTimestamp(),likedBy:[]});};
 window.indianUranToggleLike=async function(id,liked){if(!currentUser)throw Error('Sign in required');await updateDoc(doc(db,'uranShorts',id),{likedBy:liked?arrayUnion(currentUser.uid):arrayRemove(currentUser.uid)});};

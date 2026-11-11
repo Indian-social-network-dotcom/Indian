@@ -40,6 +40,8 @@ jobs:
       - name: Check application JavaScript syntax
         working-directory: firestore-rules-tests
         run: npm run check:syntax
+      - name: Prepare Rules file inside emulator project
+        run: cp firestore.rules.public-profiles-migration-DRAFT.txt firestore-rules-tests/firestore.rules
       - name: Compile Rules and run emulator tests
         working-directory: firestore-rules-tests
         run: npx --yes firebase-tools emulators:exec --only firestore --project demo-indian-public-profile-migration "npm test"

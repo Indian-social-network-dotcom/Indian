@@ -7442,7 +7442,8 @@ else{
            actions.appendChild(b);
          });
          actionArea.appendChild(actions);
-         getDocs(query(collection(db,"helpOffers"),where("requesterUid","==",uid))).then(snapshot=>{\n           const requestOffers=snapshot.docs.filter(item=>String((item.data()||{}).requestId||"")===d.id);
+         getDocs(query(collection(db,"helpOffers"),where("requesterUid","==",uid))).then(snapshot=>{
+           const requestOffers=snapshot.docs.filter(item=>String((item.data()||{}).requestId||"")===d.id);
            if(!document.getElementById(id)||!actionArea.isConnected)return;
            const heading=document.createElement("h4");heading.textContent="People offering help";actionArea.appendChild(heading);
            if(requestOffers.length===0){const none=document.createElement("p");none.textContent="No one has offered help yet.";actionArea.appendChild(none);return;}

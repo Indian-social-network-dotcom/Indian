@@ -7,6 +7,7 @@ on:
       - security/public-profiles-migration
     paths:
       - 'firestore.rules.public-profiles-migration-DRAFT.txt'
+      - 'firestore.rules.public-profiles-migration-FINAL-REVIEW.txt'
       - 'firestore-rules-tests/**'
       - 'index.html'
       - 'firebase.emulator.json'
@@ -17,6 +18,7 @@ on:
       - security/public-profiles-migration
     paths:
       - 'firestore.rules.public-profiles-migration-DRAFT.txt'
+      - 'firestore.rules.public-profiles-migration-FINAL-REVIEW.txt'
       - 'firestore-rules-tests/**'
       - 'index.html'
       - 'public-profile-migration.js'
@@ -49,7 +51,7 @@ jobs:
         working-directory: firestore-rules-tests
         run: npm run check:syntax
       - name: Prepare Rules file inside emulator project
-        run: cp firestore.rules.public-profiles-migration-DRAFT.txt firestore-rules-tests/firestore.rules
+        run: cp firestore.rules.public-profiles-migration-FINAL-REVIEW.txt firestore-rules-tests/firestore.rules
       - name: Compile Rules and run emulator tests
         working-directory: firestore-rules-tests
         run: npx --yes firebase-tools emulators:exec --only firestore --project demo-indian-public-profile-migration "npm test"

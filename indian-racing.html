@@ -74,7 +74,7 @@ const firebaseConfig={apiKey:'AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs',authDomai
 const $=id=>document.getElementById(id);
 let auth,db,user=null,roomId='',room=null,roomUnsub=null,opponentUnsub=null,opponentState=null;
 let mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false;
-let lastFrame=0,lastSync=0,finished=false,opponentUid='',localWon=false;
+let lastFrame=0,lastSync=0,finished=false,opponentUid='',localWon=false,syncBusy=false;
 const FINISH_DISTANCE=1500;
 function status(t){$('connectionStatus').textContent=t}function raceStatus(t){$('raceStatus').textContent=t}
 function playerName(){return String($('playerName').value||user?.displayName||user?.email?.split('@')[0]||'Indian Player').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,40)||'Indian Player'}
@@ -202,9 +202,11 @@ function syncWorld(){
  camera.position.x+=(car.position.x*.32-camera.position.x)*.08;camera.lookAt(car.position.x*.25,1,-15);
 }
 async function pushRaceState(){
- if(mode!=='online'||!roomId||!user||!room||room.status!=='playing')return;
+ if(syncBusy||mode!=='online'||!roomId||!user||!room||room.status!=='playing')return;
+ syncBusy=true;
  try{await setDoc(raceRef(roomId,user.uid),{uid:user.uid,name:playerName(),distance:Math.round(distance),lane:Number(lane.toFixed(2)),speed:Math.round(speed),finished,updatedAtMs:Date.now()});}
  catch(e){raceStatus('Live sync issue: '+e.message);}
+ finally{syncBusy=false;}
 }
 function finishRace(){
  if(finished)return;finished=true;localWon=!opponentState||distance>=Number(opponentState.distance||0);

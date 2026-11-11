@@ -58,3 +58,8 @@ The workflow now loads `firestore.rules.public-profiles-migration-FINAL-REVIEW.t
 - Sender retains the existing edit/delete behavior.
 
 The app's incoming personal-message listener marks unread messages read when the conversation is open. This behavior is validated by JavaScript syntax checks and must also be checked in the browser/device test. Emulator tests are isolated from production and do not deploy Rules.
+
+
+## Latest CI result
+
+GitHub Actions Run #40 passed on 2026-11-11: 12 emulator tests passed, 0 failed, 0 skipped; all 4 inline application modules and the migration helper passed syntax checks; npm audit reported 0 vulnerabilities. The tested Rules file was the final review copy. This is not a browser/device test and does not deploy production Rules.

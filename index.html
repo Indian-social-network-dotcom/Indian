@@ -1723,7 +1723,7 @@ window.applyIndianPresenceProfiles=function(profiles){
         const meta=getMessageMeta(person.id);
         meta.online=online;
         meta.lastSeen=online?"Online now":indianFormatPresenceLastSeen(Number(profile.lastSeenAtMs)||activeAt);
-        meta.typing=!!(profile.typingToUid===window.firebaseCurrentUid && Number(profile.typingAtMs)>now-7000 && online);
+        meta.typing=!!(profile.typingToUid===window.firebaseCurrentUid && Number(profile.typingAtMs)>now-7000 && Number(profile.typingAtMs)<=now && online);
     });
     if(typeof renderConversationList==="function")renderConversationList();
     if(selectedConversationPersonId!==null){
@@ -5906,7 +5906,7 @@ function startIndianTypingWatch(personId){
         try{
             const snap=await getDoc(doc(firebaseDb,"userTyping",peerUid));
             const data=snap.exists()?(snap.data()||{}):{};
-            const active=snap.exists()&&data.typingToUid===firebaseCurrentUser.uid&&Date.now()-Number(data.typingAtMs||0)<7000;
+            const active=snap.exists()&&data.typingToUid===firebaseCurrentUser.uid&&Number(data.typingAtMs||0)>0&&Number(data.typingAtMs||0)<=Date.now()&&Date.now()-Number(data.typingAtMs||0)<7000;
             const profile=(window.indianFirebasePublicProfiles||[]).find(function(item){return item.uid===peerUid;});
             if(profile){profile.typingToUid=active?firebaseCurrentUser.uid:"";profile.typingAtMs=active?Number(data.typingAtMs)||0:0;if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(window.indianFirebasePublicProfiles);}
         }catch(error){

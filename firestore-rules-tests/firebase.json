@@ -1,6 +1,6 @@
 {
   "firestore": {
-    "rules": "../firestore.rules.public-profiles-migration-DRAFT.txt"
+    "rules": "firestore.rules"
   },
   "emulators": {
     "firestore": {

@@ -158,3 +158,12 @@ Before changing runtime code, the staged transition is clarified:
 - Story interactions now accept an active story found in either `userStories/{uid}` or the legacy `publicProfiles/{uid}.activeStories`. This avoids breaking views/likes/reactions for accounts that have not yet migrated.
 - The Group Chat Rules and Personal Messages Read Receipt Rules were not edited in this commit; only the story helper and its call site were changed.
 - This remains a draft only. It has not been compiled or tested in the Firestore Emulator and must not be published yet.
+
+
+## Verified schema-version marker — 2026-11-11
+
+- Updated `public-profile-migration.js` in commit `79efee089423a9d020fce7492995c68c3c597031`.
+- After all separated target documents are re-read and verified, the helper writes the non-sensitive `profileSchemaVersion: 2` flag to the owner's existing public identity document. The private owner-only migration report is written afterward.
+- Runtime readers can use this public flag to switch an owner from legacy fields to separated records only after the complete copy has been verified. This avoids treating partially copied collections as authoritative.
+- The update uses merge semantics and does not remove or overwrite any legacy story, presence, typing, live-status or reaction fields. The existing public identity fields remain in the document.
+- The flag is not written by this work session; the migration helper remains dormant. The Rules draft and app code are still not ready for publication or execution.

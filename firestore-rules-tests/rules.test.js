@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 const projectId = "demo-indian-public-profile-migration";
-const rules = await readFile(new URL("../firestore.rules.public-profiles-migration-DRAFT.txt", import.meta.url), "utf8");
+const rules = await readFile(new URL("../firestore.rules.public-profiles-migration-FINAL-REVIEW.txt", import.meta.url), "utf8");
 let env;
 
 before(async () => {
@@ -122,14 +122,24 @@ test("storyInteractions: legacy publicProfiles story fallback remains available"
   await assertSucceeds(setDoc(doc(db("viewer"), "storyInteractions/story-owner_legacy-story_viewer"), interaction));
 });
 
-test("personal messages: no receiver Read Receipt permission; sender-only update/delete", async () => {
+test("personal messages: receiver can only mark read; sender retains edit/delete", async () => {
   await seed("messages/message-1", {
     senderId: "alice", receiverId: "bob", text: "hello", read: false
   });
-  await assertFails(updateDoc(doc(db("bob"), "messages/message-1"), { read: true }));
+  await assertSucceeds(updateDoc(doc(db("bob"), "messages/message-1"), { read: true }));
+  await assertFails(updateDoc(doc(db("bob"), "messages/message-1"), { text: "changed by receiver" }));
+  await assertFails(updateDoc(doc(db("bob"), "messages/message-1"), { read: false }));
   await assertFails(updateDoc(doc(db("carol"), "messages/message-1"), { read: true }));
+  await assertFails(deleteDoc(doc(db("bob"), "messages/message-1")));
   await assertSucceeds(updateDoc(doc(db("alice"), "messages/message-1"), { text: "edited" }));
   await assertSucceeds(deleteDoc(doc(db("alice"), "messages/message-1")));
+});
+
+test("personal messages: receiver can mark a legacy message read when read field is absent", async () => {
+  await seed("messages/legacy-message", {
+    senderId: "alice", receiverId: "bob", text: "older message"
+  });
+  await assertSucceeds(updateDoc(doc(db("bob"), "messages/legacy-message"), { read: true }));
 });
 
 test("Group Chat: member-only group/message access and sender-only deletion", async () => {

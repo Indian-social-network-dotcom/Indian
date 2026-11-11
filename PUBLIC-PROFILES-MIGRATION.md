@@ -141,3 +141,12 @@ Before changing runtime code, the staged transition is clarified:
 - Message reaction writes an owner-scoped map on the legacy profile; the global profile snapshot calculates shared totals from that map.
 - The code has not yet been modified for the compatibility layer. This is intentional: changing only the writer or only the listener would make the app inconsistent during the staged Rules transition.
 - No Rules published and no Firebase data changed.
+
+
+## Migration retry-safety fix — 2026-11-11
+
+- Updated `public-profile-migration.js` in commit `f51ddd7b038a0318776913a8219f2bb330c18e87`.
+- Reaction migration now uses a deterministic timestamp fallback from the legacy profile's update timestamp instead of `Date.now()`. An interrupted migration can therefore retry without inventing a different reaction record timestamp.
+- Reaction document IDs are validated before writes; empty or oversized IDs stop the migration with an explicit error rather than creating an invalid target path.
+- This is a migration-helper-only change. It does not run the helper, write Firebase data, alter Firestore Rules, change the live website, or touch Group Chat / Read Receipt code.
+- Runtime compatibility remains blocked on completing and validating the transitional Rules and the read/write integration. Do not publish the current Rules draft or run the migration yet.

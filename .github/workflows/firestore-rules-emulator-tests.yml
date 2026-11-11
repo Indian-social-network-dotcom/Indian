@@ -30,6 +30,9 @@ jobs:
       - name: Install test dependencies
         working-directory: firestore-rules-tests
         run: npm install
+      - name: Check application JavaScript syntax
+        working-directory: firestore-rules-tests
+        run: npm run check:syntax
       - name: Compile Rules and run emulator tests
         working-directory: firestore-rules-tests
         run: npx --yes firebase-tools emulators:exec --only firestore --project demo-indian-public-profile-migration "npm test"

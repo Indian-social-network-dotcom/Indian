@@ -8,7 +8,7 @@ Working branch: `security/public-profiles-migration`
 
 Testing scope: currently three owner-controlled testing accounts. There are no public users yet, according to the project owner. We can use staged per-owner migration for these accounts rather than preparing a bulk migration for a large user base. Do not delete the three accounts or their legacy documents.
 
-Authoritative Rules baseline: the user's downloaded `indian-firestore-rules-read-receipt.txt`. Preserve its personal Messages Read Receipt rules and all Group Chat rules unchanged unless a separately reviewed migration requires a specific helper change.
+Authoritative Rules baseline: the current Rules file uploaded by the user on 2026-11-11. Its Personal Messages block intentionally has sender-only update/delete and does NOT grant receiver-side Read Receipt updates. Keep that behavior; do not add the separate Read Receipt update rule. Preserve Group Chat Rules unchanged.
 
 ## Current data and code dependencies
 
@@ -45,7 +45,7 @@ Current app dependencies found:
 3. A signed-in browser client can safely copy only its own legacy document under owner-only write rules. With only three owner-controlled testing accounts, run the migration separately while each account is signed in.
 4. During a staged migration, the app must tolerate users who have not yet migrated. The final restrictive Rules phase must not happen until all three accounts are verified.
 5. Story interaction Rules must check `userStories` after story migration.
-6. Keep personal Messages Read Receipt rules and Group Chat rules unchanged.
+6. Keep Personal Messages sender-only update/delete behavior (no receiver-side Read Receipt rule) and Group Chat rules unchanged.
 7. Never expose typing records to users other than the intended recipient.
 8. Keep old and new data synchronized during the transition, with explicit rollback instructions.
 9. Do not delete any Firebase Authentication account or legacy `publicProfiles` document as a shortcut.
@@ -76,7 +76,7 @@ Test all three controlled accounts and at least two devices:
 - Live status start/end and Live People
 - Message reaction totals and synchronization
 - Uran creator profile, views, comments and follow
-- Personal Messages and Read Receipt
+- Personal Messages (sender-only update/delete; no receiver-side Read Receipt permission)
 - Group Chat create, member search, send, receive and delete
 - Migration behavior for each of the three accounts and rollback
 
@@ -99,7 +99,7 @@ Test all three controlled accounts and at least two devices:
 ## Rules draft review — 2026-11-10
 
 - Added `firestore.rules.public-profiles-migration-DRAFT.txt` as a review-only draft. It is not published and is not ready to paste into Firebase yet.
-- The personal Messages Read Receipt block was compared with the authoritative user-supplied Rules file and is byte-for-byte unchanged.
+- The Personal Messages block was compared with the user's 2026-11-11 uploaded Rules file. The migration draft now matches its sender-only update/delete behavior; no receiver-side Read Receipt update rule is included.
 - The complete Indian Group Chat block was compared with the authoritative user-supplied Rules file and is byte-for-byte unchanged.
 - The story interaction existence check and `hasActiveStory` helper now point to `userStories/{uid}` in the draft.
 - New collection Rules were added for stories, presence, recipient-scoped typing, live status, reactions, and private migration markers.
@@ -117,7 +117,7 @@ Test all three controlled accounts and at least two devices:
 - Therefore the Rules draft remains review-only and must not be published. The compatibility implementation must first add new-collection readers with legacy fallback and safe transition writes, then be tested across the three accounts.
 - Strengthened `public-profile-migration.js`: it now refuses to mark migration complete if an existing target document conflicts with the legacy data, and it re-reads and verifies every copied target record (including each reaction) before writing the completion marker. It still never deletes or overwrites legacy documents.
 - The migration helper remains dormant and is not loaded by `index.html`.
-- No application runtime code was changed. No Firestore Rules were published. No Firebase data was changed or deleted. Read Receipt and Group Chat Rules were not edited.
+- No application runtime code was changed in this Rules alignment step. No Firestore Rules were published. No Firebase data was changed or deleted. The receiver-side Read Receipt permission remains absent; Group Chat Rules were not edited.
 
 
 ## Compatibility implementation design — 2026-11-11
@@ -199,7 +199,7 @@ Updated `index.html` on the migration branch only:
 ### Not yet validated / rollout blockers
 
 - Firestore Emulator Rules compilation and tests are still required. The draft must not be published before these pass.
-- Browser/runtime tests are still required for three accounts: public People discovery, Story create/view/expiry/interactions, presence/last-seen, Live People, reactions, typing visibility to only the intended recipient, Group Chat member lookup, and personal message Read Receipts.
+- Browser/runtime tests are still required for three accounts: public People discovery, Story create/view/expiry/interactions, presence/last-seen, Live People, reactions, typing visibility to only the intended recipient, Group Chat member lookup, and confirm personal Messages retain the requested sender-only update/delete behavior without receiver-side Read Receipt permission.
 - A listener that receives permission-denied before Rules publication terminates; reload the page after the reviewed Rules are deliberately published to establish the new listeners.
 - No migration helper was executed, no Firebase document was changed by this work, and no production Rules were published.
 
@@ -228,7 +228,7 @@ Updated `index.html` on the migration branch only:
 ## Automated validation harness — 2026-11-11
 
 - Added an isolated test project under `firestore-rules-tests/`; it uses a demo-only Firestore Emulator project ID and loads the migration Rules draft directly.
-- Added allow/deny tests for separated profile collections, recipient-only typing reads, private migration markers, new/legacy Story interaction lookup, personal message Read Receipt behavior, and Group Chat membership/message access.
+- Added allow/deny tests for separated profile collections, recipient-only typing reads, private migration markers, new/legacy Story interaction lookup, sender-only personal Messages update/delete (receiver Read Receipt update denied), and Group Chat membership/message access.
 - Added a syntax-check script for inline JavaScript modules in `index.html` and `public-profile-migration.js`.
 - Added GitHub Actions workflow `.github/workflows/firestore-rules-emulator-tests.yml` to run syntax checks and Firestore Emulator tests on changes to the draft/harness.
 - These files do not connect to the production Firebase project and contain no production credentials.
@@ -242,7 +242,7 @@ Updated `index.html` on the migration branch only:
 - The workflow copied the current Rules draft into the emulator project before startup. The emulator log contained no missing-Rules-file warning and no default allow-all fallback warning.
 - JavaScript syntax validation passed for all 4 inline module scripts in `index.html`; `public-profile-migration.js` also passed `node --check`.
 - Firestore Emulator executed 11 tests; all 11 passed and 0 failed.
-- Coverage includes public profile owner writes, separated collections, recipient-only typing reads, private migration markers, separated and legacy Story interaction checks, personal Messages Read Receipt, and Group Chat membership/message access.
+- Coverage includes public profile owner writes, separated collections, recipient-only typing reads, private migration markers, separated and legacy Story interaction checks, sender-only personal Messages update/delete with receiver Read Receipt update denied, and Group Chat membership/message access.
 - Run #11 is not counted as a valid Rules test result: it started without the copied Rules file and the emulator warned it would default to allowing all reads/writes. Run #12 includes the corrected preparation step and is the valid result.
 - This is Rules/emulator and JavaScript syntax validation only. It is not a browser/device feature test, not a production Rules deployment, and not proof that the migration helper has been run.
 - npm install reported 5 high-severity dependency advisories in the test dependency tree. Do not use `npm audit fix --force`; review the advisory paths and compatible upgrades separately.
@@ -266,7 +266,7 @@ Updated `index.html` on the migration branch only:
 - The latest run includes the schema-version startup-race fix, Node.js 24, Firebase test SDK 13.2.0, Rules Unit Testing 6.0.0, and the pinned @grpc/grpc-js 1.14.7 override.
 - npm audit now reports 0 vulnerabilities (0 high, 0 moderate, 0 low, 0 critical).
 - All 4 inline module scripts and the migration helper passed JavaScript syntax validation.
-- Firestore Emulator tests: 11 passed, 0 failed. This includes the new negative reaction tests for oversized emoji and unexpected fields, plus Group Chat and personal Read Receipt tests.
+- Historical Firestore Emulator run: 11 passed, 0 failed. The current test suite now checks that receiver-side Read Receipt updates are denied, as requested.
 - npm still reports some deprecation and install-script review warnings; these are not npm audit vulnerabilities. Do not blindly approve install scripts. The emulator workflow completed successfully despite these warnings.
 - Runtime/browser testing with the three test accounts is still outstanding. Production Rules are not published, migration helper has not run, and no Firestore data was changed or deleted.
 
@@ -289,14 +289,14 @@ Updated `index.html` on the migration branch only:
 - The workflow completed all steps successfully, including dependency installation, npm audit, JavaScript syntax checks, Rules file preparation, Firestore Emulator startup, Rules compilation and tests.
 - npm audit reported 0 vulnerabilities (0 info, 0 low, 0 moderate, 0 high, 0 critical).
 - JavaScript syntax check passed for all 4 inline module scripts in `index.html`; `public-profile-migration.js` passed `node --check`.
-- Firestore Emulator tests: 11 passed, 0 failed, 0 skipped. The passing tests include separated profile collections, recipient-only typing access, strict reaction validation, Story interaction legacy fallback, personal Messages Read Receipt and Group Chat access.
+- Earlier Run #24 passed 11 tests before the user's 2026-11-11 clarification about omitting receiver-side Read Receipt permission. A new CI run is required for the revised Rules and tests.
 - The log contains expected permission-denied messages from negative security tests; the test runner reports all 11 tests passed and the job conclusion is success.
 - This confirms emulator and syntax validation for the latest helper fix. It does not replace browser/device testing with the three test accounts.
 - No production Rules were published, no migration helper was run, no Firestore data or legacy fields were changed or deleted, and `main` remains untouched.
 
 ## Production Rules source-of-truth check required before rollout
 
-- The user-supplied `indian-firestore-rules-read-receipt.txt` was identified as the intended authoritative baseline, but the user had stated that this file itself had not yet been published to Firebase.
+- The 2026-11-11 uploaded Rules file is now the comparison baseline for this revision. It intentionally omits receiver-side Read Receipt updates; do not add that permission back into the migration draft.
 - Therefore, do not assume the migration draft is byte-for-byte based on the Rules currently active in production. Before any production publication, obtain/export the actually active Firebase Rules and compare them with this draft.
 - Preserve all live-only changes from the active Rules, including current Messages, Group Chat, notifications, games, and other collections. Do not replace live Rules with this draft until a complete three-way review (active production Rules, user-supplied baseline, migration draft) is complete.
 - This check is a rollout blocker; emulator success does not establish that the draft is safe to publish over the currently active production Rules.

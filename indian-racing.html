@@ -49,6 +49,10 @@ a{color:#ffd180}
 <button type="button" id="practiceBtn">Solo Practice</button>
 </div>
 <p class="muted small" id="roomSetupHelp">Online race mein 2 players honge. Room banakar invite bhejein; friend join karega to race start hogi.</p>
+<div class="row" id="waitingRoomActions" hidden style="margin-top:10px">
+ <p class="status" role="status" aria-live="polite">Waiting: Dost ke join karne ka intezar hai.</p>
+ <button type="button" id="cancelWaitingBtn">Cancel Waiting / Naya Room Banayein</button>
+</div>
 </section>
 <section class="panel" aria-label="Race game">
 <div id="scene" role="group" aria-label="Three dimensional Indian Racing track"><div id="trackMap" aria-label="Race track map. Your position is green and opponent position is red."><canvas id="trackMapCanvas" width="280" height="340" aria-hidden="true"></canvas><div id="mapLegend"><span><i class="mapDot" style="background:#20d878"></i>You</span><span><i class="mapDot" style="background:#ff3030"></i>Opponent</span></div></div></div><p id="mapStatus" class="muted small">Track map: race shuru hone par positions dikhenge.</p>
@@ -115,7 +119,25 @@ document.addEventListener('pointerdown',unlockAudio,{capture:true});
 document.addEventListener('keydown',unlockAudio,{capture:true});
 function playerName(){return String($('playerName').value||user?.displayName||user?.email?.split('@')[0]||'Indian Player').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,40)||'Indian Player'}
 function hideRoomSetup(){['roomSetupFields','roomSetupActions','roomSetupHelp'].forEach(id=>$(id)?.classList.add('hidden'));}
-function showRoomSetup(){['roomSetupFields','roomSetupActions','roomSetupHelp'].forEach(id=>$(id)?.classList.remove('hidden'));}
+function showRoomSetup(){['roomSetupFields','roomSetupActions','roomSetupHelp'].forEach(id=>$(id)?.classList.remove('hidden'));$('waitingRoomActions').hidden=true;}
+function showWaitingRoom(){hideRoomSetup();$('waitingRoomActions').hidden=false;}
+async function cancelWaitingRoom(){
+ if(!user||!roomId){showRoomSetup();$('waitingRoomActions').hidden=true;return;}
+ try{
+  const snap=await getDoc(roomRef(roomId));
+  if(snap.exists()){
+   const current=snap.data();
+   if(current.status!=='waiting')throw Error('Dost join kar chuka hai; race shuru ho gayi hai.');
+   if(current.createdBy!==user.uid)throw Error('Sirf room banane wala player waiting cancel kar sakta hai.');
+   await updateDoc(roomRef(roomId),{status:'finished',updatedAt:serverTimestamp()});
+  }
+  try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}
+  leaveOnline();mode='idle';finished=false;speed=0;distance=0;lane=0;opponentCar.visible=false;
+  $('roomInput').value='';showRoomSetup();
+  raceStatus('Waiting cancel ho gaya. Ab Create Race Room dabakar naya Room ID bana sakte hain.');
+ }catch(e){raceStatus('Waiting cancel nahi hua: '+e.message+'. Room abhi waiting mein hai.');}
+}
+$('cancelWaitingBtn').addEventListener('click',cancelWaitingRoom);
 async function restoreWaitingRoom(){
  try{
   const saved=JSON.parse(sessionStorage.getItem('indianRacingWaitingRoom')||'null');
@@ -125,7 +147,7 @@ async function restoreWaitingRoom(){
   const data=snap.data();
   if(data.type!=='racing'||!data.players?.some(p=>p.uid===user.uid)||data.status==='finished'){sessionStorage.removeItem('indianRacingWaitingRoom');return;}
   roomId=saved.roomId;room=data;mode='online';distance=0;speed=0;lane=0;nitro=100;finished=false;opponentUid='';opponentState=null;
-  $('roomInput').value=roomId;hideRoomSetup();updatePlayerCarColors();watchRoom();
+  $('roomInput').value=roomId;showWaitingRoom();updatePlayerCarColors();watchRoom();
   raceStatus(data.status==='playing'?'Friend join ho chuka hai. Race shuru! Accelerator dabayein.':'Room '+roomId+' ready hai. Friend ke invitation link kholne ka intezar hai.');
  }catch(e){}
 }
@@ -182,7 +204,7 @@ function watchRoom(){
   if(opponentUnsub){opponentUnsub();opponentUnsub=null;}
   if(opponentUid){
    opponentUnsub=onSnapshot(raceRef(roomId,opponentUid),s=>{opponentState=s.exists()?s.data():null;});
-   hideRoomSetup();try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}raceStatus('Opponent: '+other.name+'. Race shuru! Finish line '+FINISH_DISTANCE+' metre. Accelerator dabayein.');
+   hideRoomSetup();$('waitingRoomActions').hidden=true;try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}raceStatus('Opponent: '+other.name+'. Race shuru! Finish line '+FINISH_DISTANCE+' metre. Accelerator dabayein.');
   }else raceStatus('Friend ke join karne ka intezar hai. Room ID '+roomId+'.');
   if(room.status==='finished'){
    finished=true;speed=0;accelerating=braking=boosting=false;
@@ -200,7 +222,7 @@ async function inviteFriend(){
   sessionStorage.setItem('indianPendingGameInvite',JSON.stringify({game:'racing',roomId,joinUrl:joinUrl.href}));
   sessionStorage.setItem('indianRacingWaitingRoom',JSON.stringify({game:'racing',roomId,uid:user.uid}));
  }catch(e){raceStatus('Invite ready nahi hua: browser session storage allow karein.');return;}
- hideRoomSetup();raceStatus('Invite bhejne ke liye Messages khul raha hai. Wapas aane par yahan sirf waiting status rahega. Friend link kholega to race apne aap shuru hogi.');
+ showWaitingRoom();raceStatus('Invite bhejne ke liye Messages khul raha hai. Wapas aane par Waiting aur Cancel option dikhega. Friend link kholega to race apne aap shuru hogi.');
  location.href=new URL('./index.html#messages',location.href).href;
 }
 function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;crashCount=0;$('hits').textContent='0 / 3';hitObstacles.clear();room=null;opponentState=null;opponentCar.visible=false;updatePlayerCarColors();showRoomSetup();raceStatus('Solo Practice shuru. Accelerator dabayein. Finish distance '+FINISH_DISTANCE+' metre hai.');}

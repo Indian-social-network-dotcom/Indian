@@ -85,35 +85,51 @@ const firebaseConfig={apiKey:'AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs',authDomai
 const $=id=>document.getElementById(id);
 let auth,db,user=null,roomId='',room=null,roomUnsub=null,opponentUnsub=null,opponentState=null;
 let mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false,reversing=false,direction=1;
-let lastFrame=0,lastSync=0,finished=false,opponentUid='',localWon=false,syncBusy=false,crashCount=0,audioEnabled=true,audioCtx=null,engineOsc=null,engineGain=null;
+let lastFrame=0,lastSync=0,finished=false,opponentUid='',localWon=false,syncBusy=false,crashCount=0,audioEnabled=true,audioCtx=null,engineOsc=null,engineOsc2=null,engineGain=null,engineGain2=null,raceStartAtMs=0,countdownKey='',countdownTimers=[];
 const FINISH_DISTANCE=3000;
 function status(t){$('connectionStatus').textContent=t}function raceStatus(t){$('raceStatus').textContent=t}
 function unlockAudio(){
  if(!audioEnabled||audioCtx)return;
  try{
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
-  audioCtx=new AC();engineOsc=audioCtx.createOscillator();engineGain=audioCtx.createGain();
-  engineOsc.type='sawtooth';engineOsc.frequency.value=45;engineGain.gain.value=0.0001;
-  engineOsc.connect(engineGain);engineGain.connect(audioCtx.destination);engineOsc.start();
+  audioCtx=new AC();engineOsc=audioCtx.createOscillator();engineOsc2=audioCtx.createOscillator();engineGain=audioCtx.createGain();engineGain2=audioCtx.createGain();
+  const engineFilter=audioCtx.createBiquadFilter();engineFilter.type='lowpass';engineFilter.frequency.value=900;engineFilter.Q.value=.7;
+  engineOsc.type='sawtooth';engineOsc.frequency.value=42;engineGain.gain.value=0.0001;
+  engineOsc2.type='triangle';engineOsc2.frequency.value=84;engineGain2.gain.value=0.0001;
+  engineOsc.connect(engineGain);engineOsc2.connect(engineGain2);engineGain.connect(engineFilter);engineGain2.connect(engineFilter);engineFilter.connect(audioCtx.destination);engineOsc.start();engineOsc2.start();
   audioCtx.resume?.();
  }catch(e){audioCtx=null;engineOsc=null;engineGain=null;}
 }
 function updateEngineSound(){
- if(!audioEnabled||!audioCtx||!engineOsc||!engineGain)return;
- const t=audioCtx.currentTime;engineOsc.frequency.setTargetAtTime(42+Math.min(190,speed)*1.05,t,.08);
- engineGain.gain.setTargetAtTime(speed>1?Math.min(.055,.008+speed/4200):.0001,t,.12);
+ if(!audioEnabled||!audioCtx||!engineOsc||!engineOsc2||!engineGain||!engineGain2)return;
+ const t=audioCtx.currentTime,rev=Math.min(245,speed);engineOsc.frequency.setTargetAtTime(38+rev*1.18,t,.07);engineOsc2.frequency.setTargetAtTime(78+rev*2.35,t,.07);
+ engineGain.gain.setTargetAtTime(speed>1?Math.min(.085,.018+speed/3000):.0001,t,.1);
+ engineGain2.gain.setTargetAtTime(speed>1?Math.min(.026,.004+speed/9500):.0001,t,.1);
 }
 function tone(startFreq,endFreq,duration,type='sawtooth',volume=.16){
  if(!audioEnabled)return;unlockAudio();if(!audioCtx)return;
  try{const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(startFreq,t);o.frequency.exponentialRampToValueAtTime(Math.max(1,endFreq),t+duration);g.gain.setValueAtTime(volume,t);g.gain.exponentialRampToValueAtTime(.001,t+duration);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+duration);}catch(e){}
 }
 function playCollisionSound(){tone(190,42,.38,'square',.22);}
+function playNitroSound(){tone(150,920,.48,'sawtooth',.12);tone(420,1180,.32,'triangle',.08);}
+function speakCountdown(word,isGo=false){
+ if(!audioEnabled)return;
+ tone(isGo?880:520,isGo?1320:760,.2,isGo?'triangle':'sine',isGo?.2:.13);
+ try{if('speechSynthesis' in window&&typeof SpeechSynthesisUtterance!=='undefined'){window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(word);utterance.lang='en-US';utterance.rate=.92;utterance.pitch=1.08;utterance.volume=1;window.speechSynthesis.speak(utterance);}}catch(e){}
+}
+function startRaceCountdown(startAt,key){
+ const start=Number(startAt);if(!Number.isFinite(start)||start<=0)return;
+ const unique=String(key||roomId)+':'+start;if(countdownKey===unique)return;countdownKey=unique;
+ countdownTimers.forEach(clearTimeout);countdownTimers=[];raceStartAtMs=start;
+ const beats=[{at:start-3000,word:'One',status:'1'},{at:start-2000,word:'Two',status:'2'},{at:start-1000,word:'Three',status:'3'},{at:start,word:'Go!',status:'GO!'}];
+ beats.forEach((beat,index)=>countdownTimers.push(setTimeout(()=>{if(finished)return;raceStatus(index===3?'GO! Race shuru! Accelerator dabayein.':'Race countdown: '+beat.status);speakCountdown(beat.word,index===3);},Math.max(0,beat.at-Date.now()))));
+}
 function playBrakeSound(){tone(720,260,.22,'sawtooth',.09);}
 function playFinishSound(){tone(520,980,.55,'triangle',.16);}
 function playLoseSound(){tone(260,55,.8,'sawtooth',.2);}
 $('soundBtn').addEventListener('click',()=>{
  audioEnabled=!audioEnabled;$('soundBtn').textContent='Sound: '+(audioEnabled?'On':'Off');$('soundBtn').setAttribute('aria-pressed',String(audioEnabled));
- if(audioEnabled){unlockAudio();updateEngineSound();}else if(engineGain&&audioCtx)engineGain.gain.setTargetAtTime(.0001,audioCtx.currentTime,.03);
+ if(audioEnabled){unlockAudio();updateEngineSound();}else if(audioCtx){if(engineGain)engineGain.gain.setTargetAtTime(.0001,audioCtx.currentTime,.03);if(engineGain2)engineGain2.gain.setTargetAtTime(.0001,audioCtx.currentTime,.03);}
 });
 document.addEventListener('pointerdown',unlockAudio,{capture:true});
 document.addEventListener('keydown',unlockAudio,{capture:true});
@@ -188,7 +204,7 @@ async function joinRace(raw){
    const r=snap.data();if(r.type!=='racing')throw Error('Yeh Indian Racing room nahi hai.');
    if(r.players.some(p=>p.uid===user.uid))return;
    if(r.players.length>=2||r.status!=='waiting')throw Error('Room full hai ya race shuru ho chuki hai.');
-   tx.update(ref,{players:[...r.players,{uid:user.uid,name:playerName()}],status:'playing',updatedAt:serverTimestamp()});
+   tx.update(ref,{players:[...r.players,{uid:user.uid,name:playerName()}],status:'playing',raceStartAtMs:Date.now()+4000,updatedAt:serverTimestamp()});
   });
   roomId=id;$('roomInput').value=id;mode='online';const joinedSnap=await getDoc(roomRef(id));room=joinedSnap.data();updatePlayerCarColors();
   await setDoc(raceRef(id,user.uid),{uid:user.uid,name:playerName(),distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
@@ -204,7 +220,9 @@ function watchRoom(){
   if(opponentUnsub){opponentUnsub();opponentUnsub=null;}
   if(opponentUid){
    opponentUnsub=onSnapshot(raceRef(roomId,opponentUid),s=>{opponentState=s.exists()?s.data():null;});
-   hideRoomSetup();$('waitingRoomActions').hidden=true;try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}raceStatus('Opponent: '+other.name+'. Race shuru! Finish line '+FINISH_DISTANCE+' metre. Accelerator dabayein.');
+   hideRoomSetup();$('waitingRoomActions').hidden=true;try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}
+   if(room.status==='playing')startRaceCountdown(room.raceStartAtMs||Date.now()+1000,roomId);
+   raceStatus('Opponent: '+other.name+'. Dono players ready ho rahe hain.');
   }else raceStatus('Friend ke join karne ka intezar hai. Room ID '+roomId+'.');
   if(room.status==='finished'){
    finished=true;speed=0;accelerating=braking=boosting=false;
@@ -225,7 +243,7 @@ async function inviteFriend(){
  showWaitingRoom();raceStatus('Invite bhejne ke liye Messages khul raha hai. Wapas aane par Waiting aur Cancel option dikhega. Friend link kholega to race apne aap shuru hogi.');
  location.href=new URL('./index.html#messages',location.href).href;
 }
-function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;crashCount=0;$('hits').textContent='0 / 3';hitObstacles.clear();room=null;opponentState=null;opponentCar.visible=false;updatePlayerCarColors();showRoomSetup();raceStatus('Solo Practice shuru. Accelerator dabayein. Finish distance '+FINISH_DISTANCE+' metre hai.');}
+function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;crashCount=0;$('hits').textContent='0 / 3';hitObstacles.clear();room=null;opponentState=null;opponentCar.visible=false;updatePlayerCarColors();showRoomSetup();raceStartAtMs=Date.now()+4000;countdownKey='';startRaceCountdown(raceStartAtMs,'practice-'+Date.now());raceStatus('Solo Practice ready. One, Two, Three, Go!');}
 function leaveOnline(reset=true){
  if(roomUnsub)roomUnsub();if(opponentUnsub)opponentUnsub();roomUnsub=null;opponentUnsub=null;roomId='';room=null;opponentUid='';opponentState=null;
  if(reset)mode='idle';
@@ -233,8 +251,8 @@ function leaveOnline(reset=true){
 $('createBtn').addEventListener('click',createRace);$('joinBtn').addEventListener('click',()=>joinRace($('roomInput').value));$('inviteBtn').addEventListener('click',inviteFriend);$('practiceBtn').addEventListener('click',startPractice);
 
 function bindHold(id,fn){const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();fn(true);el.setPointerCapture?.(e.pointerId)});['pointerup','pointercancel','lostpointercapture'].forEach(ev=>el.addEventListener(ev,()=>fn(false)));el.addEventListener('contextmenu',e=>e.preventDefault());}
-bindHold('leftBtn',v=>left=v);bindHold('rightBtn',v=>right=v);bindHold('accelerateBtn',v=>accelerating=v);bindHold('brakeBtn',v=>{braking=v;if(v)playBrakeSound();});bindHold('nitroBtn',v=>boosting=v);bindHold('reverseBtn',v=>{reversing=v;if(v)playBrakeSound();});
-window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=true;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=true;if(e.key==='ArrowUp'||e.key.toLowerCase()==='w')accelerating=true;if((e.key==='ArrowDown'||e.key.toLowerCase()==='s')&&!braking)playBrakeSound();if(e.key==='ArrowDown'||e.key.toLowerCase()==='s')braking=true;if(e.code==='Space')boosting=true;if(e.key.toLowerCase()==='r')reversing=true;});
+bindHold('leftBtn',v=>left=v);bindHold('rightBtn',v=>right=v);bindHold('accelerateBtn',v=>accelerating=v);bindHold('brakeBtn',v=>{braking=v;if(v)playBrakeSound();});bindHold('nitroBtn',v=>{if(v&&!boosting)playNitroSound();boosting=v;});bindHold('reverseBtn',v=>{reversing=v;if(v)playBrakeSound();});
+window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=true;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=true;if(e.key==='ArrowUp'||e.key.toLowerCase()==='w')accelerating=true;if((e.key==='ArrowDown'||e.key.toLowerCase()==='s')&&!braking)playBrakeSound();if(e.key==='ArrowDown'||e.key.toLowerCase()==='s')braking=true;if(e.code==='Space'&&!boosting)playNitroSound();if(e.code==='Space')boosting=true;if(e.key.toLowerCase()==='r')reversing=true;});
 window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=false;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=false;if(e.key==='ArrowUp'||e.key.toLowerCase()==='w')accelerating=false;if(e.key==='ArrowDown'||e.key.toLowerCase()==='s')braking=false;if(e.code==='Space')boosting=false;if(e.key.toLowerCase()==='r')reversing=false;});
 window.addEventListener('blur',()=>{left=right=accelerating=braking=boosting=reversing=false;});
 
@@ -348,7 +366,7 @@ async function loseByDrums(){
 }
 function animate(now){
  requestAnimationFrame(animate);const dt=Math.min(.05,(now-lastFrame)/1000||0);lastFrame=now;
- if(mode==='practice'||(mode==='online'&&room?.status==='playing'&&!finished)){
+ if((mode==='practice'||(mode==='online'&&room?.status==='playing'))&&Date.now()>=raceStartAtMs&&!finished){
   if(reversing){
    if(direction===1&&speed>0){speed=Math.max(0,speed-155*dt);if(speed===0)direction=-1;}
    else{direction=-1;speed=Math.min(70,speed+48*dt);}

@@ -37,6 +37,11 @@ jobs:
       - name: Install test dependencies
         working-directory: firestore-rules-tests
         run: npm install
+      - name: Report exact npm security advisories
+        working-directory: firestore-rules-tests
+        run: |
+          npm audit --json > npm-audit.json || true
+          node --input-type=module -e "import fs from 'node:fs'; const a=JSON.parse(fs.readFileSync('npm-audit.json','utf8')); for (const [name,item] of Object.entries(a.vulnerabilities || {})) console.log(JSON.stringify({name,severity:item.severity,range:item.range,fixAvailable:item.fixAvailable,via:item.via.map(v=>typeof v==='string'?v:{name:v.name,title:v.title,url:v.url,range:v.range})})); console.log('Total:', JSON.stringify(a.metadata?.vulnerabilities || {}));"
       - name: Check application JavaScript syntax
         working-directory: firestore-rules-tests
         run: npm run check:syntax

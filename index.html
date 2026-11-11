@@ -6129,7 +6129,10 @@ else{
                 setFirebaseAuthStatus("Signed in as " + authName + ". UID: " + user.uid);
             }else{
                 stopIndianPresence();
+                stopIndianTypingWatch();
                 if(publicProfilesUnsubscribe){try{publicProfilesUnsubscribe();}catch(e){} publicProfilesUnsubscribe=null;}
+                separatedProfileUnsubs.forEach(function(unsub){try{unsub();}catch(e){}});separatedProfileUnsubs=[];
+                separatedStoriesByUid.clear();separatedPresenceByUid.clear();separatedLiveByUid.clear();separatedReactionsById.clear();
                 recentFirebaseMessageUnsubs.forEach(fn=>{try{fn();}catch(e){}});recentFirebaseMessageUnsubs=[];recentFirebaseMessageUid="";recentFirebaseMessagesById.clear();
                 window.indianFirebaseAllProfiles=[];window.indianFirebasePublicProfiles=[];
             }

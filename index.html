@@ -15,6 +15,32 @@
 <!-- Call buttons moved below Send Message/Clear for easier access in the chat. -->
 
 <link rel="stylesheet" href="style.css">
+<!-- Local-only Firebase Emulator switch. Never enabled on the public site unless the URL explicitly includes indianEmulator=1. -->
+<script>
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  window.__indianFirebaseEmulatorMode = params.get("indianEmulator") === "1";
+  if (!window.__indianFirebaseEmulatorMode) return;
+  var originalFetch = window.fetch.bind(window);
+  var blockedHosts = [
+    "api.cloudinary.com",
+    "indian-message-push.sadrealam892075.workers.dev",
+    "firebasestorage.googleapis.com",
+    "identitytoolkit.googleapis.com",
+    "securetoken.googleapis.com",
+    "firestore.googleapis.com",
+    "fcmregistrations.googleapis.com"
+  ];
+  window.fetch = function(input, init){
+    var url = "";
+    try { url = new URL(typeof input === "string" ? input : input.url, window.location.href).hostname; } catch(e) {}
+    if (blockedHosts.indexOf(url) !== -1) {
+      return Promise.reject(new Error("External production service blocked during local Firebase Emulator testing."));
+    }
+    return originalFetch(input, init);
+  };
+})();
+</script>
 <!-- OneSignal Web SDK: configured for the Indian GitHub Pages project subpath. -->
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer onerror="window.__indianOneSignalSdkLoadFailed = true; window.addEventListener('DOMContentLoaded', function(){ var e=document.getElementById('indianNotificationSetupStatus'); if(e) e.textContent='Notifications are temporarily unavailable. You can continue to Indian.'; });"></script>
 <script>
@@ -38,6 +64,7 @@
     if (el) el.textContent = String(message || "");
   }
   OneSignalDeferred.push(async function (OneSignal) {
+    if (window.__indianFirebaseEmulatorMode) return;
     try {
       await OneSignal.init({
         appId: "019d756d-8ff5-4c09-bcab-75ace208d8da",
@@ -1696,7 +1723,7 @@ window.applyIndianPresenceProfiles=function(profiles){
         const meta=getMessageMeta(person.id);
         meta.online=online;
         meta.lastSeen=online?"Online now":indianFormatPresenceLastSeen(Number(profile.lastSeenAtMs)||activeAt);
-        meta.typing=!!(profile.typingToUid===window.firebaseCurrentUid && Number(profile.typingAtMs)>now-7000 && online);
+        meta.typing=!!(profile.typingToUid===window.firebaseCurrentUid && Number(profile.typingAtMs)>now-7000 && Number(profile.typingAtMs)<=now && online);
     });
     if(typeof renderConversationList==="function")renderConversationList();
     if(selectedConversationPersonId!==null){
@@ -1968,6 +1995,7 @@ function indianOpenChatView(){
     const announcer=document.getElementById("indianRouteAnnouncer");if(announcer)announcer.textContent="Chat opened.";
 }
 function indianCloseChatView(){
+    stopIndianTypingWatch();
     if(window.__indianChatRecognition){try{window.__indianChatRecognition.stop();}catch(e){}window.__indianChatRecognition=null;}
     const mic=document.getElementById("indianChatVoiceTypingButton");
     if(mic){mic.textContent="🎙";mic.setAttribute("aria-label","Start voice typing");}
@@ -1993,6 +2021,7 @@ function openConversation(personId){
     if(staleGroupControls) staleGroupControls.hidden = true;
 
     selectedConversationPersonId = personId;
+    startIndianTypingWatch(personId);
     indianOpenChatView();
     editingMessageIndex = null;
     selectedReplyMessageIndex = null;
@@ -4713,6 +4742,7 @@ window.loadIndianImageCompression = function(){
 <!-- Firebase modular browser SDK. Version matches the current Firebase web CDN guidance. -->
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { connectAuthEmulator } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
     getAuth,
     createUserWithEmailAndPassword,
@@ -4736,7 +4766,8 @@ import {
     query,
     where,
     onSnapshot,
-    serverTimestamp
+    serverTimestamp,
+    connectFirestoreEmulator
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 import { getMessaging, getToken, onMessage, isSupported } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging.js";
@@ -4761,6 +4792,16 @@ const firebaseConfig = {
     appId: "1:333987809341:web:27a351f770aa7b4e808254"
 };
 
+const indianFirebaseEmulatorMode = window.__indianFirebaseEmulatorMode === true;
+const activeFirebaseConfig = indianFirebaseEmulatorMode ? {
+    apiKey: "demo-api-key",
+    authDomain: "demo-indian-public-profile-migration.firebaseapp.com",
+    projectId: "demo-indian-public-profile-migration",
+    storageBucket: "demo-indian-public-profile-migration.appspot.com",
+    messagingSenderId: "000000000000",
+    appId: "1:000000000000:web:emulator"
+} : firebaseConfig;
+
 const firebaseRequiredKeys = [
     "apiKey",
     "authDomain",
@@ -4770,7 +4811,7 @@ const firebaseRequiredKeys = [
 ];
 
 const firebaseConfigReady = firebaseRequiredKeys.every(function(key){
-    const value = firebaseConfig[key];
+    const value = activeFirebaseConfig[key];
     return typeof value === "string" && value.trim() !== "" && !value.includes("PASTE_YOUR_");
 });
 
@@ -5442,6 +5483,26 @@ function applyFirestoreConversation(personId){
     }
 }
 
+async function markFirestoreIncomingMessagesRead(personId){
+    if(!firebaseDb || !firebaseCurrentUser
+       || String(selectedConversationPersonId) !== String(personId)) return;
+    const bucket = firestoreMessageBuckets.get(String(personId));
+    if(!bucket) return;
+    const currentUid = firebaseCurrentUser.uid;
+    const updates = [];
+    bucket.incoming.forEach(function(message){
+        if(!message || message.receiverUid !== currentUid
+           || message.status === "read" || !message.firestoreId) return;
+        updates.push(
+            updateDoc(doc(firebaseDb, "messages", message.firestoreId), {read:true})
+                .catch(function(error){
+                    console.warn("Could not mark incoming message as read:", error);
+                })
+        );
+    });
+    if(updates.length) await Promise.all(updates);
+}
+
 function subscribeFirestoreMessages(personId){
     if(!firebaseDb || !firebaseCurrentUser){
         setFirebaseMessageStatus("Sign in to start chatting.");
@@ -5455,7 +5516,12 @@ function subscribeFirestoreMessages(personId){
     }
 
     const key = String(personId);
-    if(firestoreMessageUnsubs.has(key)) return true;
+    if(firestoreMessageUnsubs.has(key)){
+        markFirestoreIncomingMessagesRead(personId).catch(function(error){
+            console.warn("Incoming message Read Receipt update failed:", error);
+        });
+        return true;
+    }
 
     const currentUid = firebaseCurrentUser.uid;
     const person = typeof window.getIndianPersonById === "function" ? window.getIndianPersonById(personId) : null;
@@ -5505,6 +5571,11 @@ function subscribeFirestoreMessages(personId){
         });
         incomingReady = true;
         applyFirestoreConversation(personId);
+        if(String(selectedConversationPersonId) === key){
+            markFirestoreIncomingMessagesRead(personId).catch(function(error){
+                console.warn("Incoming message Read Receipt update failed:", error);
+            });
+        }
         if(outgoingReady && incomingReady) setFirebaseMessageStatus("Firebase Messages connected for " + (person ? person.name : "this user") + ".");
     }, function(error){
         setFirebaseMessageStatus("Firebase Messages read failed: " + sanitizePlainText(error.message, 250));
@@ -5664,30 +5735,48 @@ window.indianVoteInMessagePoll=async function(messageId,optionId,personId){
 
 async function saveFirestoreMessageReaction(messageId, emoji){
     if(!firebaseDb || !firebaseCurrentUser || !messageId) throw new Error("Sign in to save message reactions.");
-    const ref = doc(firebaseDb, "publicProfiles", firebaseCurrentUser.uid);
-    const snap = await getDoc(ref);
-    const data = snap.exists() ? (snap.data() || {}) : {};
-    const reactions = Object.assign({}, data.messageReactions || {});
-    reactions[String(messageId)] = {emoji:String(emoji).slice(0,8),createdAtMs:Date.now()};
-    const entries = Object.entries(reactions).sort((a,b)=>Number((a[1]||{}).createdAtMs||0)-Number((b[1]||{}).createdAtMs||0));
-    const limited = Object.fromEntries(entries.slice(-80));
-    if(snap.exists()) await updateDoc(ref,{messageReactions:limited,updatedAt:serverTimestamp()});
-    else await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||"Indian User",60),messageReactions:limited,updatedAt:serverTimestamp()},{merge:true});
+    const uid=firebaseCurrentUser.uid;
+    const separated=indianOwnProfileUsesSeparatedSchema(uid);
+    const ref = doc(firebaseDb, "publicProfiles", uid);
+    const reactionCreatedAtMs=Date.now();
+    if(!separated){
+        const snap = await getDoc(ref);
+        const data = snap.exists() ? (snap.data() || {}) : {};
+        const reactions = Object.assign({}, data.messageReactions || {});
+        reactions[String(messageId)] = {emoji:String(emoji).slice(0,8),createdAtMs:reactionCreatedAtMs};
+        const entries = Object.entries(reactions).sort((a,b)=>Number((a[1]||{}).createdAtMs||0)-Number((b[1]||{}).createdAtMs||0));
+        const limited = Object.fromEntries(entries.slice(-80));
+        if(snap.exists()) await updateDoc(ref,{messageReactions:limited,updatedAt:serverTimestamp()});
+        else await setDoc(ref,{uid:uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||"Indian User",60),messageReactions:limited,updatedAt:serverTimestamp()},{merge:true});
+    }
+    const reactionDocId=uid+"_"+encodeURIComponent(String(messageId));
+    if(reactionDocId.length<=800){
+        await setDoc(doc(firebaseDb,"messageReactions",reactionDocId),{
+            uid:firebaseCurrentUser.uid,messageId:String(messageId),emoji:String(emoji).slice(0,8),createdAtMs:reactionCreatedAtMs
+        },{merge:true}).catch(function(error){console.warn("Separated reaction write is waiting for migration Rules:",error);});
+    }else{
+        console.warn("Separated reaction write skipped because the message ID exceeds the migration Rules limit.");
+    }
     return true;
 }
 
 async function cleanupExpiredIndianStories(){
     try {
         if(!firebaseDb || !firebaseCurrentUser) return false;
-        const ref = doc(firebaseDb, "publicProfiles", firebaseCurrentUser.uid);
-        const snap = await getDoc(ref);
+        const uid=firebaseCurrentUser.uid;
+        const separated=indianOwnProfileUsesSeparatedSchema(uid);
+        const sourceRef=doc(firebaseDb,separated?"userStories":"publicProfiles",uid);
+        const snap = await getDoc(sourceRef);
         if(!snap.exists()) return false;
         const data = snap.data() || {};
         const nowMs = Date.now();
         const oldStories = Array.isArray(data.activeStories) ? data.activeStories : [];
         const activeStories = oldStories.filter(item => item && Number(item.expiresAt) > nowMs);
         if(activeStories.length !== oldStories.length){
-            await setDoc(ref, {activeStories: activeStories, updatedAt: serverTimestamp()}, {merge:true});
+            if(!separated) await setDoc(sourceRef, {activeStories: activeStories, updatedAt: serverTimestamp()}, {merge:true});
+            await setDoc(doc(firebaseDb,"userStories",uid),{
+                uid:uid,activeStories:activeStories,lastStoryAtMs:Number(data.lastStoryAtMs)||0
+            },{merge:true}).catch(function(error){console.warn("Separated story cleanup is waiting for migration Rules:",error);});
         }
         return true;
     } catch(error) {
@@ -5703,8 +5792,11 @@ async function saveIndianStoryRecord(story){
     const imageData=story && typeof story.imageData==="string" && story.imageData.startsWith("data:image/") && story.imageData.length<=70000?story.imageData:"";
     if(mediaType==="video" && !mediaUrl) throw new Error("Story video upload link is missing. Please upload the video again.");
     if(mediaType!=="video" && !imageData) throw new Error("The compressed story photo is missing or too large. Choose a smaller photo.");
-    const ref=doc(firebaseDb,"publicProfiles",firebaseCurrentUser.uid);
-    const snap=await getDoc(ref);
+    const uid=firebaseCurrentUser.uid;
+    const separated=indianOwnProfileUsesSeparatedSchema(uid);
+    const ref=doc(firebaseDb,"publicProfiles",uid);
+    const sourceRef=doc(firebaseDb,separated?"userStories":"publicProfiles",uid);
+    const snap=await getDoc(sourceRef);
     const data=snap.exists()?(snap.data()||{}):{};
     const nowMs=Date.now();
     const active=(Array.isArray(data.activeStories)?data.activeStories:[]).filter(item=>item && Number(item.expiresAt)>nowMs);
@@ -5715,18 +5807,30 @@ async function saveIndianStoryRecord(story){
     if(imageData)record.imageData=imageData;
     if(mediaUrl)record.mediaUrl=mediaUrl;
     active.push(record);
-    await setDoc(ref,{uid:firebaseCurrentUser.uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),activeStories:active.slice(-3),lastStoryAtMs:nowMs,updatedAt:serverTimestamp()},{merge:true});
+    const finalStories=active.slice(-3);
+    if(!separated){
+        await setDoc(ref,{uid:uid,displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),activeStories:finalStories,lastStoryAtMs:nowMs,updatedAt:serverTimestamp()},{merge:true});
+    }
+    await setDoc(doc(firebaseDb,"userStories",uid),{
+        uid:uid,activeStories:finalStories,lastStoryAtMs:nowMs
+    },{merge:true}).catch(function(error){console.warn("Separated story write is waiting for migration Rules:",error);});
     return true;
 }
 
 async function setIndianFirestoreLiveStatus(isLiveNow, startedAtMs, liveTitle){
     if(!firebaseDb || !firebaseCurrentUser) throw new Error("Sign in to share your live status.");
-    await setDoc(doc(firebaseDb, "publicProfiles", firebaseCurrentUser.uid),{
-      uid:firebaseCurrentUser.uid,
-      displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),
-      liveSession:{isLive:!!isLiveNow,startedAtMs:isLiveNow?(Number(startedAtMs)||Date.now()):0,title:isLiveNow?sanitizePlainText(liveTitle||"",100):"",updatedAtMs:Date.now()},
-      updatedAt:serverTimestamp()
-    },{merge:true});
+    const liveSession={isLive:!!isLiveNow,startedAtMs:isLiveNow?(Number(startedAtMs)||Date.now()):0,title:isLiveNow?sanitizePlainText(liveTitle||"",100):"",updatedAtMs:Date.now()};
+    const uid=firebaseCurrentUser.uid;
+    if(!indianOwnProfileUsesSeparatedSchema(uid)){
+        await setDoc(doc(firebaseDb, "publicProfiles", uid),{
+          uid:uid,
+          displayName:sanitizePlainText(firebaseCurrentUser.displayName||firebaseCurrentUser.email||"Indian User",60),
+          liveSession:liveSession,updatedAt:serverTimestamp()
+        },{merge:true});
+    }
+    await setDoc(doc(firebaseDb,"userLiveStatus",uid),{
+        uid:firebaseCurrentUser.uid,liveSession:liveSession
+    },{merge:true}).catch(function(error){console.warn("Separated live-status write is waiting for migration Rules:",error);});
     return true;
 }
 
@@ -5746,13 +5850,22 @@ let indianPresenceHeartbeat=null;
 let indianPresenceDisplayTimer=null;
 let indianTypingExpiry=null;
 let indianLastTypingWriteAt=0;
+function indianOwnProfileUsesSeparatedSchema(uid){
+    if(firebaseCurrentUser&&firebaseCurrentUser.uid===uid&&indianCurrentUserProfileSchemaVersion>=2)return true;
+    const own=(window.indianFirebaseAllProfiles||[]).find(function(profile){return profile.uid===uid;});
+    return !!(own&&Number(own.profileSchemaVersion)>=2);
+}
 async function writeIndianPresence(isOnline,lastSeenAtMs){
     if(!firebaseDb||!firebaseCurrentUser)return;
     const uid=firebaseCurrentUser.uid;
     const now=Date.now();
     const patch={uid:uid,presenceOnline:!!isOnline,presenceAtMs:now};
     if(!isOnline)patch.lastSeenAtMs=Number(lastSeenAtMs)||now;
-    await setDoc(doc(firebaseDb,"publicProfiles",uid),patch,{merge:true});
+    if(!indianOwnProfileUsesSeparatedSchema(uid)){
+        await setDoc(doc(firebaseDb,"publicProfiles",uid),patch,{merge:true});
+    }
+    await setDoc(doc(firebaseDb,"userPresence",uid),patch,{merge:true})
+        .catch(function(error){console.warn("Separated presence write is waiting for migration Rules:",error);});
 }
 function startIndianPresence(){
     if(!firebaseDb||!firebaseCurrentUser)return;
@@ -5780,23 +5893,75 @@ window.indianSetMessageTyping=async function(personId,isTyping){
     if(isTyping){
         indianTypingExpiry=setTimeout(function(){
             if(firebaseDb&&firebaseCurrentUser&&firebaseCurrentUser.uid===uid){
-                setDoc(doc(firebaseDb,"publicProfiles",uid),{typingToUid:"",typingAtMs:0},{merge:true}).catch(function(){});
+                if(!indianOwnProfileUsesSeparatedSchema(uid)){
+                    setDoc(doc(firebaseDb,"publicProfiles",uid),{typingToUid:"",typingAtMs:0},{merge:true}).catch(function(){});
+                }
+                deleteDoc(doc(firebaseDb,"userTyping",uid)).catch(function(error){console.warn("Separated typing clear is waiting for migration Rules:",error);});
             }
         },6500);
         if(now-indianLastTypingWriteAt<1800)return;
     }
     indianLastTypingWriteAt=now;
-    await setDoc(doc(firebaseDb,"publicProfiles",uid),{
-        uid:uid,typingToUid:isTyping?peerUid:"",typingAtMs:isTyping?now:0
-    },{merge:true});
+    if(!indianOwnProfileUsesSeparatedSchema(uid)){
+        await setDoc(doc(firebaseDb,"publicProfiles",uid),{
+            uid:uid,typingToUid:isTyping?peerUid:"",typingAtMs:isTyping?now:0
+        },{merge:true});
+    }
+    if(isTyping){
+        await setDoc(doc(firebaseDb,"userTyping",uid),{uid:uid,typingToUid:peerUid,typingAtMs:now},{merge:true})
+            .catch(function(error){console.warn("Separated typing write is waiting for migration Rules:",error);});
+    }else{
+        await deleteDoc(doc(firebaseDb,"userTyping",uid))
+            .catch(function(error){console.warn("Separated typing clear is waiting for migration Rules:",error);});
+    }
 };
+let indianTypingWatchTimer=null;
+let indianTypingWatchUid="";
+function stopIndianTypingWatch(){
+    if(indianTypingWatchTimer){clearInterval(indianTypingWatchTimer);indianTypingWatchTimer=null;}
+    const oldUid=indianTypingWatchUid;indianTypingWatchUid="";
+    if(oldUid&&Array.isArray(window.indianFirebasePublicProfiles)){
+        const profile=window.indianFirebasePublicProfiles.find(function(item){return item.uid===oldUid;});
+        if(profile){profile.typingToUid="";profile.typingAtMs=0;if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(window.indianFirebasePublicProfiles);}
+    }
+}
+function startIndianTypingWatch(personId){
+    stopIndianTypingWatch();
+    if(!firebaseDb||!firebaseCurrentUser)return;
+    const peerUid=getFirestoreMessagePersonUid(personId);
+    if(!peerUid)return;
+    indianTypingWatchUid=peerUid;
+    async function refreshTyping(){
+        if(!firebaseDb||!firebaseCurrentUser||indianTypingWatchUid!==peerUid)return;
+        try{
+            const snap=await getDoc(doc(firebaseDb,"userTyping",peerUid));
+            const data=snap.exists()?(snap.data()||{}):{};
+            const active=snap.exists()&&data.typingToUid===firebaseCurrentUser.uid&&Number(data.typingAtMs||0)>0&&Number(data.typingAtMs||0)<=Date.now()&&Date.now()-Number(data.typingAtMs||0)<7000;
+            const profile=(window.indianFirebasePublicProfiles||[]).find(function(item){return item.uid===peerUid;});
+            if(profile){profile.typingToUid=active?firebaseCurrentUser.uid:"";profile.typingAtMs=active?Number(data.typingAtMs)||0:0;if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(window.indianFirebasePublicProfiles);}
+        }catch(error){
+            // A permission denial means this person is not currently typing to us.
+            const profile=(window.indianFirebasePublicProfiles||[]).find(function(item){return item.uid===peerUid;});
+            if(profile){profile.typingToUid="";profile.typingAtMs=0;if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(window.indianFirebasePublicProfiles);}
+        }
+    }
+    refreshTyping();
+    indianTypingWatchTimer=setInterval(refreshTyping,3000);
+}
 window.addEventListener("pagehide",function(){
     if(firebaseDb&&firebaseCurrentUser){
         const uid=firebaseCurrentUser.uid;
         const now=Date.now();
-        setDoc(doc(firebaseDb,"publicProfiles",uid),{
-            uid:uid,presenceOnline:false,presenceAtMs:now,lastSeenAtMs:now,typingToUid:"",typingAtMs:0
+        const legacyOfflinePatch={uid:uid,presenceOnline:false,presenceAtMs:now,lastSeenAtMs:now};
+        if(!indianOwnProfileUsesSeparatedSchema(uid)){
+            legacyOfflinePatch.typingToUid="";
+            legacyOfflinePatch.typingAtMs=0;
+            setDoc(doc(firebaseDb,"publicProfiles",uid),legacyOfflinePatch,{merge:true}).catch(function(){});
+        }
+        setDoc(doc(firebaseDb,"userPresence",uid),{
+            uid:uid,presenceOnline:false,presenceAtMs:now,lastSeenAtMs:now
         },{merge:true}).catch(function(){});
+        deleteDoc(doc(firebaseDb,"userTyping",uid)).catch(function(){});
     }
 });
 
@@ -5844,16 +6009,20 @@ window.getIndianStoryViewerSummary=getIndianStoryViewerSummary;
 window.saveIndianStoryToFirestore = saveIndianStoryRecord;
 window.setIndianLiveStatus = setIndianFirestoreLiveStatus;
 
+let indianCurrentUserProfileSchemaVersion=0;
 async function ensureCurrentUserPublicProfile(){
     if(!firebaseDb || !firebaseCurrentUser) return false;
     try{
         const user = firebaseCurrentUser;
+        const profileRef=doc(firebaseDb,"publicProfiles",user.uid);
         const safeName = sanitizePlainText(user.displayName || (user.email ? user.email.split("@")[0] : "Indian User"), 60) || "Indian User";
-        await setDoc(doc(firebaseDb, "publicProfiles", user.uid), {
+        await setDoc(profileRef, {
             uid: user.uid,
             displayName: safeName,
             updatedAt: serverTimestamp()
         }, {merge:true});
+        const profileSnap=await getDoc(profileRef);
+        indianCurrentUserProfileSchemaVersion=profileSnap.exists()?Number((profileSnap.data()||{}).profileSchemaVersion)||1:1;
         return true;
     }
     catch(error){
@@ -5863,6 +6032,11 @@ async function ensureCurrentUserPublicProfile(){
 }
 
 let publicProfilesUnsubscribe = null;
+let separatedProfileUnsubs = [];
+const separatedStoriesByUid = new Map();
+const separatedPresenceByUid = new Map();
+const separatedLiveByUid = new Map();
+const separatedReactionsById = new Map();
 let recentFirebaseMessageUnsubs = [];
 let recentFirebaseMessageUid = "";
 const recentFirebaseMessagesById = new Map();
@@ -5920,48 +6094,87 @@ function startRecentFirebaseMessages(){
     watch(outgoing);watch(incoming);
 }
 
+function publishIndianCombinedProfiles(legacyProfiles){
+    const allProfiles=(legacyProfiles||[]).map(function(profile){
+        const combined=Object.assign({},profile);
+        if(Number(profile.profileSchemaVersion)>=2){
+            const stories=separatedStoriesByUid.get(profile.uid);
+            const presence=separatedPresenceByUid.get(profile.uid);
+            const live=separatedLiveByUid.get(profile.uid);
+            // For migrated profiles, a missing separated document means empty state.
+            // Never fall back to private legacy fields left in publicProfiles.
+            combined.activeStories=stories&&Array.isArray(stories.activeStories)?stories.activeStories:[];
+            combined.lastStoryAtMs=stories?Number(stories.lastStoryAtMs)||0:0;
+            combined.presenceOnline=presence?presence.presenceOnline===true:false;
+            combined.presenceAtMs=presence?Number(presence.presenceAtMs)||0:0;
+            combined.lastSeenAtMs=presence?Number(presence.lastSeenAtMs)||0:0;
+            combined.liveSession=live?live.liveSession||null:null;
+            // Typing is fetched only for the currently open personal conversation.
+            combined.typingToUid="";combined.typingAtMs=0;
+            const migratedReactions={};
+            separatedReactionsById.forEach(function(value){
+                if(value&&value.uid===profile.uid&&value.messageId)migratedReactions[String(value.messageId)]={emoji:String(value.emoji||"").slice(0,8),createdAtMs:Number(value.createdAtMs)||0};
+            });
+            combined.messageReactions=migratedReactions;
+        }
+        return combined;
+    }).filter(function(profile){return profile.uid&&profile.displayName;});
+    window.indianFirebaseAllProfiles=allProfiles;
+    const profiles=allProfiles.filter(function(profile){return profile.uid!==firebaseCurrentUser.uid;});
+    window.indianFirebasePublicProfiles=profiles;
+    if(typeof window.addFirebasePeopleToIndian==="function")window.addFirebasePeopleToIndian(profiles);
+    if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(profiles);
+    const own=allProfiles.find(profile=>profile.uid===firebaseCurrentUser.uid);
+    if(own&&own.displayName&&typeof window.applyIndianIdentity==="function")window.applyIndianIdentity(own.displayName,own.bio||window.profileBio||"",own.photoURL||window.profilePhotoURL||"",{preserveActiveEdit:true});
+    const shared={};
+    allProfiles.forEach(function(profile){
+        const reactions=profile.messageReactions&&typeof profile.messageReactions==="object"?profile.messageReactions:{};
+        Object.keys(reactions).forEach(function(messageId){
+            const value=reactions[messageId];const emoji=typeof value==="string"?value:String(value&&value.emoji||"");
+            if(!emoji)return;if(!shared[messageId])shared[messageId]={};shared[messageId][emoji]=(Number(shared[messageId][emoji])||0)+1;
+        });
+    });
+    if(typeof window.applyIndianSharedMessageReactions==="function")window.applyIndianSharedMessageReactions(shared);
+    if(selectedConversationPersonId!==null&&getMessagesForPerson(selectedConversationPersonId).some(function(m){return !!m.poll;}))renderChat(selectedConversationPersonId);
+    if(typeof window.renderIndianOnlineStories==="function")window.renderIndianOnlineStories();
+    if(typeof window.renderIndianLivePeople==="function")window.renderIndianLivePeople();
+    startRecentFirebaseMessages();
+    if(profiles.length===0)setFirebaseMessageStatus("Firebase is connected. No other Firebase users are available yet.");
+}
+
 async function loadFirebasePublicProfiles(){
-    if(!firebaseDb || !firebaseCurrentUser) return;
+    if(!firebaseDb||!firebaseCurrentUser)return;
     try{
         await ensureCurrentUserPublicProfile();
         if(publicProfilesUnsubscribe){try{publicProfilesUnsubscribe();}catch(e){}}
+        separatedProfileUnsubs.forEach(function(unsub){try{unsub();}catch(e){}});
+        separatedProfileUnsubs=[];
+        separatedStoriesByUid.clear();separatedPresenceByUid.clear();separatedLiveByUid.clear();separatedReactionsById.clear();
+        let latestLegacyProfiles=[];
+        function refreshCombined(){publishIndianCombinedProfiles(latestLegacyProfiles);}
         publicProfilesUnsubscribe=onSnapshot(collection(firebaseDb,"publicProfiles"),function(snapshot){
-            const allProfiles=snapshot.docs.map(function(d){return Object.assign({uid:d.id},d.data()||{});}).filter(function(profile){return profile.uid && profile.displayName;});
-            window.indianFirebaseAllProfiles=allProfiles;
-            const profiles=allProfiles.filter(function(profile){return profile.uid!==firebaseCurrentUser.uid;});
-            window.indianFirebasePublicProfiles=profiles;
-            if(typeof window.addFirebasePeopleToIndian === "function") window.addFirebasePeopleToIndian(profiles);
-            if(typeof window.applyIndianPresenceProfiles === "function") window.applyIndianPresenceProfiles(profiles);
-            const own=allProfiles.find(profile=>profile.uid===firebaseCurrentUser.uid);
-            if(own && own.displayName && typeof window.applyIndianIdentity==="function"){
-                window.applyIndianIdentity(own.displayName,own.bio||window.profileBio||"",own.photoURL||window.profilePhotoURL||"",{preserveActiveEdit:true});
-            }
-            const shared={};
-            allProfiles.forEach(profile=>{
-                const reactions=profile.messageReactions&&typeof profile.messageReactions==="object"?profile.messageReactions:{};
-                Object.keys(reactions).forEach(messageId=>{
-                    const value=reactions[messageId];const emoji=typeof value==="string"?value:String(value&&value.emoji||"");
-                    if(!emoji)return;
-                    if(!shared[messageId])shared[messageId]={};
-                    shared[messageId][emoji]=(Number(shared[messageId][emoji])||0)+1;
-                });
-            });
-            if(typeof window.applyIndianSharedMessageReactions==="function")window.applyIndianSharedMessageReactions(shared);
-            if(selectedConversationPersonId!==null && getMessagesForPerson(selectedConversationPersonId).some(function(m){return !!m.poll;}))renderChat(selectedConversationPersonId);
-            if(typeof window.renderIndianOnlineStories==="function")window.renderIndianOnlineStories();
-            if(typeof window.renderIndianLivePeople==="function")window.renderIndianLivePeople();
-            startRecentFirebaseMessages();
-            if(profiles.length===0)setFirebaseMessageStatus("Firebase is connected. No other Firebase users are available yet.");
+            latestLegacyProfiles=snapshot.docs.map(function(d){return Object.assign({uid:d.id},d.data()||{});});
+            refreshCombined();
         },function(error){
-            setFirebaseMessageStatus("Firebase user discovery / online story updates need the publicProfiles Firestore Rule: "+sanitizePlainText(error.message,250));
+            setFirebaseMessageStatus("Firebase user discovery needs the publicProfiles Firestore Rule: "+sanitizePlainText(error.message,250));
         });
+        function watchSeparated(collectionName,map,description){
+            const unsubscribe=onSnapshot(collection(firebaseDb,collectionName),function(snapshot){
+                map.clear();snapshot.docs.forEach(function(item){map.set(item.id,Object.assign({uid:item.id},item.data()||{}));});refreshCombined();
+            },function(error){console.warn("Separated "+description+" listener is not active yet:",error);});
+            separatedProfileUnsubs.push(unsubscribe);
+        }
+        watchSeparated("userStories",separatedStoriesByUid,"Stories");
+        watchSeparated("userPresence",separatedPresenceByUid,"Presence");
+        watchSeparated("userLiveStatus",separatedLiveByUid,"Live Status");
+        const reactionUnsubscribe=onSnapshot(collection(firebaseDb,"messageReactions"),function(snapshot){
+            separatedReactionsById.clear();snapshot.docs.forEach(function(item){separatedReactionsById.set(item.id,item.data()||{});});refreshCombined();
+        },function(error){console.warn("Separated message reactions listener is not active yet:",error);});
+        separatedProfileUnsubs.push(reactionUnsubscribe);
+    }catch(error){
+        setFirebaseMessageStatus("Firebase user discovery needs the publicProfiles Firestore Rule: "+sanitizePlainText(error.message,250));
     }
-    catch(error){
-        setFirebaseMessageStatus("Firebase user discovery needs the publicProfiles Firestore Rule: " + sanitizePlainText(error.message, 250));
-    }
-}
-
-window.refreshIndianPublicProfiles = loadFirebasePublicProfiles;
+}window.refreshIndianPublicProfiles = loadFirebasePublicProfiles;
 if(!window.__indianScheduledMessageRefreshInterval){
     window.__indianScheduledMessageRevealedIds=window.__indianScheduledMessageRevealedIds||new Set();
     window.__indianScheduledMessageRefreshInterval=setInterval(function(){
@@ -5989,12 +6202,18 @@ if(!firebaseConfigReady){
 }
 else{
     try{
-        firebaseApp = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+        firebaseApp = getApps().length ? getApps()[0] : initializeApp(activeFirebaseConfig);
         firebaseAuth = getAuth(firebaseApp);
         firebaseDb = getFirestore(firebaseApp);
         firebaseStorage = null;
+        if (indianFirebaseEmulatorMode) {
+            connectAuthEmulator(firebaseAuth, "http://127.0.0.1:9099", {disableWarnings:true});
+            connectFirestoreEmulator(firebaseDb, "127.0.0.1", 8080);
+            window.__indianFirebaseEmulatorsConnected = true;
+            console.info("Indian is connected only to local Auth and Firestore Emulators.");
+        }
 
-        setFirebaseSetupStatus("Firebase initialized. Authentication and Firestore are ready. Cloud Storage is unavailable on the Spark plan. Small compressed post photos can use Firestore; video and secure uploads need Cloud Storage.");
+        setFirebaseSetupStatus(indianFirebaseEmulatorMode ? "LOCAL TEST MODE: connected to local Firebase Auth and Firestore Emulators. Production Firebase, uploads and push services are disabled." : "Firebase initialized. Authentication and Firestore are ready. Cloud Storage is unavailable on the Spark plan. Small compressed post photos can use Firestore; video and secure uploads need Cloud Storage.");
         setPersistence(firebaseAuth, browserLocalPersistence).catch(function(){
             setFirebaseAuthStatus("Firebase initialized. Persistent login could not be enabled in this browser.");
         });
@@ -6002,7 +6221,7 @@ else{
         onAuthStateChanged(firebaseAuth, function(user){
             firebaseCurrentUser = user || null;
             window.firebaseCurrentUid = user ? user.uid : "";
-            if (window.OneSignalDeferred) {
+            if (window.OneSignalDeferred && !window.__indianFirebaseEmulatorMode) {
                 window.OneSignalDeferred.push(async function (OneSignal) {
                     try {
                         if (user && user.uid) await OneSignal.login("indian_firebase_" + String(user.uid));
@@ -6015,15 +6234,23 @@ else{
             updateFirebaseAuthUI();
             if (typeof window.finishIndianAuthStartup === "function") window.finishIndianAuthStartup();
             if(user){
-                startIndianPresence();
-                setTimeout(function(){ cleanupExpiredIndianStories(); }, 900);
+                indianCurrentUserProfileSchemaVersion=0;
                 const authName=sanitizePlainText(user.displayName || (user.email ? user.email.split("@")[0] : "Indian User"),60)||"Indian User";
                 if(typeof window.applyIndianIdentity==="function")window.applyIndianIdentity(authName,window.profileBio||"",window.profilePhotoURL||"",{preserveActiveEdit:true});
-                ensureCurrentUserPublicProfile().then(function(){return loadFirebasePublicProfiles();});
+                ensureCurrentUserPublicProfile().then(function(){
+                    return loadFirebasePublicProfiles();
+                }).then(function(){
+                    startIndianPresence();
+                    setTimeout(function(){ cleanupExpiredIndianStories(); }, 900);
+                }).catch(function(error){console.warn("Indian profile startup was delayed:",error);});
                 setFirebaseAuthStatus("Signed in as " + authName + ". UID: " + user.uid);
             }else{
+                indianCurrentUserProfileSchemaVersion=0;
                 stopIndianPresence();
+                stopIndianTypingWatch();
                 if(publicProfilesUnsubscribe){try{publicProfilesUnsubscribe();}catch(e){} publicProfilesUnsubscribe=null;}
+                separatedProfileUnsubs.forEach(function(unsub){try{unsub();}catch(e){}});separatedProfileUnsubs=[];
+                separatedStoriesByUid.clear();separatedPresenceByUid.clear();separatedLiveByUid.clear();separatedReactionsById.clear();
                 recentFirebaseMessageUnsubs.forEach(fn=>{try{fn();}catch(e){}});recentFirebaseMessageUnsubs=[];recentFirebaseMessageUid="";recentFirebaseMessagesById.clear();
                 window.indianFirebaseAllProfiles=[];window.indianFirebasePublicProfiles=[];
             }
@@ -6045,6 +6272,7 @@ function setIndianWebPushStatus(message){
 }
 
 async function enableIndianWebPushForThisDevice(){
+    if (window.__indianFirebaseEmulatorMode) { setIndianWebPushStatus("Push notifications are disabled during local Emulator testing."); return; }
     const tokenBox = $("indianWebPushTokenOutput");
     const copyButton = $("copyIndianWebPushTokenBtn");
     if(!firebaseApp || !firebaseCurrentUser){
@@ -6844,6 +7072,7 @@ else{
  };
 
  window.saveIndianProfilePhoto=async function(file){
+   if(window.__indianFirebaseEmulatorMode) throw new Error("Profile photo uploads are disabled during local Emulator testing.");
    if(!currentUser || !storage || !file) return "";
    const kind=String(file.type||"").toLowerCase();
    if(!kind.startsWith("image/")) throw new Error("Profile photo must be an image.");
@@ -7332,7 +7561,8 @@ else{
            actions.appendChild(b);
          });
          actionArea.appendChild(actions);
-         getDocs(query(collection(db,"helpOffers"),where("requesterUid","==",uid))).then(snapshot=>{\n           const requestOffers=snapshot.docs.filter(item=>String((item.data()||{}).requestId||"")===d.id);
+         getDocs(query(collection(db,"helpOffers"),where("requesterUid","==",uid))).then(snapshot=>{
+           const requestOffers=snapshot.docs.filter(item=>String((item.data()||{}).requestId||"")===d.id);
            if(!document.getElementById(id)||!actionArea.isConnected)return;
            const heading=document.createElement("h4");heading.textContent="People offering help";actionArea.appendChild(heading);
            if(requestOffers.length===0){const none=document.createElement("p");none.textContent="No one has offered help yet.";actionArea.appendChild(none);return;}
@@ -8652,7 +8882,9 @@ window.openIndianGames=function(){window.location.href='games.html';};
 <script type="module" id="indianUranCloudSync">
 import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { connectAuthEmulator } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, getDocs, getDoc, query, where, orderBy, limit, startAfter, serverTimestamp, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { connectFirestoreEmulator } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 const config={apiKey:'AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs',authDomain:'indian-84a86.firebaseapp.com',projectId:'indian-84a86',storageBucket:'indian-84a86.firebasestorage.app',messagingSenderId:'333987809341',appId:'1:333987809341:web:27a351f770aa7b4e808254'};
 let auth,db,currentUser=null,stop=null,uranCursor=null,uranFirstSnapshotSeen=false,uranHasMore=false,uranLoadingMore=false;
 const URAN_PAGE_SIZE=10;
@@ -8660,7 +8892,18 @@ function mapUranDoc(d,user){const v=d.data()||{};return{id:d.id,mediaUrl:String(
 function mergeUranCache(freshItems){let existing=[];try{existing=JSON.parse(localStorage.getItem('indian_uran_youtube_links_v1')||'[]');}catch(e){}if(!Array.isArray(existing))existing=[];const map=new Map();existing.forEach(x=>{if(x&&x.id)map.set(String(x.id),x);});freshItems.forEach(x=>{if(x&&x.id)map.set(String(x.id),x);});const merged=[...map.values()].sort((a,b)=>(Number(b.addedAt)||0)-(Number(a.addedAt)||0)).slice(0,100);try{localStorage.setItem('indian_uran_youtube_links_v1',JSON.stringify(merged));}catch(e){}return merged;}
 async function loadMoreUranCloud(){if(!currentUser||uranLoadingMore||!uranHasMore||!uranCursor)return;uranLoadingMore=true;window.__indianUranLoadingMore=true;window.__indianUranHasMore=uranHasMore;try{const page=await getDocs(query(collection(db,'uranShorts'),orderBy('createdAt','desc'),startAfter(uranCursor),limit(URAN_PAGE_SIZE)));if(!page.docs.length){uranHasMore=false;}else{uranCursor=page.docs[page.docs.length-1];mergeUranCache(page.docs.map(d=>mapUranDoc(d,currentUser)));uranHasMore=page.docs.length===URAN_PAGE_SIZE;}window.__indianUranHasMore=uranHasMore;}finally{uranLoadingMore=false;window.__indianUranLoadingMore=false;}}
 window.indianUranLoadMoreCloud=loadMoreUranCloud;
-try{const app=getApps().length?getApp():initializeApp(config);auth=getAuth(app);db=getFirestore(app);onAuthStateChanged(auth,user=>{currentUser=user;if(stop){stop();stop=null;}uranCursor=null;uranFirstSnapshotSeen=false;uranHasMore=false;window.__indianUranHasMore=false;if(!user)return;const q=query(collection(db,'uranShorts'),orderBy('createdAt','desc'),limit(URAN_PAGE_SIZE));stop=onSnapshot(q,snapshot=>{const docs=snapshot.docs;if(!uranFirstSnapshotSeen){uranFirstSnapshotSeen=true;uranCursor=docs.length?docs[docs.length-1]:null;uranHasMore=docs.length===URAN_PAGE_SIZE;}mergeUranCache(docs.map(d=>mapUranDoc(d,user)));window.__indianUranHasMore=uranHasMore;if(typeof window.renderIndianUran==='function')window.renderIndianUran();},error=>{window.__indianUranHasMore=false;const status=document.getElementById('shortsStatus');if(status)status.textContent='Online Uran load nahi hua: '+error.message+' Firebase rules check karein.';});});
+try{
+const hasExistingApp=getApps().length>0;
+const emulatorMode=window.__indianFirebaseEmulatorMode===true;
+const emulatorConfig={apiKey:'demo-api-key',authDomain:'demo-indian-public-profile-migration.firebaseapp.com',projectId:'demo-indian-public-profile-migration',storageBucket:'demo-indian-public-profile-migration.appspot.com',messagingSenderId:'000000000000',appId:'1:000000000000:web:emulator'};
+const app=hasExistingApp?getApp():initializeApp(emulatorMode?emulatorConfig:config);
+auth=getAuth(app);db=getFirestore(app);
+if(emulatorMode&&!window.__indianFirebaseEmulatorsConnected){
+connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+connectFirestoreEmulator(db,'127.0.0.1',8080);
+window.__indianFirebaseEmulatorsConnected=true;
+}
+onAuthStateChanged(auth,user=>{currentUser=user;if(stop){stop();stop=null;}uranCursor=null;uranFirstSnapshotSeen=false;uranHasMore=false;window.__indianUranHasMore=false;if(!user)return;const q=query(collection(db,'uranShorts'),orderBy('createdAt','desc'),limit(URAN_PAGE_SIZE));stop=onSnapshot(q,snapshot=>{const docs=snapshot.docs;if(!uranFirstSnapshotSeen){uranFirstSnapshotSeen=true;uranCursor=docs.length?docs[docs.length-1]:null;uranHasMore=docs.length===URAN_PAGE_SIZE;}mergeUranCache(docs.map(d=>mapUranDoc(d,user)));window.__indianUranHasMore=uranHasMore;if(typeof window.renderIndianUran==='function')window.renderIndianUran();},error=>{window.__indianUranHasMore=false;const status=document.getElementById('shortsStatus');if(status)status.textContent='Online Uran load nahi hua: '+error.message+' Firebase rules check karein.';});});
 window.indianUranIsSignedIn=function(){return !!currentUser;};
 window.indianUranCloudAdd=async function(item){if(!currentUser)throw Error('Pehle Indian account mein sign in karein.');if(!item||!/^https:\/\/res\.cloudinary\.com\//.test(item.mediaUrl||''))throw Error('Cloudinary video URL valid nahi hai.');const videoRef=doc(collection(db,'uranShorts'));await setDoc(videoRef,{videoId:videoRef.id,mediaUrl:item.mediaUrl,publicId:String(item.publicId||''),caption:String(item.caption||'').slice(0,300),addedBy:currentUser.uid,addedByName:currentUser.displayName||currentUser.email||'Indian user',createdAt:serverTimestamp(),likedBy:[]});};
 window.indianUranToggleLike=async function(id,liked){if(!currentUser)throw Error('Sign in required');await updateDoc(doc(db,'uranShorts',id),{likedBy:liked?arrayUnion(currentUser.uid):arrayRemove(currentUser.uid)});};

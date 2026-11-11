@@ -119,17 +119,14 @@ test("storyInteractions: legacy publicProfiles story fallback remains available"
   await assertSucceeds(setDoc(doc(db("viewer"), "storyInteractions/story-owner_legacy-story_viewer"), interaction));
 });
 
-test("personal message Read Receipt: receiver may only flip read false to true", async () => {
+test("personal messages: no receiver Read Receipt permission; sender-only update/delete", async () => {
   await seed("messages/message-1", {
     senderId: "alice", receiverId: "bob", text: "hello", read: false
   });
-  await assertSucceeds(updateDoc(doc(db("bob"), "messages/message-1"), { read: true }));
-  await seed("messages/message-2", {
-    senderId: "alice", receiverId: "bob", text: "hello", read: false
-  });
-  await assertFails(updateDoc(doc(db("bob"), "messages/message-2"), { read: true, text: "tampered" }));
-  await assertFails(updateDoc(doc(db("carol"), "messages/message-2"), { read: true }));
-  await assertSucceeds(updateDoc(doc(db("alice"), "messages/message-2"), { text: "edited" }));
+  await assertFails(updateDoc(doc(db("bob"), "messages/message-1"), { read: true }));
+  await assertFails(updateDoc(doc(db("carol"), "messages/message-1"), { read: true }));
+  await assertSucceeds(updateDoc(doc(db("alice"), "messages/message-1"), { text: "edited" }));
+  await assertSucceeds(deleteDoc(doc(db("alice"), "messages/message-1")));
 });
 
 test("Group Chat: member-only group/message access and sender-only deletion", async () => {

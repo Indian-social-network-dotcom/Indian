@@ -1968,6 +1968,7 @@ function indianOpenChatView(){
     const announcer=document.getElementById("indianRouteAnnouncer");if(announcer)announcer.textContent="Chat opened.";
 }
 function indianCloseChatView(){
+    stopIndianTypingWatch();
     if(window.__indianChatRecognition){try{window.__indianChatRecognition.stop();}catch(e){}window.__indianChatRecognition=null;}
     const mic=document.getElementById("indianChatVoiceTypingButton");
     if(mic){mic.textContent="🎙";mic.setAttribute("aria-label","Start voice typing");}
@@ -1993,6 +1994,7 @@ function openConversation(personId){
     if(staleGroupControls) staleGroupControls.hidden = true;
 
     selectedConversationPersonId = personId;
+    startIndianTypingWatch(personId);
     indianOpenChatView();
     editingMessageIndex = null;
     selectedReplyMessageIndex = null;

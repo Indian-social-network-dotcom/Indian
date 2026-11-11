@@ -5863,6 +5863,11 @@ async function ensureCurrentUserPublicProfile(){
 }
 
 let publicProfilesUnsubscribe = null;
+let separatedProfileUnsubs = [];
+const separatedStoriesByUid = new Map();
+const separatedPresenceByUid = new Map();
+const separatedLiveByUid = new Map();
+const separatedReactionsById = new Map();
 let recentFirebaseMessageUnsubs = [];
 let recentFirebaseMessageUid = "";
 const recentFirebaseMessagesById = new Map();
@@ -5920,48 +5925,80 @@ function startRecentFirebaseMessages(){
     watch(outgoing);watch(incoming);
 }
 
+function publishIndianCombinedProfiles(legacyProfiles){
+    const allProfiles=(legacyProfiles||[]).map(function(profile){
+        const combined=Object.assign({},profile);
+        if(Number(profile.profileSchemaVersion)>=2){
+            const stories=separatedStoriesByUid.get(profile.uid);
+            const presence=separatedPresenceByUid.get(profile.uid);
+            const live=separatedLiveByUid.get(profile.uid);
+            if(stories){combined.activeStories=Array.isArray(stories.activeStories)?stories.activeStories:[];combined.lastStoryAtMs=Number(stories.lastStoryAtMs)||0;}
+            if(presence){combined.presenceOnline=presence.presenceOnline===true;combined.presenceAtMs=Number(presence.presenceAtMs)||0;combined.lastSeenAtMs=Number(presence.lastSeenAtMs)||0;}
+            if(live)combined.liveSession=live.liveSession||null;
+            const migratedReactions={};
+            separatedReactionsById.forEach(function(value){
+                if(value&&value.uid===profile.uid&&value.messageId)migratedReactions[String(value.messageId)]={emoji:String(value.emoji||"").slice(0,8),createdAtMs:Number(value.createdAtMs)||0};
+            });
+            combined.messageReactions=migratedReactions;
+        }
+        return combined;
+    }).filter(function(profile){return profile.uid&&profile.displayName;});
+    window.indianFirebaseAllProfiles=allProfiles;
+    const profiles=allProfiles.filter(function(profile){return profile.uid!==firebaseCurrentUser.uid;});
+    window.indianFirebasePublicProfiles=profiles;
+    if(typeof window.addFirebasePeopleToIndian==="function")window.addFirebasePeopleToIndian(profiles);
+    if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(profiles);
+    const own=allProfiles.find(profile=>profile.uid===firebaseCurrentUser.uid);
+    if(own&&own.displayName&&typeof window.applyIndianIdentity==="function")window.applyIndianIdentity(own.displayName,own.bio||window.profileBio||"",own.photoURL||window.profilePhotoURL||"",{preserveActiveEdit:true});
+    const shared={};
+    allProfiles.forEach(function(profile){
+        const reactions=profile.messageReactions&&typeof profile.messageReactions==="object"?profile.messageReactions:{};
+        Object.keys(reactions).forEach(function(messageId){
+            const value=reactions[messageId];const emoji=typeof value==="string"?value:String(value&&value.emoji||"");
+            if(!emoji)return;if(!shared[messageId])shared[messageId]={};shared[messageId][emoji]=(Number(shared[messageId][emoji])||0)+1;
+        });
+    });
+    if(typeof window.applyIndianSharedMessageReactions==="function")window.applyIndianSharedMessageReactions(shared);
+    if(selectedConversationPersonId!==null&&getMessagesForPerson(selectedConversationPersonId).some(function(m){return !!m.poll;}))renderChat(selectedConversationPersonId);
+    if(typeof window.renderIndianOnlineStories==="function")window.renderIndianOnlineStories();
+    if(typeof window.renderIndianLivePeople==="function")window.renderIndianLivePeople();
+    startRecentFirebaseMessages();
+    if(profiles.length===0)setFirebaseMessageStatus("Firebase is connected. No other Firebase users are available yet.");
+}
+
 async function loadFirebasePublicProfiles(){
-    if(!firebaseDb || !firebaseCurrentUser) return;
+    if(!firebaseDb||!firebaseCurrentUser)return;
     try{
         await ensureCurrentUserPublicProfile();
         if(publicProfilesUnsubscribe){try{publicProfilesUnsubscribe();}catch(e){}}
+        separatedProfileUnsubs.forEach(function(unsub){try{unsub();}catch(e){}});
+        separatedProfileUnsubs=[];
+        separatedStoriesByUid.clear();separatedPresenceByUid.clear();separatedLiveByUid.clear();separatedReactionsById.clear();
+        let latestLegacyProfiles=[];
+        function refreshCombined(){publishIndianCombinedProfiles(latestLegacyProfiles);}
         publicProfilesUnsubscribe=onSnapshot(collection(firebaseDb,"publicProfiles"),function(snapshot){
-            const allProfiles=snapshot.docs.map(function(d){return Object.assign({uid:d.id},d.data()||{});}).filter(function(profile){return profile.uid && profile.displayName;});
-            window.indianFirebaseAllProfiles=allProfiles;
-            const profiles=allProfiles.filter(function(profile){return profile.uid!==firebaseCurrentUser.uid;});
-            window.indianFirebasePublicProfiles=profiles;
-            if(typeof window.addFirebasePeopleToIndian === "function") window.addFirebasePeopleToIndian(profiles);
-            if(typeof window.applyIndianPresenceProfiles === "function") window.applyIndianPresenceProfiles(profiles);
-            const own=allProfiles.find(profile=>profile.uid===firebaseCurrentUser.uid);
-            if(own && own.displayName && typeof window.applyIndianIdentity==="function"){
-                window.applyIndianIdentity(own.displayName,own.bio||window.profileBio||"",own.photoURL||window.profilePhotoURL||"",{preserveActiveEdit:true});
-            }
-            const shared={};
-            allProfiles.forEach(profile=>{
-                const reactions=profile.messageReactions&&typeof profile.messageReactions==="object"?profile.messageReactions:{};
-                Object.keys(reactions).forEach(messageId=>{
-                    const value=reactions[messageId];const emoji=typeof value==="string"?value:String(value&&value.emoji||"");
-                    if(!emoji)return;
-                    if(!shared[messageId])shared[messageId]={};
-                    shared[messageId][emoji]=(Number(shared[messageId][emoji])||0)+1;
-                });
-            });
-            if(typeof window.applyIndianSharedMessageReactions==="function")window.applyIndianSharedMessageReactions(shared);
-            if(selectedConversationPersonId!==null && getMessagesForPerson(selectedConversationPersonId).some(function(m){return !!m.poll;}))renderChat(selectedConversationPersonId);
-            if(typeof window.renderIndianOnlineStories==="function")window.renderIndianOnlineStories();
-            if(typeof window.renderIndianLivePeople==="function")window.renderIndianLivePeople();
-            startRecentFirebaseMessages();
-            if(profiles.length===0)setFirebaseMessageStatus("Firebase is connected. No other Firebase users are available yet.");
+            latestLegacyProfiles=snapshot.docs.map(function(d){return Object.assign({uid:d.id},d.data()||{});});
+            refreshCombined();
         },function(error){
-            setFirebaseMessageStatus("Firebase user discovery / online story updates need the publicProfiles Firestore Rule: "+sanitizePlainText(error.message,250));
+            setFirebaseMessageStatus("Firebase user discovery needs the publicProfiles Firestore Rule: "+sanitizePlainText(error.message,250));
         });
+        function watchSeparated(collectionName,map,description){
+            const unsubscribe=onSnapshot(collection(firebaseDb,collectionName),function(snapshot){
+                map.clear();snapshot.docs.forEach(function(item){map.set(item.id,Object.assign({uid:item.id},item.data()||{}));});refreshCombined();
+            },function(error){console.warn("Separated "+description+" listener is not active yet:",error);});
+            separatedProfileUnsubs.push(unsubscribe);
+        }
+        watchSeparated("userStories",separatedStoriesByUid,"Stories");
+        watchSeparated("userPresence",separatedPresenceByUid,"Presence");
+        watchSeparated("userLiveStatus",separatedLiveByUid,"Live Status");
+        const reactionUnsubscribe=onSnapshot(collection(firebaseDb,"messageReactions"),function(snapshot){
+            separatedReactionsById.clear();snapshot.docs.forEach(function(item){separatedReactionsById.set(item.id,item.data()||{});});refreshCombined();
+        },function(error){console.warn("Separated message reactions listener is not active yet:",error);});
+        separatedProfileUnsubs.push(reactionUnsubscribe);
+    }catch(error){
+        setFirebaseMessageStatus("Firebase user discovery needs the publicProfiles Firestore Rule: "+sanitizePlainText(error.message,250));
     }
-    catch(error){
-        setFirebaseMessageStatus("Firebase user discovery needs the publicProfiles Firestore Rule: " + sanitizePlainText(error.message, 250));
-    }
-}
-
-window.refreshIndianPublicProfiles = loadFirebasePublicProfiles;
+}window.refreshIndianPublicProfiles = loadFirebasePublicProfiles;
 if(!window.__indianScheduledMessageRefreshInterval){
     window.__indianScheduledMessageRevealedIds=window.__indianScheduledMessageRevealedIds||new Set();
     window.__indianScheduledMessageRefreshInterval=setInterval(function(){

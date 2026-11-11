@@ -129,7 +129,7 @@ function playFinishSound(){tone(520,980,.55,'triangle',.16);}
 function playLoseSound(){tone(260,55,.8,'sawtooth',.2);}
 $('soundBtn').addEventListener('click',()=>{
  audioEnabled=!audioEnabled;$('soundBtn').textContent='Sound: '+(audioEnabled?'On':'Off');$('soundBtn').setAttribute('aria-pressed',String(audioEnabled));
- if(audioEnabled){unlockAudio();updateEngineSound();}else if(engineGain&&audioCtx)engineGain.gain.setTargetAtTime(.0001,audioCtx.currentTime,.03);
+ if(audioEnabled){unlockAudio();updateEngineSound();}else if(audioCtx){if(engineGain)engineGain.gain.setTargetAtTime(.0001,audioCtx.currentTime,.03);if(engineGain2)engineGain2.gain.setTargetAtTime(.0001,audioCtx.currentTime,.03);}
 });
 document.addEventListener('pointerdown',unlockAudio,{capture:true});
 document.addEventListener('keydown',unlockAudio,{capture:true});

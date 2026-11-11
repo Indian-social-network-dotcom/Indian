@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101820">
+<title>Indian Racing</title>
+<style>
+:root{color-scheme:dark;--bg:#101820;--panel:#1b2835;--orange:#ff9800;--text:#f5f7fa;--muted:#c4d0dc}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,Segoe UI,sans-serif}
+button,input{font:inherit}button{border:1px solid #607080;border-radius:10px;background:#263747;color:#fff;padding:11px 15px;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--orange);outline-offset:3px}
+button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--orange);color:#161616;border-color:var(--orange);font-weight:800}
+header{display:flex;gap:12px;align-items:center;padding:12px 14px;background:#17232e;border-bottom:1px solid #40505f}
+header h1{font-size:1.2rem;color:var(--orange);margin:0;flex:1}.wrap{width:min(1000px,100%);margin:auto;padding:14px}
+.panel{background:var(--panel);border:1px solid #40505f;border-radius:14px;padding:14px;margin-bottom:14px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}.field{display:grid;gap:5px;flex:1;min-width:170px}.field input{width:100%;background:#0c141b;color:#fff;border:1px solid #657788;border-radius:9px;padding:11px}
+.status{background:#17232e;border:1px solid #40505f;padding:10px;border-radius:9px;margin:8px 0}.muted{color:var(--muted)}
+#scene{height:min(58vh,520px);min-height:300px;background:#15232b;border-radius:12px;overflow:hidden;position:relative}
+#scene canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin:10px 0}
+.hud strong{color:var(--orange);font-size:1.15rem}.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.controls button{min-height:58px;font-weight:800;touch-action:none;user-select:none}
+.controls .steer{background:#30475b}.controls .go{background:#245c42}.controls .brake{background:#783b35}.controls .nitro{background:#684b91}
+.small{font-size:.9rem}.hidden{display:none!important}.bottom{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+a{color:#ffd180}
+@media(max-width:520px){.wrap{padding:10px}.panel{padding:11px}header h1{font-size:1rem}#scene{height:48vh;min-height:270px}.controls button{padding:8px 3px;font-size:.88rem;min-height:62px}}
+</style>
+</head>
+<body>
+<header><button type="button" id="backBtn">Back</button><h1>🏁 Indian Racing</h1></header>
+<main class="wrap bottom">
+<section class="panel" aria-labelledby="roomTitle">
+<h2 id="roomTitle">Online Race</h2>
+<p id="connectionStatus" class="status" role="status" aria-live="polite">Firebase se connect ho raha hai…</p>
+<div class="row">
+<label class="field">Player name<input id="playerName" maxlength="40" autocomplete="nickname" placeholder="Aapka naam"></label>
+<label class="field">Room ID<input id="roomInput" maxlength="8" autocomplete="off" placeholder="Friend ka Room ID"></label>
+</div>
+<div class="row" style="margin-top:10px">
+<button type="button" class="primary" id="createBtn" disabled>Create Race Room</button>
+<button type="button" id="joinBtn" disabled>Join Race</button>
+<button type="button" id="inviteBtn" disabled>Invite Friend in Messages</button>
+<button type="button" id="practiceBtn">Solo Practice</button>
+</div>
+<p class="muted small">Online race mein 2 players honge. Room banakar invite bhejein; friend join karega to race start hogi.</p>
+</section>
+<section class="panel" aria-label="Race game">
+<div id="scene" role="img" aria-label="Three dimensional car racing road. Use steering, accelerator, brake and nitro controls below."></div>
+<div class="hud">
+<div>Speed: <strong id="speed">0</strong> km/h</div>
+<div>Distance: <strong id="distance">0</strong> m</div>
+<div>Position: <strong id="position">Waiting</strong></div>
+<div>Nitro: <strong id="nitro">100</strong>%</div>
+</div>
+<p id="raceStatus" class="status" role="status" aria-live="polite">Solo Practice dabayein ya online room banayein.</p>
+<div class="controls" aria-label="Car controls">
+<button type="button" class="steer" id="leftBtn" aria-label="Steer left">⬅ Left</button>
+<button type="button" class="steer" id="rightBtn" aria-label="Steer right">Right ➡</button>
+<button type="button" class="go" id="accelerateBtn" aria-label="Accelerator">▲ Accelerate</button>
+<button type="button" class="brake" id="brakeBtn" aria-label="Brake">▼ Brake</button>
+<button type="button" class="nitro" id="nitroBtn" style="grid-column:1/-1" aria-label="Nitro boost">⚡ Nitro Boost</button>
+</div>
+<p class="muted small">Keyboard: Left/Right arrows se steering, Up se accelerator, Down se brake, Space se Nitro. Mobile par buttons ko daba kar rakhein.</p>
+</section>
+</main>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { getFirestore, doc, collection, setDoc, updateDoc, getDoc, runTransaction, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+
+const firebaseConfig={apiKey:'AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs',authDomain:'indian-84a86.firebaseapp.com',projectId:'indian-84a86',storageBucket:'indian-84a86.firebasestorage.app',messagingSenderId:'333987809341',appId:'1:333987809341:web:27a351f770aa7b4e808254'};
+const $=id=>document.getElementById(id);
+let auth,db,user=null,roomId='',room=null,roomUnsub=null,opponentUnsub=null,opponentState=null;
+let mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false;
+let lastFrame=0,lastSync=0,finished=false,opponentUid='',localWon=false,syncBusy=false;
+const FINISH_DISTANCE=1500;
+function status(t){$('connectionStatus').textContent=t}function raceStatus(t){$('raceStatus').textContent=t}
+function playerName(){return String($('playerName').value||user?.displayName||user?.email?.split('@')[0]||'Indian Player').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,40)||'Indian Player'}
+function roomRef(id){return doc(db,'games',id)}
+function raceRef(id,uid){return doc(db,'games',id,'racePlayers',uid)}
+function randomId(){return Math.random().toString(36).slice(2,8).toUpperCase()}
+$('backBtn').addEventListener('click',()=>location.href='./games.html');
+
+try{
+ const app=initializeApp(firebaseConfig);auth=getAuth(app);db=getFirestore(app);
+ onAuthStateChanged(auth,u=>{
+  user=u;
+  if(u){$('playerName').value=$('playerName').value||u.displayName||u.email?.split('@')[0]||'Indian Player';status('Firebase connected. Signed in: '+(u.displayName||u.email||'Indian account'));$('createBtn').disabled=false;$('joinBtn').disabled=false;$('inviteBtn').disabled=false;
+   const p=new URLSearchParams(location.search),join=p.get('join');if(join&&!roomId)joinRace(join);
+  }else{status('Online race ke liye Indian account mein sign in karein. Solo Practice bina sign-in ke chalega.');}
+ });
+}catch(e){status('Firebase connection error: '+e.message);}
+
+async function createRace(){
+ if(!user||roomId)return;
+ const id=randomId(),name=playerName();
+ const data={type:'racing',status:'waiting',createdBy:user.uid,players:[{uid:user.uid,name}],createdAt:serverTimestamp(),updatedAt:serverTimestamp(),state:{track:'city',finishDistance:FINISH_DISTANCE}};
+ try{
+  await setDoc(roomRef(id),data);
+  roomId=id;room=data;$('roomInput').value=id;mode='online';
+  await setDoc(raceRef(id,user.uid),{uid:user.uid,name,distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
+  watchRoom();raceStatus('Race room '+id+' ban gaya. Friend ko invite bhejein. Friend join karega to race shuru hogi.');status('Room ready. Friend ka intezar hai.');
+ }catch(e){raceStatus('Room create nahi hua: '+e.message+' Rules update zaroori ho sakta hai.');}
+}
+async function joinRace(raw){
+ if(!user||!raw)return;
+ const id=String(raw).trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(id)){raceStatus('Room ID 6 characters ka hona chahiye.');return;}
+ try{
+  await runTransaction(db,async tx=>{
+   const ref=roomRef(id),snap=await tx.get(ref);if(!snap.exists())throw Error('Room nahi mila.');
+   const r=snap.data();if(r.type!=='racing')throw Error('Yeh Indian Racing room nahi hai.');
+   if(r.players.some(p=>p.uid===user.uid))return;
+   if(r.players.length>=2||r.status!=='waiting')throw Error('Room full hai ya race shuru ho chuki hai.');
+   tx.update(ref,{players:[...r.players,{uid:user.uid,name:playerName()}],status:'playing',updatedAt:serverTimestamp()});
+  });
+  roomId=id;$('roomInput').value=id;mode='online';
+  await setDoc(raceRef(id,user.uid),{uid:user.uid,name:playerName(),distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
+  watchRoom();raceStatus('Aap race mein shamil ho gaye. Race shuru! Accelerator dabayein.');
+ }catch(e){raceStatus('Join nahi hua: '+e.message);}
+}
+function watchRoom(){
+ if(roomUnsub)roomUnsub();
+ roomUnsub=onSnapshot(roomRef(roomId),snap=>{
+  if(!snap.exists()){raceStatus('Room nahi mila.');return;}
+  room=snap.data();
+  const other=room.players.find(p=>p.uid!==user.uid);opponentUid=other?.uid||'';
+  if(opponentUnsub){opponentUnsub();opponentUnsub=null;}
+  if(opponentUid){
+   opponentUnsub=onSnapshot(raceRef(roomId,opponentUid),s=>{opponentState=s.exists()?s.data():null;});
+   raceStatus('Opponent: '+other.name+'. Race live hai. Finish line '+FINISH_DISTANCE+' metre.');
+  }else raceStatus('Friend ke join karne ka intezar hai. Room ID '+roomId+'.');
+  if(room.status==='finished')raceStatus('Race khatam ho gayi.');
+ });
+}
+async function inviteFriend(){
+ if(!user){raceStatus('Pehle Indian account mein sign in karein.');return;}
+ if(room&&room.status!=='waiting'){raceStatus('Race shuru ho chuki hai. Naya room banakar invite bhejein.');return;}
+ if(!roomId){await createRace();if(!roomId)return;}
+ const joinUrl=new URL('./games.html',location.href);joinUrl.searchParams.set('join',roomId);joinUrl.searchParams.set('game','racing');
+ try{sessionStorage.setItem('indianPendingGameInvite',JSON.stringify({game:'racing',roomId,joinUrl:joinUrl.href}));}
+ catch(e){raceStatus('Invite ready nahi hua: browser session storage allow karein.');return;}
+ location.href=new URL('./index.html#messages',location.href).href;
+}
+function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;finished=false;raceStatus('Solo Practice shuru. Accelerator dabayein. Finish distance 1500 metre hai.');}
+function leaveOnline(reset=true){
+ if(roomUnsub)roomUnsub();if(opponentUnsub)opponentUnsub();roomUnsub=null;opponentUnsub=null;roomId='';room=null;opponentUid='';opponentState=null;
+ if(reset)mode='idle';
+}
+$('createBtn').addEventListener('click',createRace);$('joinBtn').addEventListener('click',()=>joinRace($('roomInput').value));$('inviteBtn').addEventListener('click',inviteFriend);$('practiceBtn').addEventListener('click',startPractice);
+
+function bindHold(id,fn){const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();fn(true);el.setPointerCapture?.(e.pointerId)});['pointerup','pointercancel','lostpointercapture'].forEach(ev=>el.addEventListener(ev,()=>fn(false)));el.addEventListener('contextmenu',e=>e.preventDefault());}
+bindHold('leftBtn',v=>left=v);bindHold('rightBtn',v=>right=v);bindHold('accelerateBtn',v=>accelerating=v);bindHold('brakeBtn',v=>braking=v);bindHold('nitroBtn',v=>boosting=v);
+window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=true;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=true;if(e.key==='ArrowUp'||e.key.toLowerCase()==='w')accelerating=true;if(e.key==='ArrowDown'||e.key.toLowerCase()==='s')braking=true;if(e.code==='Space')boosting=true;});
+window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=false;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=false;if(e.key==='ArrowUp'||e.key.toLowerCase()==='w')accelerating=false;if(e.key==='ArrowDown'||e.key.toLowerCase()==='s')braking=false;if(e.code==='Space')boosting=false;});
+window.addEventListener('blur',()=>{left=right=accelerating=braking=boosting=false;});
+
+let scene,camera,renderer,car,opponentCar,roadMarks=[],scenery=[],clock=new THREE.Clock();
+function makeCar(color){
+ const group=new THREE.Group(),body=new THREE.Mesh(new THREE.BoxGeometry(1.65,.48,3.1),new THREE.MeshStandardMaterial({color,metalness:.35,roughness:.35}));
+ body.position.y=.62;group.add(body);
+ const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.18,.58,1.45),new THREE.MeshStandardMaterial({color:0x172d3c,metalness:.25,roughness:.2}));cabin.position.set(0,1.08,-.25);group.add(cabin);
+ const bumper=new THREE.Mesh(new THREE.BoxGeometry(1.72,.2,.28),new THREE.MeshStandardMaterial({color:0x20252b}));bumper.position.set(0,.45,-1.5);group.add(bumper);
+ for(const x of [-.88,.88])for(const z of [-.95,.95]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.18,16),new THREE.MeshStandardMaterial({color:0x111111}));w.rotation.z=Math.PI/2;w.position.set(x,.35,z);group.add(w);}
+ const lights=new THREE.Mesh(new THREE.BoxGeometry(1.2,.12,.08),new THREE.MeshBasicMaterial({color:0xff3322}));lights.position.set(0,.68,1.57);group.add(lights);
+ return group;
+}
+function addTree(x,z){
+ const g=new THREE.Group(),trunk=new THREE.Mesh(new THREE.CylinderGeometry(.13,.18,1.4,7),new THREE.MeshStandardMaterial({color:0x76502e}));trunk.position.y=.7;g.add(trunk);
+ const crown=new THREE.Mesh(new THREE.ConeGeometry(.9,2.3,8),new THREE.MeshStandardMaterial({color:0x176b3a}));crown.position.y=2.25;g.add(crown);g.position.set(x,0,z);scene.add(g);scenery.push(g);
+}
+function addBuilding(x,z){
+ const h=4+Math.random()*10,w=3+Math.random()*3;
+ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,4),new THREE.MeshStandardMaterial({color:[0x607d8b,0x8d6e63,0x455a64,0x546e7a][Math.floor(Math.random()*4)]}));
+ m.position.set(x,h/2,z);scene.add(m);scenery.push(m);
+}
+function init3D(){
+ const host=$('scene');scene=new THREE.Scene();scene.background=new THREE.Color(0x8ec9e8);scene.fog=new THREE.Fog(0x8ec9e8,45,180);
+ camera=new THREE.PerspectiveCamera(62,host.clientWidth/host.clientHeight,.1,500);camera.position.set(0,6.5,12);camera.lookAt(0,1,-12);
+ renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(host.clientWidth,host.clientHeight);renderer.shadowMap.enabled=true;host.appendChild(renderer.domElement);
+ scene.add(new THREE.HemisphereLight(0xffffff,0x52634e,2));
+ const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-20,35,15);scene.add(sun);
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,2000),new THREE.MeshStandardMaterial({color:0x347447}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-.12,-700);scene.add(ground);
+ const road=new THREE.Mesh(new THREE.PlaneGeometry(12,2000),new THREE.MeshStandardMaterial({color:0x30343a,roughness:1}));road.rotation.x=-Math.PI/2;road.position.set(0,0,-700);scene.add(road);
+ for(let z=5;z>-1500;z-=16){for(const x of [-2,2]){const mark=new THREE.Mesh(new THREE.BoxGeometry(.12,.025,6),new THREE.MeshBasicMaterial({color:0xf7f0d0}));mark.position.set(x,.025,z);scene.add(mark);roadMarks.push(mark);}}
+ for(let z=-15;z>-1450;z-=35){addTree(-10-Math.random()*8,z);addTree(10+Math.random()*8,z-15);if(Math.random()>.48){addBuilding(-20-Math.random()*10,z-20);addBuilding(20+Math.random()*10,z-35);}}
+ car=makeCar(0xff7b18);car.position.set(0,0,0);scene.add(car);
+ opponentCar=makeCar(0x16a5ff);opponentCar.position.set(2.4,0,-35);opponentCar.visible=false;scene.add(opponentCar);
+ const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};new ResizeObserver(resize).observe(host);
+}
+function syncWorld(){
+ const offset=distance;
+ for(const m of roadMarks){let z=m.position.z+(offset%1504);if(z>12)z-=1504;m.position.z=z;}
+ for(const o of scenery){let z=o.position.z+offset%1450;if(z>30)z-=1450;o.position.z=z;}
+ car.position.x=lane*2.65;car.rotation.z=(right?-.06:0)+(left?.06:0);
+ if(opponentState&&opponentUid){
+  const delta=Number(opponentState.distance||0)-distance;
+  opponentCar.position.set(Number(opponentState.lane||0)*2.65,.02,-Math.max(-100,Math.min(130,delta*.22)));
+  opponentCar.visible=Math.abs(delta)<600;
+ }else opponentCar.visible=false;
+ camera.position.x+=(car.position.x*.32-camera.position.x)*.08;camera.lookAt(car.position.x*.25,1,-15);
+}
+async function pushRaceState(){
+ if(syncBusy||mode!=='online'||!roomId||!user||!room||room.status!=='playing')return;
+ syncBusy=true;
+ try{await setDoc(raceRef(roomId,user.uid),{uid:user.uid,name:playerName(),distance:Math.round(distance),lane:Number(lane.toFixed(2)),speed:Math.round(speed),finished,updatedAtMs:Date.now()});}
+ catch(e){raceStatus('Live sync issue: '+e.message);}
+ finally{syncBusy=false;}
+}
+function finishRace(){
+ if(finished)return;finished=true;localWon=!opponentState||distance>=Number(opponentState.distance||0);
+ raceStatus(localWon?'🏆 Aap finish line par pehle pahunch gaye!':'🏁 Aap finish line par pahunch gaye!');
+ if(mode==='online'&&roomId&&user)updateDoc(roomRef(roomId),{status:'finished',updatedAt:serverTimestamp()}).catch(()=>{});
+}
+function animate(now){
+ requestAnimationFrame(animate);const dt=Math.min(.05,(now-lastFrame)/1000||0);lastFrame=now;
+ if(mode==='practice'||(mode==='online'&&room?.status==='playing'&&!finished)){
+  if(accelerating)speed=Math.min(190,speed+85*dt);else speed=Math.max(0,speed-24*dt);
+  if(braking)speed=Math.max(0,speed-145*dt);
+  if(boosting&&nitro>0&&speed>8){speed=Math.min(245,speed+115*dt);nitro=Math.max(0,nitro-34*dt);}else nitro=Math.min(100,nitro+7*dt);
+  if(left)lane=Math.max(-1.15,lane-1.8*dt);if(right)lane=Math.min(1.15,lane+1.8*dt);
+  distance+=speed/3.6*dt;
+  if(distance>=FINISH_DISTANCE)finishRace();
+  if(mode==='online'&&now-lastSync>500){lastSync=now;pushRaceState();}
+  $('speed').textContent=Math.round(speed);$('distance').textContent=Math.round(distance);$('nitro').textContent=Math.round(nitro);
+  if(opponentState){const d=Number(opponentState.distance||0);$('position').textContent=distance>=d?'1 / 2':'2 / 2';}else $('position').textContent=mode==='practice'?'Practice':'Waiting';
+ }else if(mode==='idle')speed=Math.max(0,speed-30*dt);
+ syncWorld();renderer.render(scene,camera);
+}
+init3D();requestAnimationFrame(animate);
+</script>
+</body>
+</html>

@@ -159,3 +159,37 @@ test("Group Chat: member-only group/message access and sender-only deletion", as
   await assertFails(deleteDoc(doc(db("bob"), "groups/group-1/messages/msg-1")));
   await assertSucceeds(deleteDoc(doc(db("alice"), "groups/group-1/messages/msg-1")));
 });
+
+
+test("Indian Racing: only the two room players can read race state; each player writes only their own record", async () => {
+  await assertSucceeds(setDoc(doc(db("alice"), "games/race-1"), {
+    type: "racing", status: "waiting", createdBy: "alice",
+    players: [{ uid: "alice", name: "Alice" }],
+    state: { track: "city", finishDistance: 1500 }
+  }));
+
+  await assertSucceeds(updateDoc(doc(db("bob"), "games/race-1"), {
+    players: [{ uid: "alice", name: "Alice" }, { uid: "bob", name: "Bob" }],
+    status: "playing"
+  }));
+
+  const aliceState = {
+    uid: "alice", name: "Alice", distance: 120, lane: -0.5,
+    speed: 110, finished: false, updatedAtMs: 1000
+  };
+  const bobState = {
+    uid: "bob", name: "Bob", distance: 100, lane: 0.5,
+    speed: 95, finished: false, updatedAtMs: 1001
+  };
+  await assertSucceeds(setDoc(doc(db("alice"), "games/race-1/racePlayers/alice"), aliceState));
+  await assertSucceeds(setDoc(doc(db("bob"), "games/race-1/racePlayers/bob"), bobState));
+  await assertSucceeds(getDoc(doc(db("bob"), "games/race-1/racePlayers/alice")));
+  await assertSucceeds(getDoc(doc(db("alice"), "games/race-1/racePlayers/bob")));
+  await assertFails(getDoc(doc(db("carol"), "games/race-1/racePlayers/alice")));
+  await assertFails(setDoc(doc(db("carol"), "games/race-1/racePlayers/carol"), {
+    ...aliceState, uid: "carol"
+  }));
+  await assertFails(updateDoc(doc(db("bob"), "games/race-1/racePlayers/alice"), { distance: 999 }));
+  await assertSucceeds(updateDoc(doc(db("alice"), "games/race-1/racePlayers/alice"), { distance: 140 }));
+  await assertFails(updateDoc(doc(db("alice"), "games/race-1/racePlayers/alice"), { speed: 999 }));
+});

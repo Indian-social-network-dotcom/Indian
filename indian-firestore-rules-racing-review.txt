@@ -1,0 +1,921 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Check whether the requested story is still in the owner's active stories.
+    function hasActiveStory(ownerUid, storyId) {
+      let profile = get(
+        /databases/$(database)/documents/publicProfiles/$(ownerUid)
+      ).data;
+
+      return profile.keys().hasAny(['activeStories'])
+        && profile.activeStories is list
+        && (
+          (profile.activeStories.size() > 0
+            && profile.activeStories[0].id == storyId)
+          ||
+          (profile.activeStories.size() > 1
+            && profile.activeStories[1].id == storyId)
+          ||
+          (profile.activeStories.size() > 2
+            && profile.activeStories[2].id == storyId)
+        );
+    }
+
+    match /users/{userId} {
+      allow create: if signedIn()
+                    && request.auth.uid == userId;
+      allow read, update, delete: if signedIn()
+                                  && request.auth.uid == userId;
+    }
+
+    match /publicProfiles/{userId} {
+      allow read: if signedIn();
+
+      allow create, update: if signedIn()
+                            && request.auth.uid == userId
+                            && request.resource.data.uid == userId
+                            && request.resource.data.displayName is string
+                            && request.resource.data.displayName.size() >= 2
+                            && request.resource.data.displayName.size() <= 60;
+
+      allow delete: if signedIn()
+                    && request.auth.uid == userId;
+    }
+
+    // Story views, likes and emoji reactions
+    match /storyInteractions/{interactionId} {
+
+      function interactionPath() {
+        return /databases/$(database)/documents/storyInteractions/$(interactionId);
+      }
+
+      // A viewer can read their own record.
+      // The story owner can read all records belonging to their stories.
+      allow get: if signedIn()
+                 && (
+                   !exists(interactionPath())
+                   || resource.data.viewerUid == request.auth.uid
+                   || resource.data.ownerUid == request.auth.uid
+                 );
+
+      // Only the story owner can list viewers.
+      allow list: if signedIn()
+                  && resource.data.ownerUid == request.auth.uid;
+
+      // A signed-in viewer can create their own view record.
+      allow create: if signedIn()
+                    && request.resource.data.keys().hasAll([
+                      'ownerUid',
+                      'storyId',
+                      'viewerUid',
+                      'viewerName',
+                      'viewerPhotoURL',
+                      'viewedAtMs',
+                      'liked',
+                      'reaction'
+                    ])
+                    && request.resource.data.keys().hasOnly([
+                      'ownerUid',
+                      'storyId',
+                      'viewerUid',
+                      'viewerName',
+                      'viewerPhotoURL',
+                      'viewedAtMs',
+                      'liked',
+                      'reaction'
+                    ])
+                    && request.resource.data.ownerUid is string
+                    && request.resource.data.storyId is string
+                    && request.resource.data.viewerUid == request.auth.uid
+                    && interactionId ==
+                       request.resource.data.ownerUid + '_'
+                       + request.resource.data.storyId + '_'
+                       + request.auth.uid
+                    && request.resource.data.viewerName is string
+                    && request.resource.data.viewerName.size() >= 2
+                    && request.resource.data.viewerName.size() <= 60
+                    && request.resource.data.viewerPhotoURL is string
+                    && request.resource.data.viewerPhotoURL.size() <= 2048
+                    && request.resource.data.viewedAtMs is number
+                    && request.resource.data.liked == false
+                    && request.resource.data.reaction == ''
+                    && exists(
+                      /databases/$(database)/documents/publicProfiles/$(request.resource.data.ownerUid)
+                    )
+                    && hasActiveStory(
+                      request.resource.data.ownerUid,
+                      request.resource.data.storyId
+                    );
+
+      // A viewer can update only their own Like and Emoji reaction.
+      allow update: if signedIn()
+                    && resource.data.viewerUid == request.auth.uid
+                    && request.resource.data.ownerUid == resource.data.ownerUid
+                    && request.resource.data.storyId == resource.data.storyId
+                    && request.resource.data.viewerUid == resource.data.viewerUid
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys()
+                         .hasOnly([
+                           'liked',
+                           'reaction',
+                           'updatedAtMs'
+                         ])
+                    && request.resource.data.liked is bool
+                    && request.resource.data.reaction in [
+                      '',
+                      '😍',
+                      '😂',
+                      '😮'
+                    ]
+                    && request.resource.data.updatedAtMs is number;
+
+      // Story interaction records cannot be deleted by clients.
+      allow delete: if false;
+    }
+
+    match /posts/{postId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() <= 60
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() <= 5000
+                    && request.resource.data.mediaCount is int
+                    && request.resource.data.mediaCount >= 0
+                    && request.resource.data.mediaCount <= 10;
+
+      allow update, delete: if signedIn()
+                            && resource.data.uid == request.auth.uid;
+    }
+
+    match /comments/{commentId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if signedIn()
+                            && resource.data.uid == request.auth.uid;
+    }
+
+    match /replies/{replyId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if signedIn()
+                            && resource.data.uid == request.auth.uid;
+    }
+
+    match /follows/{followId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+                    && request.resource.data.followerId == request.auth.uid;
+
+      allow delete: if signedIn()
+                    && resource.data.followerId == request.auth.uid;
+    }
+
+    match /likes/{likeId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid;
+
+      allow delete: if signedIn()
+                    && resource.data.uid == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, delete: if signedIn()
+                          && resource.data.recipientId == request.auth.uid;
+
+      allow create: if signedIn()
+                    && request.resource.data.actorId == request.auth.uid;
+
+      allow update: if signedIn()
+                    && resource.data.recipientId == request.auth.uid
+                    && request.resource.data.recipientId
+                       == resource.data.recipientId
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['read'])
+                    && request.resource.data.read is bool;
+    }
+
+    match /helpRequests/{requestId} {
+      function acceptedOfferMatches() {
+        let offerPath = /databases/$(database)/documents/helpOffers/$(request.resource.data.acceptedOfferId);
+        let offerAfter = getAfter(offerPath).data;
+
+        return request.resource.data.acceptedOfferId is string
+          && offerAfter.requestId == requestId
+          && offerAfter.requesterUid == request.auth.uid
+          && offerAfter.helperUid == request.resource.data.acceptedHelperUid
+          && offerAfter.helperName == request.resource.data.acceptedHelperName
+          && offerAfter.status == 'accepted';
+      }
+
+      function completedOfferMatches() {
+        let offerPath = /databases/$(database)/documents/helpOffers/$(request.resource.data.completedOfferId);
+        let offerAfter = getAfter(offerPath).data;
+
+        return request.resource.data.completedOfferId is string
+          && offerAfter.requestId == requestId
+          && offerAfter.requesterUid == request.auth.uid
+          && offerAfter.helperUid == resource.data.acceptedHelperUid
+          && offerAfter.status == 'completed';
+      }
+
+      function requesterChangesOpenStatus() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['status', 'statusUpdatedAtMs', 'statusUpdatedAt'])
+          && request.resource.data.status in ['Open', 'In Progress']
+          && !resource.data.keys().hasAny(['acceptedHelperUid'])
+          && request.resource.data.statusUpdatedAt == request.time
+          && request.resource.data.statusUpdatedAtMs is number;
+      }
+
+      function requesterAcceptsOffer() {
+        return resource.data.status == 'Open'
+          && !resource.data.keys().hasAny(['acceptedHelperUid'])
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly([
+                 'acceptedHelperUid',
+                 'acceptedHelperName',
+                 'acceptedOfferId',
+                 'status',
+                 'statusUpdatedAtMs',
+                 'statusUpdatedAt'
+               ])
+          && request.resource.data.acceptedHelperUid is string
+          && request.resource.data.acceptedHelperName is string
+          && request.resource.data.status == 'In Progress'
+          && request.resource.data.statusUpdatedAt == request.time
+          && request.resource.data.statusUpdatedAtMs is number
+          && acceptedOfferMatches();
+      }
+
+      function requesterConfirmsCompletion() {
+        return resource.data.status == 'In Progress'
+          && resource.data.acceptedHelperUid is string
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly([
+                 'status',
+                 'completedAt',
+                 'completedOfferId',
+                 'statusUpdatedAtMs',
+                 'statusUpdatedAt'
+               ])
+          && request.resource.data.status == 'Resolved'
+          && request.resource.data.completedAt == request.time
+          && request.resource.data.statusUpdatedAt == request.time
+          && request.resource.data.statusUpdatedAtMs is number
+          && completedOfferMatches();
+      }
+
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid;
+
+      allow update: if signedIn()
+                    && resource.data.uid == request.auth.uid
+                    && (
+                      requesterChangesOpenStatus()
+                      || requesterAcceptsOffer()
+                      || requesterConfirmsCompletion()
+                    );
+
+      allow delete: if signedIn()
+                    && resource.data.uid == request.auth.uid;
+    }
+
+
+    // Help offers: only the requester and the helper involved can read them.
+    match /helpOffers/{offerId} {
+      function requestPath() {
+        return /databases/$(database)/documents/helpRequests/$(resource.data.requestId);
+      }
+
+      function offerRequestPath(requestId) {
+        return /databases/$(database)/documents/helpRequests/$(requestId);
+      }
+
+      function validOfferCreate() {
+        let parentPath = offerRequestPath(request.resource.data.requestId);
+        let parent = get(parentPath).data;
+
+        return signedIn()
+          && request.resource.data.keys().hasAll([
+            'requestId',
+            'requesterUid',
+            'requesterName',
+            'helperUid',
+            'helperName',
+            'status',
+            'createdAt',
+            'createdAtMs',
+            'updatedAt'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'requestId',
+            'requesterUid',
+            'requesterName',
+            'helperUid',
+            'helperName',
+            'status',
+            'createdAt',
+            'createdAtMs',
+            'updatedAt'
+          ])
+          && request.resource.data.requestId is string
+          && request.resource.data.requesterUid is string
+          && request.resource.data.requesterUid == parent.uid
+          && request.resource.data.requesterUid != request.auth.uid
+          && request.resource.data.helperUid == request.auth.uid
+          && request.resource.data.requesterName is string
+          && request.resource.data.requesterName.size() <= 60
+          && request.resource.data.helperName is string
+          && request.resource.data.helperName.size() >= 1
+          && request.resource.data.helperName.size() <= 60
+          && request.resource.data.status == 'pending'
+          && parent.status == 'Open'
+          && !parent.keys().hasAny(['acceptedHelperUid'])
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.createdAtMs is number;
+      }
+
+      function requesterAccepts(offerId) {
+        let parentAfter = getAfter(offerRequestPath(resource.data.requestId)).data;
+
+        return signedIn()
+          && request.auth.uid == resource.data.requesterUid
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'accepted'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'acceptedAt', 'updatedAt'])
+          && request.resource.data.acceptedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && parentAfter.uid == request.auth.uid
+          && parentAfter.acceptedHelperUid == resource.data.helperUid
+          && parentAfter.acceptedOfferId == offerId
+          && parentAfter.status == 'In Progress';
+      }
+
+      function requesterDeclines() {
+        return signedIn()
+          && request.auth.uid == resource.data.requesterUid
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'declined'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'updatedAt'])
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      function helperWithdraws() {
+        return signedIn()
+          && request.auth.uid == resource.data.helperUid
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'withdrawn'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'updatedAt'])
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      function helperStarts() {
+        let parent = get(offerRequestPath(resource.data.requestId)).data;
+
+        return signedIn()
+          && request.auth.uid == resource.data.helperUid
+          && parent.uid == resource.data.requesterUid
+          && parent.acceptedHelperUid == resource.data.helperUid
+          && parent.status == 'In Progress'
+          && resource.data.status == 'accepted'
+          && request.resource.data.status == 'in_progress'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'startedAt', 'updatedAt'])
+          && request.resource.data.startedAt == request.time
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      function helperSubmits() {
+        let parent = get(offerRequestPath(resource.data.requestId)).data;
+
+        return signedIn()
+          && request.auth.uid == resource.data.helperUid
+          && parent.uid == resource.data.requesterUid
+          && parent.acceptedHelperUid == resource.data.helperUid
+          && parent.status == 'In Progress'
+          && resource.data.status == 'in_progress'
+          && request.resource.data.status == 'submitted'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'submittedAt', 'updatedAt'])
+          && request.resource.data.submittedAt == request.time
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      function requesterConfirms(offerId) {
+        let parentAfter = getAfter(offerRequestPath(resource.data.requestId)).data;
+
+        return signedIn()
+          && request.auth.uid == resource.data.requesterUid
+          && resource.data.status == 'submitted'
+          && request.resource.data.status == 'completed'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'completedAt', 'updatedAt'])
+          && request.resource.data.completedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && parentAfter.uid == request.auth.uid
+          && parentAfter.acceptedHelperUid == resource.data.helperUid
+          && parentAfter.completedOfferId == offerId
+          && parentAfter.status == 'Resolved';
+      }
+
+      allow get, list: if signedIn()
+                       && (resource.data.requesterUid == request.auth.uid
+                           || resource.data.helperUid == request.auth.uid);
+
+      allow create: if validOfferCreate();
+
+      allow update: if requesterAccepts(offerId)
+                    || requesterDeclines()
+                    || helperWithdraws()
+                    || helperStarts()
+                    || helperSubmits()
+                    || requesterConfirms(offerId);
+
+      allow delete: if false;
+    }
+
+    // Reward data is reserved for trusted server-side code.
+    // Clients may read public helper totals, but cannot create or change rewards.
+    match /helpRewardProfiles/{helperUid} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    // Reward history is visible only to the helper and the requester involved.
+    match /helpRewardEvents/{eventId} {
+      allow read: if signedIn()
+                  && (resource.data.helperUid == request.auth.uid
+                      || resource.data.requesterUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /messages/{messageId} {
+      allow read: if signedIn()
+                  && (resource.data.senderId == request.auth.uid
+                      || resource.data.receiverId == request.auth.uid);
+
+      allow create: if signedIn()
+                    && request.resource.data.senderId == request.auth.uid
+                    && request.resource.data.receiverId is string
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() <= 2000;
+
+      allow update, delete: if signedIn()
+                            && resource.data.senderId == request.auth.uid;
+    }
+
+    match /games/{gameId} {
+      function signedIn() {
+        return request.auth != null;
+      }
+
+      function isPlayer(data) {
+        return signedIn()
+          && data.players is list
+          && data.players.size() >= 1
+          && data.players.size() <= 2
+          && (data.players[0].uid == request.auth.uid
+              || (data.players.size() == 2
+                  && data.players[1].uid == request.auth.uid));
+      }
+
+      function validJoin() {
+        return signedIn()
+          && resource.data.status == 'waiting'
+          && resource.data.players is list
+          && resource.data.players.size() == 1
+          && resource.data.players[0].uid == resource.data.createdBy
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.type == resource.data.type
+          && request.resource.data.status == 'playing'
+          && request.resource.data.players is list
+          && request.resource.data.players.size() == 2
+          && request.resource.data.players[0].uid == resource.data.players[0].uid
+          && request.resource.data.players[1].uid == request.auth.uid
+          && request.resource.data.players[1].uid != resource.data.players[0].uid;
+      }
+
+      allow read: if signedIn()
+                  && (isPlayer(resource.data)
+                      || resource.data.status == 'waiting');
+
+      allow create: if signedIn()
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.players is list
+                    && request.resource.data.players.size() == 1
+                    && request.resource.data.players[0].uid == request.auth.uid
+                    && request.resource.data.status == 'waiting'
+                    && request.resource.data.type in ['ttt', 'quiz', 'draw', 'dice', 'racing'];
+
+      allow update: if validJoin()
+                    || (isPlayer(resource.data)
+                        && request.resource.data.createdBy == resource.data.createdBy
+                        && request.resource.data.type == resource.data.type
+                        && request.resource.data.players == resource.data.players);
+
+      allow delete: if signedIn()
+                    && resource.data.createdBy == request.auth.uid;
+
+      match /private/{secretId} {
+        allow create: if signedIn()
+                      && secretId == 'secret'
+                      && get(/databases/$(database)/documents/games/$(gameId)).data.createdBy == request.auth.uid
+                      && request.resource.data.createdBy == request.auth.uid
+                      && request.resource.data.word is string
+                      && request.resource.data.word.size() > 0;
+
+        allow read: if signedIn()
+                    && secretId == 'secret'
+                    && get(/databases/$(database)/documents/games/$(gameId)).data.createdBy == request.auth.uid;
+
+        allow update, delete: if false;
+      }
+
+      // Live position records for Indian Racing. Each racer may write only their own record.
+      match /racePlayers/{playerUid} {
+        function parentGame() {
+          return get(/databases/$(database)/documents/games/$(gameId)).data;
+        }
+
+        function isRacePlayer() {
+          return signedIn()
+            && parentGame().type == 'racing'
+            && parentGame().players is list
+            && parentGame().players.size() >= 1
+            && parentGame().players.size() <= 2
+            && (parentGame().players[0].uid == request.auth.uid
+                || (parentGame().players.size() == 2
+                    && parentGame().players[1].uid == request.auth.uid));
+        }
+
+        allow read: if isRacePlayer();
+
+        allow create, update: if isRacePlayer()
+          && playerUid == request.auth.uid
+          && request.resource.data.keys().hasAll([
+            'uid', 'name', 'distance', 'lane', 'speed', 'finished', 'updatedAtMs'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'uid', 'name', 'distance', 'lane', 'speed', 'finished', 'updatedAtMs'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 40
+          && request.resource.data.distance is number
+          && request.resource.data.distance >= 0
+          && request.resource.data.distance <= 100000
+          && request.resource.data.lane is number
+          && request.resource.data.lane >= -1.2
+          && request.resource.data.lane <= 1.2
+          && request.resource.data.speed is number
+          && request.resource.data.speed >= 0
+          && request.resource.data.speed <= 260
+          && request.resource.data.finished is bool
+          && request.resource.data.updatedAtMs is number;
+
+        allow delete: if false;
+      }
+    }
+
+    // Uran Shorts
+    match /uranShorts/{videoId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll([
+                      'videoId',
+                      'caption',
+                      'addedBy',
+                      'addedByName',
+                      'createdAt',
+                      'likedBy'
+                    ])
+                    && request.resource.data.videoId == videoId
+                    && request.resource.data.videoId is string
+                    && request.resource.data.videoId.size() <= 20
+                    && request.resource.data.caption is string
+                    && request.resource.data.caption.size() <= 300
+                    && request.resource.data.addedBy == request.auth.uid
+                    && request.resource.data.addedByName is string
+                    && request.resource.data.likedBy is list
+                    && request.resource.data.likedBy.size() == 0
+                    && request.resource.data.createdAt == request.time;
+
+      // Only the likedBy list can change during a like/unlike.
+      allow update: if request.auth != null
+                    && resource.data.likedBy is list
+                    && request.resource.data.likedBy is list
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['likedBy'])
+                    && (
+                      (
+                        request.resource.data.likedBy.hasAll(resource.data.likedBy)
+                        && request.resource.data.likedBy.size()
+                           == resource.data.likedBy.size() + 1
+                        && request.resource.data.likedBy.hasAll([request.auth.uid])
+                        && !resource.data.likedBy.hasAll([request.auth.uid])
+                      )
+                      ||
+                      (
+                        resource.data.likedBy.hasAll(request.resource.data.likedBy)
+                        && request.resource.data.likedBy.size()
+                           == resource.data.likedBy.size() - 1
+                        && resource.data.likedBy.hasAll([request.auth.uid])
+                        && !request.resource.data.likedBy.hasAll([request.auth.uid])
+                      )
+                    );
+
+      // Views: each signed-in viewer can create/update only their own view.
+      match /views/{viewerUid} {
+        allow read: if request.auth != null;
+
+        allow create: if request.auth != null
+                      && viewerUid == request.auth.uid
+                      && request.resource.data.keys().hasAll([
+                        'uid',
+                        'displayName',
+                        'photoURL',
+                        'viewedAt'
+                      ])
+                      && request.resource.data.keys().hasOnly([
+                        'uid',
+                        'displayName',
+                        'photoURL',
+                        'viewedAt'
+                      ])
+                      && request.resource.data.uid == request.auth.uid
+                      && request.resource.data.displayName is string
+                      && request.resource.data.displayName.size() <= 60
+                      && request.resource.data.photoURL is string
+                      && request.resource.data.photoURL.size() <= 2048
+                      && request.resource.data.viewedAt == request.time;
+
+        allow update: if request.auth != null
+                      && viewerUid == request.auth.uid
+                      && resource.data.uid == request.auth.uid
+                      && request.resource.data.uid == resource.data.uid
+                      && request.resource.data.diff(resource.data)
+                           .affectedKeys()
+                           .hasOnly(['displayName', 'photoURL', 'viewedAt'])
+                      && request.resource.data.displayName is string
+                      && request.resource.data.displayName.size() <= 60
+                      && request.resource.data.photoURL is string
+                      && request.resource.data.photoURL.size() <= 2048
+                      && request.resource.data.viewedAt == request.time;
+
+        allow delete: if false;
+      }
+
+      // Comments: signed-in users can add comments; comments cannot be edited/deleted.
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+
+        allow create: if request.auth != null
+                      && request.resource.data.keys().hasAll([
+                        'uid',
+                        'displayName',
+                        'photoURL',
+                        'text',
+                        'createdAt'
+                      ])
+                      && request.resource.data.keys().hasOnly([
+                        'uid',
+                        'displayName',
+                        'photoURL',
+                        'text',
+                        'createdAt'
+                      ])
+                      && request.resource.data.uid == request.auth.uid
+                      && request.resource.data.displayName is string
+                      && request.resource.data.displayName.size() <= 60
+                      && request.resource.data.photoURL is string
+                      && request.resource.data.photoURL.size() <= 2048
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 1000
+                      && request.resource.data.createdAt == request.time;
+
+        allow update, delete: if false;
+      }
+
+      // Only the person who added the Short can delete it.
+      allow delete: if request.auth != null
+                    && resource.data.addedBy == request.auth.uid;
+    }
+
+    // Voice/video call signaling (test implementation).
+    match /calls/{callId} {
+      function isCallParticipant() {
+        return request.auth != null &&
+          (resource.data.callerId == request.auth.uid || resource.data.calleeId == request.auth.uid);
+      }
+
+      allow create: if request.auth != null
+        && request.resource.data.callerId == request.auth.uid
+        && request.resource.data.calleeId is string
+        && request.resource.data.calleeId != request.auth.uid
+        && request.resource.data.callType in ["audio", "video"]
+        && request.resource.data.status == "preparing"
+        && request.resource.data.createdAtMs is number;
+
+      allow get, list: if isCallParticipant();
+
+      allow update: if isCallParticipant() && (
+        (
+          resource.data.callerId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "offer", "updatedAtMs", "endedAtMs"]) &&
+          (
+            (resource.data.status == "preparing" && request.resource.data.status == "ringing" && request.resource.data.offer is map) ||
+            (resource.data.status in ["preparing", "ringing", "accepted"] && request.resource.data.status in ["cancelled", "ended"])
+          )
+        ) ||
+        (
+          resource.data.calleeId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "answer", "acceptedAtMs", "updatedAtMs", "endedAtMs"]) &&
+          (
+            (resource.data.status == "ringing" && request.resource.data.status == "accepted" && request.resource.data.answer is map) ||
+            (resource.data.status == "ringing" && request.resource.data.status == "declined") ||
+            (resource.data.status == "accepted" && request.resource.data.status == "ended")
+          )
+        )
+      );
+
+      allow delete: if false;
+
+      match /callerCandidates/{candidateId} {
+        function parentCall() {
+          return get(/databases/$(database)/documents/calls/$(callId)).data;
+        }
+        allow read: if request.auth != null &&
+          (parentCall().callerId == request.auth.uid || parentCall().calleeId == request.auth.uid);
+        allow create: if request.auth != null && parentCall().callerId == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      match /calleeCandidates/{candidateId} {
+        function parentCall() {
+          return get(/databases/$(database)/documents/calls/$(callId)).data;
+        }
+        allow read: if request.auth != null &&
+          (parentCall().callerId == request.auth.uid || parentCall().calleeId == request.auth.uid);
+        allow create: if request.auth != null && parentCall().calleeId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+
+    // Indian Group Chat
+    match /groups/{groupId} {
+
+      function isGroupMember() {
+        return signedIn()
+          && request.auth.uid in resource.data.members;
+      }
+
+      function isGroupAdmin() {
+        return signedIn()
+          && resource.data.admins is list
+          && request.auth.uid in resource.data.admins;
+      }
+
+      // Group list queries must filter members with array-contains current UID.
+      allow get, list: if isGroupMember();
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+             'name',
+             'createdBy',
+             'createdAt',
+             'updatedAt',
+             'updatedAtMs',
+             'members',
+             'admins'
+           ])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedAtMs is number
+        && request.resource.data.members is list
+        && request.resource.data.members.size() == 1
+        && request.resource.data.members.hasAll([request.auth.uid])
+        && request.resource.data.admins is list
+        && request.resource.data.admins.size() == 1
+        && request.resource.data.admins.hasAll([request.auth.uid])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 60;
+
+      // Only group admins can change group settings or membership.
+      // Keep the creator and creation timestamp immutable, and prevent
+      // arbitrary/unvalidated fields from being changed.
+      allow update: if isGroupAdmin()
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly([
+               'name',
+               'photoURL',
+               'description',
+               'members',
+               'admins',
+               'updatedAt',
+               'updatedAtMs'
+             ])
+        && request.resource.data.members is list
+        && request.resource.data.members.size() >= 1
+        && request.resource.data.members.size() <= 100
+        && request.resource.data.members.hasAll([resource.data.createdBy])
+        && request.resource.data.admins is list
+        && request.resource.data.admins.size() >= 1
+        && request.resource.data.admins.size() <= request.resource.data.members.size()
+        && request.resource.data.members.hasAll(request.resource.data.admins)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedAtMs is number
+        && (
+          !request.resource.data.keys().hasAny(['photoURL'])
+          || (request.resource.data.photoURL is string
+              && request.resource.data.photoURL.size() <= 2048)
+        )
+        && (
+          !request.resource.data.keys().hasAny(['description'])
+          || (request.resource.data.description is string
+              && request.resource.data.description.size() <= 500)
+        );
+
+      allow delete: if signedIn()
+        && resource.data.createdBy == request.auth.uid;
+
+      // Messages inside a group are visible only to current group members.
+      match /messages/{messageId} {
+
+        function parentGroup() {
+          return get(
+            /databases/$(database)/documents/groups/$(groupId)
+          ).data;
+        }
+
+        function isMember() {
+          return signedIn()
+            && parentGroup().members is list
+            && request.auth.uid in parentGroup().members;
+        }
+
+        allow get, list: if isMember();
+
+        allow create: if isMember()
+          && request.resource.data.keys().hasOnly([
+               'senderId',
+               'senderName',
+               'text',
+               'createdAt'
+             ])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.senderName is string
+          && request.resource.data.senderName.size() >= 1
+          && request.resource.data.senderName.size() <= 60
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt == request.time;
+
+        // Message editing is disabled in this basic rules version.
+        // A sender may delete only their own group message.
+        allow update: if false;
+        allow delete: if isMember()
+          && resource.data.senderId == request.auth.uid;
+      }
+    }
+
+    // All other collections remain denied by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -121,8 +121,13 @@ window.runIndianPublicProfileMigration = async function () {
 
   let reactionCount = 0;
   for (const [messageId, value] of Object.entries(reactions)) {
-    const emoji = typeof value === "string" ? value : String(value?.emoji || "");
+    const emoji = typeof value === "string"
+      ? value
+      : value && typeof value === "object" ? value.emoji : "";
     if (!emoji) continue;
+    if (typeof emoji !== "string" || emoji.length > 8) {
+      throw new Error("Legacy reaction emoji is invalid or longer than the Rules allow; migration stopped safely without changing legacy data.");
+    }
     const reactionId = uid + "_" + safeDocPart(messageId);
     if (reactionId.length > 800) {
       throw new Error("Reaction document ID is too long for the migration Rules; no legacy data was changed.");
@@ -130,8 +135,8 @@ window.runIndianPublicProfileMigration = async function () {
     const reactionRef = doc(db, "messageReactions", reactionId);
     await ensureCopied(reactionRef, {
       uid,
-      messageId: String(messageId),
-      emoji: emoji.slice(0, 8),
+      messageId,
+      emoji,
       // Stable fallback: retries must produce the same record, not a new Date.now().
       // Legacy string reactions have no timestamp; zero is a stable retry-safe fallback.
       createdAtMs: Number(value?.createdAtMs) || 0

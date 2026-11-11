@@ -16,18 +16,18 @@ if (!scripts.length) {
 const tempDir = await mkdtemp(join(tmpdir(), "indian-js-check-"));
 try {
   for (let i = 0; i < scripts.length; i++) {
-    const file = join(tempDir, \`inline-module-\${i + 1}.mjs\`);
+    const file = join(tempDir, "inline-module-" + (i + 1) + ".mjs");
     await writeFile(file, scripts[i], "utf8");
     const result = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
     if (result.status !== 0) {
-      process.stderr.write(\`Syntax error in index.html inline module #\${i + 1}\n\`);
+      process.stderr.write("Syntax error in index.html inline module #" + (i + 1) + "\n");
       process.stderr.write(result.stderr || result.stdout || "Node syntax check failed.\n");
       process.exitCode = result.status || 1;
       break;
     }
   }
   if (!process.exitCode) {
-    console.log(\`JavaScript syntax OK: \${scripts.length} inline module script(s).\`);
+    console.log("JavaScript syntax OK: " + scripts.length + " inline module script(s).");
   }
 } finally {
   await rm(tempDir, { recursive: true, force: true });

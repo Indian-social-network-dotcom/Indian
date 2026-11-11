@@ -280,7 +280,7 @@ Updated `index.html` on the migration branch only:
 
 
 - Additional helper hardening (commit `896019c8159c6f64570251f8a156bd261f936c7e`): legacy reaction emoji values are now validated as strings within the Rules limit. The helper stops safely on malformed or oversized values instead of silently truncating them and potentially changing a user's reaction.
-- The workflow is configured to run on pushes to this migration branch when `public-profile-migration.js` changes. The GitHub connector did not expose a workflow run/status for the newest commits during this check, so the latest three fixes remain **not yet CI-verified**. The previous confirmed Run #21 applies to the earlier commit only.
+- At the time of this earlier check, the GitHub connector did not expose the newest workflow run, so the latest three fixes were temporarily marked **not yet CI-verified**. This historical status is superseded by the confirmed Run #24 result recorded below.
 
 ## Confirmed latest CI result — 2026-11-11
 

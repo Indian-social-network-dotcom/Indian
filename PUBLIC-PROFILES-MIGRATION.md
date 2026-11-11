@@ -247,3 +247,14 @@ Updated `index.html` on the migration branch only:
 - This is Rules/emulator and JavaScript syntax validation only. It is not a browser/device feature test, not a production Rules deployment, and not proof that the migration helper has been run.
 - npm install reported 5 high-severity dependency advisories in the test dependency tree. Do not use `npm audit fix --force`; review the advisory paths and compatible upgrades separately.
 - Production Rules remain unpublished. Migration helper remains dormant. No Firebase data was migrated, overwritten or deleted. `main` and the live website were not changed.
+
+
+## Follow-up security review — 2026-11-11
+
+- Confirmed that Firestore Rules cannot hide selected fields within a readable document. Therefore, while publicProfiles remains readable to signed-in users, old private fields left inside a migrated profile document (presence, typing, live status, stories, and reactions) remain readable even if the app stops using them.
+- The migration must therefore have a separate, explicitly approved cleanup phase: only after each separated copy is verified, remove the migrated private fields from that owner's legacy publicProfiles document. This cleanup has NOT been run or authorized. Do not delete fields or documents yet.
+- Runtime dual-write review found that several paths still wrote private fields to publicProfiles after schema version 2. Added guards so migrated accounts write reactions, stories, live status, presence, and typing only to separated collections. Story cleanup now reads from the separated story document after migration.
+- Added a startup schema-version read before presence heartbeat starts, avoiding a race where a migrated account could briefly write presence back into its public profile before the public profile listener loads.
+- Tightened message reaction create validation: exact four-field schema, owner UID, string message ID, emoji length <= 8, numeric timestamp. Added negative emulator tests for oversized emoji and unexpected fields.
+- Upgraded test-only dependencies to firebase@13.2.0 and @firebase/rules-unit-testing@6.0.0 based on current package releases. The next CI run must confirm that this removes the advisories and that the test APIs remain compatible.
+- These changes remain isolated to the migration branch. Production Rules are unpublished; no Firebase data has been migrated or deleted.

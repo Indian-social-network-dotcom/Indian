@@ -70,6 +70,9 @@ test("messageReactions: signed-in read and owner-only create/update/delete", asy
     uid: "alice", messageId: "msg1", emoji: "❤️", createdAtMs: 10
   }));
   await assertSucceeds(getDoc(doc(db("bob"), "messageReactions/alice_msg1")));
+  await assertFails(setDoc(doc(db("alice"), "messageReactions/alice_duplicate"), {
+    uid: "alice", messageId: "msg1", emoji: "😂", createdAtMs: 12
+  }));
   await assertFails(setDoc(doc(db("alice"), "messageReactions/alice_badEmoji"), {
     uid: "alice", messageId: "badEmoji", emoji: "TOO-LONG-EMOJI", createdAtMs: 11
   }));

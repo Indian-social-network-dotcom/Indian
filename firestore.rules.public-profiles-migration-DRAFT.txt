@@ -1,6 +1,6 @@
 // REVIEW DRAFT ONLY — DO NOT PUBLISH YET.
 // Based on the user's uploaded current Firestore Rules (2026-11-11).
-// Keep Personal Messages sender-only update/delete; do NOT add receiver-side Read Receipt permission.
+// Personal Messages: sender edit/delete plus receiver-only read:true receipt update.
 // Preserve Group Chat Rules unchanged.
 // This draft still requires validation against actual app queries and document schemas.
 
@@ -495,9 +495,16 @@ service cloud.firestore {
                     && request.resource.data.text is string
                     && request.resource.data.text.size() <= 2000;
 
-      // Keep the uploaded production Rules behavior: only the sender
-      // may update or delete their own personal message.
-      // No receiver-side Read Receipt update permission is granted.
+      // The receiver may only change read:false (or a missing legacy read field) to read:true.
+      // No message text, attachment, sender, receiver, or other field can be changed by the receiver.
+      allow update: if signedIn()
+                    && resource.data.receiverId == request.auth.uid
+                    && (!resource.data.keys().hasAny(['read']) || resource.data.read == false)
+                    && request.resource.data.read == true
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['read']);
+
+      // The sender retains the existing permission to edit or delete their own message.
       allow update, delete: if signedIn()
                             && resource.data.senderId == request.auth.uid;
     }

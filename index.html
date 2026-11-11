@@ -2121,7 +2121,7 @@ function openConversation(personId){
             const invite=JSON.parse(pendingInviteRaw);
             if(invite&&invite.joinUrl&&invite.roomId&&invite.game){
                 const gameNames={ttt:'Tic-Tac-Toe',quiz:'Rapid Quiz Battle',draw:'Draw & Guess',dice:'Mini Ludo / Dice Race'};
-                const inviteText='🏁 Indian Game Challenge!\nAapko '+(gameNames[invite.game]||'game')+' mein invite kiya gaya hai.\nRoom ID: '+invite.roomId+'\nJoin Race: '+invite.joinUrl;
+                const inviteText='🏁 Indian Game Challenge!\nAapko '+(gameNames[invite.game]||'game')+' mein invite kiya gaya hai.\nRoom ID: '+invite.roomId+'\nJoin Game: '+invite.joinUrl;
                 const draftKey='indian_chat_draft_'+personId;
                 const existing=textBox.value||'';
                 textBox.value=existing?(existing+'\n\n'+inviteText):inviteText;
@@ -2279,7 +2279,7 @@ function renderChat(personId){
             const text = document.createElement("div");
             const formattedCallLog = indianFormatCallLogText(message.text, message.sender === "me");
             const rawMessageText = formattedCallLog || message.text || "";
-            const inviteMatch = !formattedCallLog && String(message.text || "").match(/Join Race:\s*(https:\/\/[^\s]+)/i);
+            const inviteMatch = !formattedCallLog && String(message.text || "").match(/Join Game:\s*(https:\/\/[^\s]+)/i);
             if(inviteMatch){
                 const inviteUrlText=inviteMatch[1];
                 try{
@@ -2287,7 +2287,7 @@ function renderChat(personId){
                     if(inviteUrl.origin===location.origin && inviteUrl.pathname.endsWith('/games.html') && inviteUrl.searchParams.get('join')){
                         const urlIndex=String(message.text).indexOf(inviteUrlText);
                         text.appendChild(document.createTextNode(String(message.text).slice(0,urlIndex)));
-                        const joinLink=document.createElement('a');joinLink.href=inviteUrl.href;joinLink.textContent='Join Race';joinLink.setAttribute('aria-label','Join invited game room '+inviteUrl.searchParams.get('join'));joinLink.rel='noopener';
+                        const joinLink=document.createElement('a');joinLink.href=inviteUrl.href;joinLink.textContent='Join Game';joinLink.setAttribute('aria-label','Join invited game room '+inviteUrl.searchParams.get('join'));joinLink.rel='noopener';
                         text.appendChild(joinLink);
                         text.appendChild(document.createTextNode(String(message.text).slice(urlIndex+inviteUrlText.length)));
                     }else{text.textContent=rawMessageText;}

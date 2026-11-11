@@ -75,7 +75,7 @@ window.runIndianPublicProfileMigration = async function () {
   const ensureCopied = async (ref, data) => {
     const existing = await getDoc(ref);
     if (!existing.exists()) {
-      await setDoc(ref, { ...data, migratedFromPublicProfilesAt: serverTimestamp() });
+      await setDoc(ref, data);
     } else {
       const current = existing.data() || {};
       const matches = Object.keys(data).every(key =>

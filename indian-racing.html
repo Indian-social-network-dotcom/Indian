@@ -136,6 +136,7 @@ function watchRoom(){
 }
 async function inviteFriend(){
  if(!user){raceStatus('Pehle Indian account mein sign in karein.');return;}
+ if(room&&room.status!=='waiting'){raceStatus('Race shuru ho chuki hai. Naya room banakar invite bhejein.');return;}
  if(!roomId){await createRace();if(!roomId)return;}
  const joinUrl=new URL('./games.html',location.href);joinUrl.searchParams.set('join',roomId);joinUrl.searchParams.set('game','racing');
  try{sessionStorage.setItem('indianPendingGameInvite',JSON.stringify({game:'racing',roomId,joinUrl:joinUrl.href}));}
@@ -190,7 +191,7 @@ function init3D(){
 }
 function syncWorld(){
  const offset=distance;
- for(const m of roadMarks){let z=m.position.z+offset%16;if(z>12)z-=1504;m.position.z=z;}
+ for(const m of roadMarks){let z=m.position.z+(offset%1504);if(z>12)z-=1504;m.position.z=z;}
  for(const o of scenery){let z=o.position.z+offset%1450;if(z>30)z-=1450;o.position.z=z;}
  car.position.x=lane*2.65;car.rotation.z=(right?-.06:0)+(left?.06:0);
  if(opponentState&&opponentUid){

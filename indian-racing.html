@@ -224,7 +224,7 @@ function init3D(){
  scene.add(new THREE.Mesh(roadGeo,new THREE.MeshStandardMaterial({color:0x30343a,roughness:1,side:THREE.DoubleSide})));
  const edgeMat=new THREE.MeshStandardMaterial({color:0xf1e5b8});
  for(const side of [-1,1]){const pts=[];for(let p=0;p<=TRACK_LENGTH;p+=8)pts.push(new THREE.Vector3(trackX(p)+side*(TRACK_HALF-.12),trackY(p)+.08,-p));scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),500,.12,6,false),edgeMat));}
- for(let p=8;p<TRACK_LENGTH;p+=22){const mark=new THREE.Mesh(new THREE.BoxGeometry(.13,.035,5),new THREE.MeshBasicMaterial({color:0xf7f0d0}));mark.position.set(trackX(p),trackY(p)+.045,-p);mark.rotation.y=Math.atan(trackSlopeX(p));scene.add(mark);roadMarks.push(mark);}
+ for(let p=8;p<TRACK_LENGTH;p+=22){const mark=new THREE.Mesh(new THREE.BoxGeometry(.13,.035,5),new THREE.MeshBasicMaterial({color:0xf7f0d0}));mark.position.set(trackX(p),trackY(p)+.045,-p);mark.rotation.y=-Math.atan(trackSlopeX(p));scene.add(mark);roadMarks.push(mark);}
  for(let p=15;p<TRACK_LENGTH;p+=42){addTree(trackX(p)-TRACK_HALF-5,-p);addTree(trackX(p)+TRACK_HALF+5,-p-14);if(p%84<42){addBuilding(trackX(p)-TRACK_HALF-14,-p-24);addBuilding(trackX(p)+TRACK_HALF+14,-p-38);}}
  [[115,-.72],[245,.72],[390,0],[535,-.72],[690,.72],[835,0],[980,-.72],[1130,.72],[1285,0],[1410,-.72]].forEach((o,i)=>addObstacle(o[0],o[1],i));
  car=makeCar(0xff3030);car.position.set(trackX(0),trackY(0),0);scene.add(car);
@@ -233,8 +233,8 @@ function init3D(){
 }
 function syncWorld(){
  const ownX=trackX(distance)+lane*2.3,ownY=trackY(distance);
- car.position.set(ownX,ownY,-distance);car.rotation.y=Math.atan(trackSlopeX(distance));car.rotation.z=-trackSlopeY(distance)*.45+(right?-.035:0)+(left?.035:0);
- if(opponentState&&opponentUid){const od=Number(opponentState.distance||0);opponentCar.position.set(trackX(od)+Number(opponentState.lane||0)*2.3,trackY(od),-od);opponentCar.rotation.y=Math.atan(trackSlopeX(od));opponentCar.visible=Math.abs(od-distance)<650;}else opponentCar.visible=false;
+ car.position.set(ownX,ownY,-distance);car.rotation.y=-Math.atan(trackSlopeX(distance));car.rotation.z=-trackSlopeY(distance)*.45+(right?-.035:0)+(left?.035:0);
+ if(opponentState&&opponentUid){const od=Number(opponentState.distance||0);opponentCar.position.set(trackX(od)+Number(opponentState.lane||0)*2.3,trackY(od),-od);opponentCar.rotation.y=-Math.atan(trackSlopeX(od));opponentCar.visible=Math.abs(od-distance)<650;}else opponentCar.visible=false;
  camera.position.x+=(ownX*.72-camera.position.x)*.12;camera.position.y+=(ownY+7.5-camera.position.y)*.1;camera.position.z=-distance+13;camera.lookAt(trackX(distance+24),trackY(distance+24)+1,-distance-24);drawTrackMap();
 }
 async function pushRaceState(){

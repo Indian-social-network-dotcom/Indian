@@ -208,3 +208,9 @@ Updated `index.html` on the migration branch only:
 
 - Message reaction writes now calculate one `reactionCreatedAtMs` value and use it in both the legacy profile map and the separated `messageReactions` document (commit `685ffc5caaca047c466b325fe1e5c476a0d52ef8`).
 - This prevents the migration helper from detecting a false conflict caused by two timestamps generated milliseconds apart when it compares the old and new records.
+
+
+### Legacy reaction timestamp fallback correction
+
+- Migration now uses `createdAtMs: 0` for legacy reaction values that have no timestamp (commit `725e80f42935e545cc9b233078e26d59cd20b99b`).
+- It no longer derives that fallback from the public profile's `updatedAt`, which can change during normal presence/story writes and otherwise create a false conflict on a later retry.

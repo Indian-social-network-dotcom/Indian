@@ -1616,49 +1616,40 @@ window.replaceIndianConversationMessages = function(personId, messages){
 // Firebase profiles are loaded after the Firestore follows listener first fires.
 window.__indianPersistedFollowingKeys = window.__indianPersistedFollowingKeys || new Set();
 window.addFirebasePeopleToIndian = function(profiles){
-    let nextId = 10000;
-    profiles.forEach(function(profile){
-        if(!profile || !profile.uid || profile.uid === (window.firebaseCurrentUid || "")) return;
+    (Array.isArray(profiles) ? profiles : []).forEach(function(profile){
+        const uid = String(profile && profile.uid || "").trim();
+        if(!uid || uid === String(window.firebaseCurrentUid || "")) return;
         const safeName = String(profile.displayName || "Indian User").normalize("NFKC").replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0, 60) || "Indian User";
-        let existing = peopleData.find(function(p){ return p.firebaseUid === profile.uid; });
-        let matchedDemoPlaceholder = false;
-        if(!existing){
-            const normalizedProfileName = safeName.toLocaleLowerCase();
-            existing = peopleData.find(function(p){
-                return p.isDemoPlaceholder === true && !p.firebaseUid &&
-                    String(p.name || "").normalize("NFKC").trim().toLocaleLowerCase() === normalizedProfileName;
-            });
-            matchedDemoPlaceholder = !!existing;
-        }
+
+        // Firebase identity is the UID, never the display name. Two real users
+        // may share a name; demo placeholders must never be converted into accounts.
+        let existing = peopleData.find(function(person){
+            return String(person.firebaseUid || "") === uid;
+        });
         if(existing){
-            if(matchedDemoPlaceholder){
-                const demoChat = messageData.find(function(item){ return item.personId === existing.id; });
-                if(demoChat) demoChat.messages = [];
-                existing.isDemoPlaceholder = false;
-                existing.latestMessageAtMs = 0;
-                existing.latestMessageText = "";
-                existing.latestMessageId = "";
-                existing.latestMessageSenderId = "";
-            }
-            existing.firebaseUid = profile.uid;
+            existing.firebaseUid = uid;
             existing.name = safeName;
             existing.bio = String(profile.bio || existing.bio || "Firebase user on Indian.").slice(0, 500);
             existing.photoURL = String(profile.photoURL || existing.photoURL || "");
-            existing.isFollowing = window.__indianPersistedFollowingKeys.has(profile.uid);
+            existing.isFollowing = window.__indianPersistedFollowingKeys.has(uid);
             return;
         }
-        while(peopleData.some(function(p){ return p.id === nextId; })) nextId++;
+
+        let nextId = peopleData.reduce(function(maxId, person){
+            return Math.max(maxId, Number(person.id) || 0);
+        }, 9999) + 1;
+        while(peopleData.some(function(person){ return Number(person.id) === nextId; })) nextId++;
         const person = {
-            id: nextId++,
+            id: nextId,
             name: safeName,
             bio: String(profile.bio || "Firebase user on Indian.").slice(0, 500),
             photoURL: String(profile.photoURL || ""),
-            firebaseUid: profile.uid,
-            isFollowing:window.__indianPersistedFollowingKeys.has(profile.uid),
-            followersCount:0,
-            followingCount:0,
-            followersList:[],
-            followingList:[]
+            firebaseUid: uid,
+            isFollowing: window.__indianPersistedFollowingKeys.has(uid),
+            followersCount: 0,
+            followingCount: 0,
+            followersList: [],
+            followingList: []
         };
         peopleData.push(person);
         suggestedPeople.push(person);
@@ -1782,6 +1773,23 @@ function renderConversationList(){
 
     const conversationQuery = conversationSearchQuery.trim().toLowerCase();
     let visiblePeople = peopleData.slice();
+
+    // Demo-only placeholder contacts are not registered accounts. Keep their
+    // local records intact, but do not present them as duplicate real chats
+    // after a Firebase user signs in.
+    if(window.firebaseCurrentUid){
+        visiblePeople = visiblePeople.filter(function(person){ return person.isDemoPlaceholder !== true; });
+    }
+    // If old local data already contains the same Firebase UID more than once,
+    // show one conversation row for that account without deleting any records.
+    const seenFirebaseUids = new Set();
+    visiblePeople = visiblePeople.filter(function(person){
+        const uid = String(person.firebaseUid || "");
+        if(!uid) return true;
+        if(seenFirebaseUids.has(uid)) return false;
+        seenFirebaseUids.add(uid);
+        return true;
+    });
 
     if(conversationQuery){
         visiblePeople = visiblePeople.filter(function(person){
@@ -1995,20 +2003,51 @@ function indianOpenChatView(){
     const announcer=document.getElementById("indianRouteAnnouncer");if(announcer)announcer.textContent="Chat opened.";
 }
 function indianCloseChatView(){
-    stopIndianTypingWatch();
+    try{stopIndianTypingWatch();}catch(error){console.warn("Chat typing watcher could not stop cleanly.",error);}
     if(window.__indianChatRecognition){try{window.__indianChatRecognition.stop();}catch(e){}window.__indianChatRecognition=null;}
     const mic=document.getElementById("indianChatVoiceTypingButton");
     if(mic){mic.textContent="🎙";mic.setAttribute("aria-label","Start voice typing");}
-    document.body.classList.remove("indian-chat-open");
-    if(typeof window.indianCloseGroupMode==="function")window.indianCloseGroupMode();
+
+    // Restore the Messages list for both personal and group conversations.
+    document.body.classList.remove("indian-chat-open","indian-chat-group");
+    if(typeof window.indianCloseGroupMode==="function"){
+        try{window.indianCloseGroupMode();}catch(error){console.warn("Group chat cleanup failed while returning to Chats.",error);}
+    }
+    const layout=document.getElementById("messagesLayout");
+    if(layout)layout.style.display="";
+    const search=document.getElementById("conversationSearchBox");
+    if(search)search.value="";
+    conversationSearchQuery="";
+    const results=document.getElementById("messageUserResults");
+    if(results){results.hidden=true;results.replaceChildren();}
+    const groupResults=document.getElementById("indianGroupChatSearchResults");
+    if(groupResults)groupResults.hidden=true;
+    const section=document.getElementById("messagesSection");
+    if(section)section.style.display="block";
+    if(typeof renderConversationList==="function")renderConversationList();
+
     const list=document.getElementById("conversationList");
-    if(list){const first=list.querySelector("button, [tabindex='0']");if(first)first.focus();else list.focus();}
-    const announcer=document.getElementById("indianRouteAnnouncer");if(announcer)announcer.textContent="Back to Chats.";
+    if(list){
+        const first=list.querySelector("button, [tabindex='0']");
+        if(first)first.focus();
+        else{list.tabIndex=-1;list.focus();}
+    }
+    const announcer=document.getElementById("indianRouteAnnouncer");
+    if(announcer)announcer.textContent="Back to Chats. Conversation list is ready.";
 }
 window.indianCloseChatView=indianCloseChatView;
 function openConversation(personId){
-    const person = peopleData.find(function(p){ return p.id === personId; });
-    if(!person) return;
+    const requestedId = personId && typeof personId === "object" ? personId.id : personId;
+    let person = peopleData.find(function(p){ return String(p.id) === String(requestedId); });
+    if(!person && typeof requestedId === "string"){
+        person = peopleData.find(function(p){ return String(p.firebaseUid || "") === requestedId; });
+    }
+    if(!person){
+        const status=document.getElementById("firebaseMessageStatus");
+        if(status)status.textContent="This chat could not be matched to a registered user. Refresh Messages and try again.";
+        return false;
+    }
+    personId = person.id;
 
     // Switching to a personal chat must always clear any leftover group composer.
     if(typeof window.indianCloseGroupMode === "function") window.indianCloseGroupMode();
@@ -2064,7 +2103,9 @@ function openConversation(personId){
         if(draftStatus && savedDraft) draftStatus.textContent = "Draft restored.";
         setTimeout(function(){ textBox.focus(); }, 100);
     }
+    return true;
 }
+window.openConversation = openConversation;
 
 function getDisplayedChatMessages(personId){
     const messages = getMessagesForPerson(personId);

@@ -6032,9 +6032,14 @@ function publishIndianCombinedProfiles(legacyProfiles){
             const stories=separatedStoriesByUid.get(profile.uid);
             const presence=separatedPresenceByUid.get(profile.uid);
             const live=separatedLiveByUid.get(profile.uid);
-            if(stories){combined.activeStories=Array.isArray(stories.activeStories)?stories.activeStories:[];combined.lastStoryAtMs=Number(stories.lastStoryAtMs)||0;}
-            if(presence){combined.presenceOnline=presence.presenceOnline===true;combined.presenceAtMs=Number(presence.presenceAtMs)||0;combined.lastSeenAtMs=Number(presence.lastSeenAtMs)||0;}
-            if(live)combined.liveSession=live.liveSession||null;
+            // For migrated profiles, a missing separated document means empty state.
+            // Never fall back to private legacy fields left in publicProfiles.
+            combined.activeStories=stories&&Array.isArray(stories.activeStories)?stories.activeStories:[];
+            combined.lastStoryAtMs=stories?Number(stories.lastStoryAtMs)||0:0;
+            combined.presenceOnline=presence?presence.presenceOnline===true:false;
+            combined.presenceAtMs=presence?Number(presence.presenceAtMs)||0:0;
+            combined.lastSeenAtMs=presence?Number(presence.lastSeenAtMs)||0:0;
+            combined.liveSession=live?live.liveSession||null:null;
             // Typing is fetched only for the currently open personal conversation.
             combined.typingToUid="";combined.typingAtMs=0;
             const migratedReactions={};

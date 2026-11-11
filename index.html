@@ -2279,7 +2279,7 @@ function renderChat(personId){
             const text = document.createElement("div");
             const formattedCallLog = indianFormatCallLogText(message.text, message.sender === "me");
             const rawMessageText = formattedCallLog || message.text || "";
-            const inviteMatch = !formattedCallLog && String(message.text || "").match(/Join Race:\\s*(https:\\/\\/[^\\s]+)/i);
+            const inviteMatch = !formattedCallLog && String(message.text || "").match(/Join Race:\s*(https:\/\/[^\s]+)/i);
             if(inviteMatch){
                 const inviteUrlText=inviteMatch[1];
                 try{

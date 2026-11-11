@@ -494,17 +494,9 @@ service cloud.firestore {
                     && request.resource.data.text is string
                     && request.resource.data.text.size() <= 2000;
 
-      // Receiver may only mark their incoming message as read.
-      // The receiver cannot change any other message field.
-      allow update: if signedIn()
-                    && resource.data.receiverId == request.auth.uid
-                    && resource.data.senderId != request.auth.uid
-                    && resource.data.read == false
-                    && request.resource.data.read == true
-                    && request.resource.data.diff(resource.data)
-                         .affectedKeys().hasOnly(['read']);
-
-      // Sender can update or delete their own message.
+      // Keep the uploaded production Rules behavior: only the sender
+      // may update or delete their own personal message.
+      // No receiver-side Read Receipt update permission is granted.
       allow update, delete: if signedIn()
                             && resource.data.senderId == request.auth.uid;
     }

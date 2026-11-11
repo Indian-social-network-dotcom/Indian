@@ -5670,7 +5670,8 @@ async function saveFirestoreMessageReaction(messageId, emoji){
     const snap = await getDoc(ref);
     const data = snap.exists() ? (snap.data() || {}) : {};
     const reactions = Object.assign({}, data.messageReactions || {});
-    reactions[String(messageId)] = {emoji:String(emoji).slice(0,8),createdAtMs:Date.now()};
+    const reactionCreatedAtMs=Date.now();
+    reactions[String(messageId)] = {emoji:String(emoji).slice(0,8),createdAtMs:reactionCreatedAtMs};
     const entries = Object.entries(reactions).sort((a,b)=>Number((a[1]||{}).createdAtMs||0)-Number((b[1]||{}).createdAtMs||0));
     const limited = Object.fromEntries(entries.slice(-80));
     if(snap.exists()) await updateDoc(ref,{messageReactions:limited,updatedAt:serverTimestamp()});
@@ -5678,7 +5679,7 @@ async function saveFirestoreMessageReaction(messageId, emoji){
     const reactionDocId=firebaseCurrentUser.uid+"_"+encodeURIComponent(String(messageId));
     if(reactionDocId.length<=800){
         await setDoc(doc(firebaseDb,"messageReactions",reactionDocId),{
-            uid:firebaseCurrentUser.uid,messageId:String(messageId),emoji:String(emoji).slice(0,8),createdAtMs:Date.now()
+            uid:firebaseCurrentUser.uid,messageId:String(messageId),emoji:String(emoji).slice(0,8),createdAtMs:reactionCreatedAtMs
         },{merge:true}).catch(function(error){console.warn("Separated reaction write is waiting for migration Rules:",error);});
     }else{
         console.warn("Separated reaction write skipped because the message ID exceeds the migration Rules limit.");

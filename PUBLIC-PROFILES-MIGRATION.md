@@ -223,3 +223,14 @@ Updated `index.html` on the migration branch only:
 - Verified `group-chat.js` has the same Git blob SHA on the migration branch and `main`.
 - Static delimiter checks passed for the edited application sections, the Rules draft, and the migration helper. This is not a JavaScript parser check, Firestore Rules compilation, emulator test, or browser test.
 - Production branch, live Firestore Rules, and Firebase data have not been changed by this work.
+
+
+## Automated validation harness — 2026-11-11
+
+- Added an isolated test project under `firestore-rules-tests/`; it uses a demo-only Firestore Emulator project ID and loads the migration Rules draft directly.
+- Added allow/deny tests for separated profile collections, recipient-only typing reads, private migration markers, new/legacy Story interaction lookup, personal message Read Receipt behavior, and Group Chat membership/message access.
+- Added a syntax-check script for inline JavaScript modules in `index.html` and `public-profile-migration.js`.
+- Added GitHub Actions workflow `.github/workflows/firestore-rules-emulator-tests.yml` to run syntax checks and Firestore Emulator tests on changes to the draft/harness.
+- These files do not connect to the production Firebase project and contain no production credentials.
+- The workflow run result has not yet been independently confirmed in this review. Do not treat the harness as passing until GitHub Actions reports success and any test failures are resolved.
+- No production Rules were published; no migration helper was run; no Firestore data was changed.

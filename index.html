@@ -5801,6 +5801,7 @@ window.indianSetMessageTyping=async function(personId,isTyping){
         indianTypingExpiry=setTimeout(function(){
             if(firebaseDb&&firebaseCurrentUser&&firebaseCurrentUser.uid===uid){
                 setDoc(doc(firebaseDb,"publicProfiles",uid),{typingToUid:"",typingAtMs:0},{merge:true}).catch(function(){});
+                deleteDoc(doc(firebaseDb,"userTyping",uid)).catch(function(error){console.warn("Separated typing clear is waiting for migration Rules:",error);});
             }
         },6500);
         if(now-indianLastTypingWriteAt<1800)return;
@@ -5809,7 +5810,47 @@ window.indianSetMessageTyping=async function(personId,isTyping){
     await setDoc(doc(firebaseDb,"publicProfiles",uid),{
         uid:uid,typingToUid:isTyping?peerUid:"",typingAtMs:isTyping?now:0
     },{merge:true});
+    if(isTyping){
+        await setDoc(doc(firebaseDb,"userTyping",uid),{uid:uid,typingToUid:peerUid,typingAtMs:now},{merge:true})
+            .catch(function(error){console.warn("Separated typing write is waiting for migration Rules:",error);});
+    }else{
+        await deleteDoc(doc(firebaseDb,"userTyping",uid))
+            .catch(function(error){console.warn("Separated typing clear is waiting for migration Rules:",error);});
+    }
 };
+let indianTypingWatchTimer=null;
+let indianTypingWatchUid="";
+function stopIndianTypingWatch(){
+    if(indianTypingWatchTimer){clearInterval(indianTypingWatchTimer);indianTypingWatchTimer=null;}
+    const oldUid=indianTypingWatchUid;indianTypingWatchUid="";
+    if(oldUid&&Array.isArray(window.indianFirebasePublicProfiles)){
+        const profile=window.indianFirebasePublicProfiles.find(function(item){return item.uid===oldUid;});
+        if(profile){profile.typingToUid="";profile.typingAtMs=0;if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(window.indianFirebasePublicProfiles);}
+    }
+}
+function startIndianTypingWatch(personId){
+    stopIndianTypingWatch();
+    if(!firebaseDb||!firebaseCurrentUser)return;
+    const peerUid=getFirestoreMessagePersonUid(personId);
+    if(!peerUid)return;
+    indianTypingWatchUid=peerUid;
+    async function refreshTyping(){
+        if(!firebaseDb||!firebaseCurrentUser||indianTypingWatchUid!==peerUid)return;
+        try{
+            const snap=await getDoc(doc(firebaseDb,"userTyping",peerUid));
+            const data=snap.exists()?(snap.data()||{}):{};
+            const active=snap.exists()&&data.typingToUid===firebaseCurrentUser.uid&&Date.now()-Number(data.typingAtMs||0)<7000;
+            const profile=(window.indianFirebasePublicProfiles||[]).find(function(item){return item.uid===peerUid;});
+            if(profile){profile.typingToUid=active?firebaseCurrentUser.uid:"";profile.typingAtMs=active?Number(data.typingAtMs)||0:0;if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(window.indianFirebasePublicProfiles);}
+        }catch(error){
+            // A permission denial means this person is not currently typing to us.
+            const profile=(window.indianFirebasePublicProfiles||[]).find(function(item){return item.uid===peerUid;});
+            if(profile){profile.typingToUid="";profile.typingAtMs=0;if(typeof window.applyIndianPresenceProfiles==="function")window.applyIndianPresenceProfiles(window.indianFirebasePublicProfiles);}
+        }
+    }
+    refreshTyping();
+    indianTypingWatchTimer=setInterval(refreshTyping,3000);
+}
 window.addEventListener("pagehide",function(){
     if(firebaseDb&&firebaseCurrentUser){
         const uid=firebaseCurrentUser.uid;
@@ -5817,6 +5858,10 @@ window.addEventListener("pagehide",function(){
         setDoc(doc(firebaseDb,"publicProfiles",uid),{
             uid:uid,presenceOnline:false,presenceAtMs:now,lastSeenAtMs:now,typingToUid:"",typingAtMs:0
         },{merge:true}).catch(function(){});
+        setDoc(doc(firebaseDb,"userPresence",uid),{
+            uid:uid,presenceOnline:false,presenceAtMs:now,lastSeenAtMs:now
+        },{merge:true}).catch(function(){});
+        deleteDoc(doc(firebaseDb,"userTyping",uid)).catch(function(){});
     }
 });
 
@@ -5955,6 +6000,8 @@ function publishIndianCombinedProfiles(legacyProfiles){
             if(stories){combined.activeStories=Array.isArray(stories.activeStories)?stories.activeStories:[];combined.lastStoryAtMs=Number(stories.lastStoryAtMs)||0;}
             if(presence){combined.presenceOnline=presence.presenceOnline===true;combined.presenceAtMs=Number(presence.presenceAtMs)||0;combined.lastSeenAtMs=Number(presence.lastSeenAtMs)||0;}
             if(live)combined.liveSession=live.liveSession||null;
+            // Typing is fetched only for the currently open personal conversation.
+            combined.typingToUid="";combined.typingAtMs=0;
             const migratedReactions={};
             separatedReactionsById.forEach(function(value){
                 if(value&&value.uid===profile.uid&&value.messageId)migratedReactions[String(value.messageId)]={emoji:String(value.emoji||"").slice(0,8),createdAtMs:Number(value.createdAtMs)||0};

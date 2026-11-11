@@ -5782,6 +5782,7 @@ let indianPresenceDisplayTimer=null;
 let indianTypingExpiry=null;
 let indianLastTypingWriteAt=0;
 function indianOwnProfileUsesSeparatedSchema(uid){
+    if(firebaseCurrentUser&&firebaseCurrentUser.uid===uid&&indianCurrentUserProfileSchemaVersion>=2)return true;
     const own=(window.indianFirebaseAllProfiles||[]).find(function(profile){return profile.uid===uid;});
     return !!(own&&Number(own.profileSchemaVersion)>=2);
 }
@@ -5939,16 +5940,20 @@ window.getIndianStoryViewerSummary=getIndianStoryViewerSummary;
 window.saveIndianStoryToFirestore = saveIndianStoryRecord;
 window.setIndianLiveStatus = setIndianFirestoreLiveStatus;
 
+let indianCurrentUserProfileSchemaVersion=0;
 async function ensureCurrentUserPublicProfile(){
     if(!firebaseDb || !firebaseCurrentUser) return false;
     try{
         const user = firebaseCurrentUser;
+        const profileRef=doc(firebaseDb,"publicProfiles",user.uid);
         const safeName = sanitizePlainText(user.displayName || (user.email ? user.email.split("@")[0] : "Indian User"), 60) || "Indian User";
-        await setDoc(doc(firebaseDb, "publicProfiles", user.uid), {
+        await setDoc(profileRef, {
             uid: user.uid,
             displayName: safeName,
             updatedAt: serverTimestamp()
         }, {merge:true});
+        const profileSnap=await getDoc(profileRef);
+        indianCurrentUserProfileSchemaVersion=profileSnap.exists()?Number((profileSnap.data()||{}).profileSchemaVersion)||1:1;
         return true;
     }
     catch(error){
@@ -6149,13 +6154,18 @@ else{
             updateFirebaseAuthUI();
             if (typeof window.finishIndianAuthStartup === "function") window.finishIndianAuthStartup();
             if(user){
-                startIndianPresence();
-                setTimeout(function(){ cleanupExpiredIndianStories(); }, 900);
+                indianCurrentUserProfileSchemaVersion=0;
                 const authName=sanitizePlainText(user.displayName || (user.email ? user.email.split("@")[0] : "Indian User"),60)||"Indian User";
                 if(typeof window.applyIndianIdentity==="function")window.applyIndianIdentity(authName,window.profileBio||"",window.profilePhotoURL||"",{preserveActiveEdit:true});
-                ensureCurrentUserPublicProfile().then(function(){return loadFirebasePublicProfiles();});
+                ensureCurrentUserPublicProfile().then(function(){
+                    return loadFirebasePublicProfiles();
+                }).then(function(){
+                    startIndianPresence();
+                    setTimeout(function(){ cleanupExpiredIndianStories(); }, 900);
+                }).catch(function(error){console.warn("Indian profile startup was delayed:",error);});
                 setFirebaseAuthStatus("Signed in as " + authName + ". UID: " + user.uid);
             }else{
+                indianCurrentUserProfileSchemaVersion=0;
                 stopIndianPresence();
                 stopIndianTypingWatch();
                 if(publicProfilesUnsubscribe){try{publicProfilesUnsubscribe();}catch(e){} publicProfilesUnsubscribe=null;}

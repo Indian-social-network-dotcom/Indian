@@ -1071,6 +1071,7 @@ function indianStartChatVoiceTyping(){
  try{rec.start();if(status)status.textContent="Listening… speak now.";}catch(error){window.__indianChatRecognition=null;if(button){button.textContent="🎙";button.setAttribute("aria-label","Start voice typing in "+(language&&language.selectedOptions[0]?language.selectedOptions[0].text:"Hindi"));}if(status)status.textContent="Voice typing could not start. Check microphone permission.";}
 }
 document.addEventListener("DOMContentLoaded",setupIndianChatComposerUI);
+document.addEventListener("DOMContentLoaded",function(){let pending=false;try{pending=!!sessionStorage.getItem("indianPendingGameInvite");}catch(e){}if(pending){setTimeout(function(){if(typeof openMessages==="function")openMessages();},350);}});
 
 /* =========================
    GLOBAL STATE
@@ -1682,6 +1683,10 @@ function openMessages(){
     section.scrollIntoView({behavior:"smooth", block:"start"});
     section.focus();
     renderConversationList();
+    let pendingGameInvite=false;try{pendingGameInvite=!!sessionStorage.getItem('indianPendingGameInvite');}catch(e){}
+    let inviteNotice=document.getElementById('indianGameInviteNotice');
+    if(pendingGameInvite){if(!inviteNotice){inviteNotice=document.createElement('p');inviteNotice.id='indianGameInviteNotice';inviteNotice.className='status';inviteNotice.setAttribute('role','status');inviteNotice.setAttribute('aria-live','polite');inviteNotice.textContent='Game invitation ready. Friend ke chat ko open karein; invitation message apne aap taiyar ho jayega.';const layout=document.getElementById('messagesLayout');if(layout&&layout.parentNode)layout.parentNode.insertBefore(inviteNotice,layout);}}
+    else if(inviteNotice)inviteNotice.remove();
 
     if(selectedConversationPersonId !== null){
         renderChat(selectedConversationPersonId);
@@ -2110,6 +2115,24 @@ function openConversation(personId){
         if(draftStatus && savedDraft) draftStatus.textContent = "Draft restored.";
         setTimeout(function(){ textBox.focus(); }, 100);
     }
+    const pendingInviteRaw = (function(){try{return sessionStorage.getItem('indianPendingGameInvite')||'';}catch(e){return '';}})();
+    if(textBox&&pendingInviteRaw){
+        try{
+            const invite=JSON.parse(pendingInviteRaw);
+            if(invite&&invite.joinUrl&&invite.roomId&&invite.game){
+                const gameNames={ttt:'Tic-Tac-Toe',quiz:'Rapid Quiz Battle',draw:'Draw & Guess',dice:'Mini Ludo / Dice Race'};
+                const inviteText='🏁 Indian Game Challenge!\nAapko '+(gameNames[invite.game]||'game')+' mein invite kiya gaya hai.\nRoom ID: '+invite.roomId+'\nJoin Race: '+invite.joinUrl;
+                const draftKey='indian_chat_draft_'+personId;
+                const existing=textBox.value||'';
+                textBox.value=existing?(existing+'\n\n'+inviteText):inviteText;
+                try{sessionStorage.setItem(draftKey,textBox.value);sessionStorage.removeItem('indianPendingGameInvite');}catch(e){}
+                updateMessageComposerStatus();
+                if(typeof window.indianUpdateChatSendVisibility==='function')window.indianUpdateChatSendVisibility();
+                const inviteStatus=document.getElementById('indianGameInviteNotice');if(inviteStatus)inviteStatus.remove();
+                const draftStatus=document.getElementById('messageDraftStatus');if(draftStatus)draftStatus.textContent='Game invitation ready. Send button dabayein.';
+            }
+        }catch(e){console.warn('Game invitation draft could not be prepared.',e);}
+    }
     return true;
 }
 window.openConversation = openConversation;
@@ -2255,7 +2278,21 @@ function renderChat(personId){
 
             const text = document.createElement("div");
             const formattedCallLog = indianFormatCallLogText(message.text, message.sender === "me");
-            text.textContent = formattedCallLog || message.text || "";
+            const rawMessageText = formattedCallLog || message.text || "";
+            const inviteMatch = !formattedCallLog && String(message.text || "").match(/Join Race:\\s*(https:\\/\\/[^\\s]+)/i);
+            if(inviteMatch){
+                const inviteUrlText=inviteMatch[1];
+                try{
+                    const inviteUrl=new URL(inviteUrlText,location.href);
+                    if(inviteUrl.origin===location.origin && inviteUrl.pathname.endsWith('/games.html') && inviteUrl.searchParams.get('join')){
+                        const urlIndex=String(message.text).indexOf(inviteUrlText);
+                        text.appendChild(document.createTextNode(String(message.text).slice(0,urlIndex)));
+                        const joinLink=document.createElement('a');joinLink.href=inviteUrl.href;joinLink.textContent='Join Race';joinLink.setAttribute('aria-label','Join invited game room '+inviteUrl.searchParams.get('join'));joinLink.rel='noopener';
+                        text.appendChild(joinLink);
+                        text.appendChild(document.createTextNode(String(message.text).slice(urlIndex+inviteUrlText.length)));
+                    }else{text.textContent=rawMessageText;}
+                }catch(e){text.textContent=rawMessageText;}
+            }else{text.textContent=rawMessageText;}
             if(message.text && !message.poll){
                 if(formattedCallLog) text.className = "callLogMessage";
                 bubble.appendChild(text);

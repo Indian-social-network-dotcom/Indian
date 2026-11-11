@@ -167,3 +167,11 @@ Before changing runtime code, the staged transition is clarified:
 - Runtime readers can use this public flag to switch an owner from legacy fields to separated records only after the complete copy has been verified. This avoids treating partially copied collections as authoritative.
 - The update uses merge semantics and does not remove or overwrite any legacy story, presence, typing, live-status or reaction fields. The existing public identity fields remain in the document.
 - The flag is not written by this work session; the migration helper remains dormant. The Rules draft and app code are still not ready for publication or execution.
+
+
+## Typing Rules first-read correction — 2026-11-11
+
+- Updated only the `userTyping/{uid}` get condition in the Rules draft (commit `67f0425dba3bc526a798ffc91db6f2f58154e95a`).
+- A signed-in recipient can now read a missing sender typing document as an empty/nonexistent result; when the document exists, only its owner or the UID in `typingToUid` can read it.
+- Collection listing remains denied. This does not grant a collection-wide typing listener or expose another user's typing document.
+- Draft remains uncompiled and unpublished. Runtime typing listener has not yet been switched to the recipient-specific document.

@@ -910,8 +910,11 @@ service cloud.firestore {
     // Typing state is visible only to its owner and the intended recipient.
     match /userTyping/{userId} {
       allow get: if signedIn()
-                 && (request.auth.uid == userId
-                     || resource.data.typingToUid == request.auth.uid);
+                 && (
+                   !exists(/databases/$(database)/documents/userTyping/$(userId))
+                   || request.auth.uid == userId
+                   || resource.data.typingToUid == request.auth.uid
+                 );
       allow list: if false;
       allow create, update: if signedIn()
                             && request.auth.uid == userId

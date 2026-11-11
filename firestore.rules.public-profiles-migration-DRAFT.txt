@@ -1,6 +1,7 @@
 // REVIEW DRAFT ONLY — DO NOT PUBLISH YET.
-// Based on the user's authoritative indian-firestore-rules-read-receipt.txt.
-// Read Receipt and Group Chat sections are intended to remain unchanged.
+// Based on the user's uploaded current Firestore Rules (2026-11-11).
+// Keep Personal Messages sender-only update/delete; do NOT add receiver-side Read Receipt permission.
+// Preserve Group Chat Rules unchanged.
 // This draft still requires validation against actual app queries and document schemas.
 
 rules_version = '2';

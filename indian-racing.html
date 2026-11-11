@@ -66,8 +66,9 @@ a{color:#ffd180}
 <button type="button" class="go" id="accelerateBtn" aria-label="Accelerator">▲ Accelerate</button>
 <button type="button" class="brake" id="brakeBtn" aria-label="Brake">▼ Brake</button>
 <button type="button" class="nitro" id="nitroBtn" style="grid-column:1/-1" aria-label="Nitro boost">⚡ Nitro Boost</button>
+<button type="button" class="brake" id="reverseBtn" style="grid-column:1/-1;background:#455a64" aria-label="Reverse gear">↶ Reverse (Back)</button>
 </div>
-<p class="muted small">Keyboard: Left/Right arrows se steering, Up se accelerator, Down se brake, Space se Nitro. Mobile par buttons ko daba kar rakhein.</p>
+<p class="muted small">Keyboard: Left/Right arrows se steering, Up se accelerator, Down se brake, R se Reverse, Space se Nitro. Mobile par buttons ko daba kar rakhein.</p>
 </section>
 </main>
 <script type="module">
@@ -79,7 +80,7 @@ import { getFirestore, doc, collection, setDoc, updateDoc, getDoc, runTransactio
 const firebaseConfig={apiKey:'AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs',authDomain:'indian-84a86.firebaseapp.com',projectId:'indian-84a86',storageBucket:'indian-84a86.firebasestorage.app',messagingSenderId:'333987809341',appId:'1:333987809341:web:27a351f770aa7b4e808254'};
 const $=id=>document.getElementById(id);
 let auth,db,user=null,roomId='',room=null,roomUnsub=null,opponentUnsub=null,opponentState=null;
-let mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false;
+let mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false,reversing=false,direction=1;
 let lastFrame=0,lastSync=0,finished=false,opponentUid='',localWon=false,syncBusy=false,crashCount=0,audioEnabled=true,audioCtx=null,engineOsc=null,engineGain=null;
 const FINISH_DISTANCE=1500;
 function status(t){$('connectionStatus').textContent=t}function raceStatus(t){$('raceStatus').textContent=t}
@@ -130,7 +131,7 @@ try{
 
 async function createRace(){
  if(!user||roomId)return;
- hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;finished=false;
+ hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;
  const id=randomId(),name=playerName();
  const data={type:'racing',status:'waiting',createdBy:user.uid,players:[{uid:user.uid,name}],createdAt:serverTimestamp(),updatedAt:serverTimestamp(),state:{track:'city',finishDistance:FINISH_DISTANCE}};
  try{
@@ -142,7 +143,7 @@ async function createRace(){
 }
 async function joinRace(raw){
  if(!user||!raw)return;
- hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;finished=false;
+ hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;
  const id=String(raw).trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(id)){raceStatus('Room ID 6 characters ka hona chahiye.');return;}
  try{
   await runTransaction(db,async tx=>{
@@ -186,7 +187,7 @@ async function inviteFriend(){
  catch(e){raceStatus('Invite ready nahi hua: browser session storage allow karein.');return;}
  location.href=new URL('./index.html#messages',location.href).href;
 }
-function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;finished=false;crashCount=0;$('hits').textContent='0 / 3';hitObstacles.clear();room=null;opponentState=null;opponentCar.visible=false;updatePlayerCarColors();raceStatus('Solo Practice shuru. Accelerator dabayein. Finish distance 1500 metre hai.');}
+function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;crashCount=0;$('hits').textContent='0 / 3';hitObstacles.clear();room=null;opponentState=null;opponentCar.visible=false;updatePlayerCarColors();raceStatus('Solo Practice shuru. Accelerator dabayein. Finish distance 1500 metre hai.');}
 function leaveOnline(reset=true){
  if(roomUnsub)roomUnsub();if(opponentUnsub)opponentUnsub();roomUnsub=null;opponentUnsub=null;roomId='';room=null;opponentUid='';opponentState=null;
  if(reset)mode='idle';
@@ -194,10 +195,10 @@ function leaveOnline(reset=true){
 $('createBtn').addEventListener('click',createRace);$('joinBtn').addEventListener('click',()=>joinRace($('roomInput').value));$('inviteBtn').addEventListener('click',inviteFriend);$('practiceBtn').addEventListener('click',startPractice);
 
 function bindHold(id,fn){const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();fn(true);el.setPointerCapture?.(e.pointerId)});['pointerup','pointercancel','lostpointercapture'].forEach(ev=>el.addEventListener(ev,()=>fn(false)));el.addEventListener('contextmenu',e=>e.preventDefault());}
-bindHold('leftBtn',v=>left=v);bindHold('rightBtn',v=>right=v);bindHold('accelerateBtn',v=>accelerating=v);bindHold('brakeBtn',v=>{braking=v;if(v)playBrakeSound();});bindHold('nitroBtn',v=>boosting=v);
-window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=true;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=true;if(e.key==='ArrowUp'||e.key.toLowerCase()==='w')accelerating=true;if((e.key==='ArrowDown'||e.key.toLowerCase()==='s')&&!braking)playBrakeSound();if(e.key==='ArrowDown'||e.key.toLowerCase()==='s')braking=true;if(e.code==='Space')boosting=true;});
-window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=false;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=false;if(e.key==='ArrowUp'||e.key.toLowerCase()==='w')accelerating=false;if(e.key==='ArrowDown'||e.key.toLowerCase()==='s')braking=false;if(e.code==='Space')boosting=false;});
-window.addEventListener('blur',()=>{left=right=accelerating=braking=boosting=false;});
+bindHold('leftBtn',v=>left=v);bindHold('rightBtn',v=>right=v);bindHold('accelerateBtn',v=>accelerating=v);bindHold('brakeBtn',v=>{braking=v;if(v)playBrakeSound();});bindHold('nitroBtn',v=>boosting=v);bindHold('reverseBtn',v=>{reversing=v;if(v)playBrakeSound();});
+window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=true;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=true;if(e.key==='ArrowUp'||e.key.toLowerCase()==='w')accelerating=true;if((e.key==='ArrowDown'||e.key.toLowerCase()==='s')&&!braking)playBrakeSound();if(e.key==='ArrowDown'||e.key.toLowerCase()==='s')braking=true;if(e.code==='Space')boosting=true;if(e.key.toLowerCase()==='r')reversing=true;});
+window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=false;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=false;if(e.key==='ArrowUp'||e.key.toLowerCase()==='w')accelerating=false;if(e.key==='ArrowDown'||e.key.toLowerCase()==='s')braking=false;if(e.code==='Space')boosting=false;if(e.key.toLowerCase()==='r')reversing=false;});
+window.addEventListener('blur',()=>{left=right=accelerating=braking=boosting=reversing=false;});
 
 let scene,camera,renderer,car,opponentCar,roadMarks=[],scenery=[],obstacles=[],hitObstacles=new Set(),clock=new THREE.Clock();
 const TRACK_HALF=6,TRACK_LENGTH=FINISH_DISTANCE;
@@ -295,11 +296,17 @@ async function loseByDrums(){
 function animate(now){
  requestAnimationFrame(animate);const dt=Math.min(.05,(now-lastFrame)/1000||0);lastFrame=now;
  if(mode==='practice'||(mode==='online'&&room?.status==='playing'&&!finished)){
-  if(accelerating)speed=Math.min(190,speed+85*dt);else speed=Math.max(0,speed-24*dt);
+  if(reversing){
+   if(direction===1&&speed>0){speed=Math.max(0,speed-155*dt);if(speed===0)direction=-1;}
+   else{direction=-1;speed=Math.min(70,speed+48*dt);}
+  }else{
+   if(direction===-1&&speed>0){speed=Math.max(0,speed-155*dt);if(speed===0)direction=1;}
+   else{direction=1;if(accelerating)speed=Math.min(190,speed+85*dt);else speed=Math.max(0,speed-24*dt);}
+  }
   if(braking)speed=Math.max(0,speed-145*dt);
-  if(boosting&&nitro>0&&speed>8){speed=Math.min(245,speed+115*dt);nitro=Math.max(0,nitro-34*dt);}else nitro=Math.min(100,nitro+7*dt);
+  if(boosting&&!reversing&&direction===1&&nitro>0&&speed>8){speed=Math.min(245,speed+115*dt);nitro=Math.max(0,nitro-34*dt);}else nitro=Math.min(100,nitro+7*dt);
   if(left)lane=Math.max(-1.15,lane-1.8*dt);if(right)lane=Math.min(1.15,lane+1.8*dt);
-  distance+=speed/3.6*dt;
+  distance+=direction*speed/3.6*dt;distance=Math.max(0,Math.min(FINISH_DISTANCE,distance));
   for(const item of obstacles){if(!hitObstacles.has(item.s)&&distance>=item.s-2.5&&distance<=item.s+2.5&&Math.abs(lane-item.lane)<.34){
    hitObstacles.add(item.s);crashCount++;$('hits').textContent=crashCount+' / 3';speed=Math.max(0,speed-65);playCollisionSound();
    if(crashCount>=3){loseByDrums();break;}
@@ -307,10 +314,10 @@ function animate(now){
   }}
   if(distance>=FINISH_DISTANCE)finishRace();
   if(mode==='online'&&now-lastSync>500){lastSync=now;pushRaceState();}
-  $('speed').textContent=Math.round(speed);$('distance').textContent=Math.round(distance);$('nitro').textContent=Math.round(nitro);updateEngineSound();
+  $('speed').textContent=(direction===-1?'R ':'')+Math.round(speed);$('distance').textContent=Math.round(distance);$('nitro').textContent=Math.round(nitro);updateEngineSound();
   if(opponentState){const d=Number(opponentState.distance||0);$('position').textContent=distance>=d?'1 / 2':'2 / 2';}else $('position').textContent=mode==='practice'?'Practice':'Waiting';
  }else if(mode==='idle')speed=Math.max(0,speed-30*dt);
- if(car&&speed>0){car.children.slice(3,7).forEach(w=>{w.rotation.x+=speed*dt*.025;});}syncWorld();renderer.render(scene,camera);
+ if(car&&speed>0){car.children.slice(3,7).forEach(w=>{w.rotation.x+=direction*speed*dt*.025;});}syncWorld();renderer.render(scene,camera);
 }
 init3D();requestAnimationFrame(animate);
 </script>

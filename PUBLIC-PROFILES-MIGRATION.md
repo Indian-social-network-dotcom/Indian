@@ -277,3 +277,7 @@ Updated `index.html` on the migration branch only:
 - Fixed a migration-helper / Rules mismatch in `public-profile-migration.js` (commit `efbead4439c15bd75f64effba6cdc99e928252c8`): the helper previously added a `migratedFromPublicProfilesAt` field to every copied record. That extra field violates the exact four-field create schema for `messageReactions`. The helper now writes the exact source data fields; the reaction Rules schema remains strict.
 - These two changes are on the migration branch only. GitHub Actions validation for these latest commits must complete successfully before treating the fixes as validated.
 - No browser test has been run. No production Rules have been published, no migration helper has been executed, no Firestore data or legacy fields have been changed, and `main` remains untouched.
+
+
+- Additional helper hardening (commit `896019c8159c6f64570251f8a156bd261f936c7e`): legacy reaction emoji values are now validated as strings within the Rules limit. The helper stops safely on malformed or oversized values instead of silently truncating them and potentially changing a user's reaction.
+- The workflow is configured to run on pushes to this migration branch when `public-profile-migration.js` changes. The GitHub connector did not expose a workflow run/status for the newest commits during this check, so the latest three fixes remain **not yet CI-verified**. The previous confirmed Run #21 applies to the earlier commit only.

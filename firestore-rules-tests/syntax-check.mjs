@@ -23,8 +23,8 @@ for (const required of [
 }
 
 console.log("Local Emulator config and production-isolation checks OK.");
-const racingScripts = [...racingHtml.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)]
-  .filter(match => /\\btype\\s*=\\s*["']module["']/i.test(match[1]))
+const racingScripts = [...racingHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+  .filter(match => /\btype\s*=\s*["']module["']/i.test(match[1]))
   .map(match => match[2])
   .filter(source => source.trim());
 if (racingScripts.length !== 1) throw new Error("Expected one inline module script in indian-racing.html.");

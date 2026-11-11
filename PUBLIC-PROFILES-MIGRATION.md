@@ -293,3 +293,10 @@ Updated `index.html` on the migration branch only:
 - The log contains expected permission-denied messages from negative security tests; the test runner reports all 11 tests passed and the job conclusion is success.
 - This confirms emulator and syntax validation for the latest helper fix. It does not replace browser/device testing with the three test accounts.
 - No production Rules were published, no migration helper was run, no Firestore data or legacy fields were changed or deleted, and `main` remains untouched.
+
+## Production Rules source-of-truth check required before rollout
+
+- The user-supplied `indian-firestore-rules-read-receipt.txt` was identified as the intended authoritative baseline, but the user had stated that this file itself had not yet been published to Firebase.
+- Therefore, do not assume the migration draft is byte-for-byte based on the Rules currently active in production. Before any production publication, obtain/export the actually active Firebase Rules and compare them with this draft.
+- Preserve all live-only changes from the active Rules, including current Messages, Group Chat, notifications, games, and other collections. Do not replace live Rules with this draft until a complete three-way review (active production Rules, user-supplied baseline, migration draft) is complete.
+- This check is a rollout blocker; emulator success does not establish that the draft is safe to publish over the currently active production Rules.

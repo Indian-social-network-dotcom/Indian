@@ -182,3 +182,23 @@ Before changing runtime code, the staged transition is clarified:
 - The branch contained two similarly named Rules draft files. The older `firestore-rules-public-profiles-migration-draft.txt` has now been clearly marked obsolete and must not be published.
 - The current working draft is only `firestore.rules.public-profiles-migration-DRAFT.txt`.
 - Neither file is approved for publication. The current draft still requires Firestore Emulator compilation and compatibility tests.
+
+
+## Runtime compatibility implementation — 2026-11-11
+
+Updated `index.html` on the migration branch only:
+
+- Added independent listeners for `userStories`, `userPresence`, `userLiveStatus`, and `messageReactions`.
+- The public identity profile remains sourced from `publicProfiles`; Group Chat's public identity lookup is not changed.
+- New separated records become authoritative only when that owner's public identity document contains `profileSchemaVersion: 2`. Until then, the legacy fields remain the fallback.
+- Added dual writes for reactions, stories, live status, presence, and typing. A denied new-collection write is caught and the existing legacy write remains in place. This allows the branch code to run before the transition Rules are published.
+- Typing is not globally listed. It is polled only for the UID belonging to the currently open personal conversation, and the watcher stops when that chat closes or the user signs out.
+- Sign-out now unsubscribes separated collection listeners and clears their in-memory maps.
+- Legacy fields are not deleted. Group Chat and the personal Read Receipt implementation were not edited.
+
+### Not yet validated / rollout blockers
+
+- Firestore Emulator Rules compilation and tests are still required. The draft must not be published before these pass.
+- Browser/runtime tests are still required for three accounts: public People discovery, Story create/view/expiry/interactions, presence/last-seen, Live People, reactions, typing visibility to only the intended recipient, Group Chat member lookup, and personal message Read Receipts.
+- A listener that receives permission-denied before Rules publication terminates; reload the page after the reviewed Rules are deliberately published to establish the new listeners.
+- No migration helper was executed, no Firebase document was changed by this work, and no production Rules were published.

@@ -232,6 +232,7 @@ function watchRoom(){
   if(room.status==='finished'){
    finished=true;speed=0;accelerating=braking=boosting=false;
    if(crashCount>=3)raceStatus('GAME OVER! Aap 3 drums se takraye aur race haar gaye.');
+   else if(room.winnerUid)raceStatus(room.winnerUid===user.uid?'🏆 AAP JEET GAYE! Aap sabse pehle finish line par pahunche.':'🏁 '+(room.winnerName||'Opponent')+' pehle finish line par pahunch gaye. Aap race haar gaye.');
    else raceStatus('Race khatam ho gayi.');
   }
  });
@@ -347,12 +348,12 @@ function addFinishGate(){
  const poleMat=new THREE.MeshStandardMaterial({color:0xe9edf2,metalness:.65,roughness:.3});
  const redMat=new THREE.MeshStandardMaterial({color:0xe51b32,metalness:.25,roughness:.35});
  for(const side of [-1,1]){
-  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.16,.2,5.2,12),poleMat);
-  pole.position.set(x+side*(TRACK_HALF-.2),y+2.6,z);scene.add(pole);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.16,.2,4.2,12),poleMat);
+  pole.position.set(x+side*(TRACK_HALF-.2),y+2.1,z);scene.add(pole);
   const foot=new THREE.Mesh(new THREE.CylinderGeometry(.55,.65,.28,12),redMat);
   foot.position.set(x+side*(TRACK_HALF-.2),y+.14,z);scene.add(foot);
  }
- const ropePoints=[new THREE.Vector3(x-TRACK_HALF,y+4.35,z),new THREE.Vector3(x-TRACK_HALF*.5,y+3.9,z),new THREE.Vector3(x,y+3.7,z),new THREE.Vector3(x+TRACK_HALF*.5,y+3.9,z),new THREE.Vector3(x+TRACK_HALF,y+4.35,z)];
+ const ropePoints=[new THREE.Vector3(x-TRACK_HALF,y+2.65,z),new THREE.Vector3(x-TRACK_HALF*.5,y+2.35,z),new THREE.Vector3(x,y+2.2,z),new THREE.Vector3(x+TRACK_HALF*.5,y+2.35,z),new THREE.Vector3(x+TRACK_HALF,y+2.65,z)];
  const rope=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ropePoints),36,.12,8,false),redMat);scene.add(rope);
  const checkMatA=new THREE.MeshBasicMaterial({color:0xffffff}),checkMatB=new THREE.MeshBasicMaterial({color:0x15191e});
  for(let i=0;i<28;i++){
@@ -360,7 +361,7 @@ function addFinishGate(){
   tile.position.set(x-TRACK_HALF+(i+.5)*(TRACK_HALF*2/28),y+.065,z);scene.add(tile);
  }
  const banner=new THREE.Mesh(new THREE.BoxGeometry(5,.75,.12),new THREE.MeshBasicMaterial({color:0xd71932}));
- banner.position.set(x,y+4.8,z);scene.add(banner);
+ banner.position.set(x,y+3.35,z);scene.add(banner);
 }
 function addObstacle(p,laneValue,index){
  const group=new THREE.Group();
@@ -442,10 +443,25 @@ async function pushRaceState(){
  catch(e){raceStatus('Live sync issue: '+e.message);}
  finally{syncBusy=false;}
 }
-function finishRace(){
- if(finished)return;finished=true;speed=0;localWon=!opponentState||distance>=Number(opponentState.distance||0);accelerating=braking=boosting=false;playFinishSound();
- raceStatus(localWon?'🏆 Aap finish line par pehle pahunch gaye!':'🏁 Aap finish line par pahunch gaye!');
- if(mode==='online'&&roomId&&user)updateDoc(roomRef(roomId),{status:'finished',updatedAt:serverTimestamp()}).catch(()=>{});
+async function finishRace(){
+ if(finished)return;finished=true;speed=0;accelerating=braking=boosting=false;playFinishSound();
+ if(mode==='online'&&roomId&&user){
+  try{
+   const won=await runTransaction(db,async tx=>{
+    const ref=roomRef(roomId),snap=await tx.get(ref);
+    if(!snap.exists())return false;
+    const data=snap.data();
+    if(data.status==='finished')return data.winnerUid===user.uid;
+    if(data.status!=='playing')return false;
+    tx.update(ref,{status:'finished',winnerUid:user.uid,winnerName:playerName(),finishedAt:serverTimestamp(),updatedAt:serverTimestamp()});
+    return true;
+   });
+   localWon=won;
+   raceStatus(won?'🏆 Aap sabse pehle finish line par pahunche! AAP JEET GAYE!':'🏁 Opponent pehle finish line par pahunch gaya. Aap race haar gaye.');
+  }catch(e){raceStatus('Finish line cross ho gayi, lekin winner sync nahi hua: '+e.message);}
+ }else{
+  localWon=true;raceStatus('🏆 Aap finish line par pahunch gaye! Practice complete.');
+ }
 }
 async function loseByDrums(){
  if(finished)return;finished=true;speed=0;accelerating=braking=boosting=false;playLoseSound();

@@ -132,7 +132,12 @@ service cloud.firestore {
                       '😂',
                       '😮'
                     ]
-                    && request.resource.data.updatedAtMs is number;
+                    && request.resource.data.updatedAtMs is number
+            && request.resource.data.updatedAtMs <= request.time.toMillis() + 5000
+            && (resource == null
+                || (request.resource.data.distance >= resource.data.distance
+                    && request.resource.data.distance <= resource.data.distance + 120
+                    && request.resource.data.updatedAtMs > resource.data.updatedAtMs));
 
       // Story interaction records cannot be deleted by clients.
       allow delete: if false;
@@ -530,8 +535,18 @@ service cloud.firestore {
                     && request.resource.data.status == 'waiting'
                     && request.resource.data.type in ['ttt', 'quiz', 'draw', 'dice', 'racing'];
 
+      // Racing rooms may be joined by the second player or cancelled by
+      // their owner while waiting. Winner/status/payout fields are server-only.
       allow update: if validJoin()
-                    || (isPlayer(resource.data)
+                    || (resource.data.type == 'racing'
+                        && signedIn()
+                        && resource.data.status == 'waiting'
+                        && resource.data.createdBy == request.auth.uid
+                        && request.resource.data.status == 'finished'
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['status', 'updatedAt']))
+                    || (resource.data.type != 'racing'
+                        && isPlayer(resource.data)
                         && request.resource.data.createdBy == resource.data.createdBy
                         && request.resource.data.type == resource.data.type
                         && request.resource.data.players == resource.data.players);
@@ -604,6 +619,14 @@ service cloud.firestore {
           && validRaceState();
         allow delete: if false;
       }
+    }
+
+    // Racing Star Wallet is private to its owner. All writes and payouts
+    // are performed by the authenticated Cloudflare Worker service account.
+    match /racingWallets/{walletUid} {
+      allow get: if signedIn() && request.auth.uid == walletUid;
+      allow list: if false;
+      allow create, update, delete: if false;
     }
 
     // Uran Shorts

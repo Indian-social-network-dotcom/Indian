@@ -425,9 +425,12 @@ async function joinRace(raw){
  const id=String(raw).trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(id)){raceStatus('Room ID galat hai. Link dobara mangwayein.');return;}
  raceStatus('Invitation room se connect ho rahe hain…');
  try{
+  const preflight=await getDoc(roomRef(id));if(!preflight.exists())throw Error('Room nahi mila ya invitation expire ho gaya.');
+  const preflightData=preflight.data();
+  if(preflightData.starChallenge&&!window.confirm('Star Challenge: aap '+preflightData.starChallenge.stake+' stars stake karenge. Winner ko dono ka total '+(preflightData.starChallenge.stake*2)+' stars milega. Kya aap accept karte hain?'))throw Error('Aapne Star Challenge accept nahi kiya.');
   await runTransaction(db,async tx=>{
    const ref=roomRef(id),snap=await tx.get(ref);if(!snap.exists())throw Error('Room nahi mila ya invitation expire ho gaya.');
-   const r=snap.data();if(r.type!=='racing')throw Error('Yeh Indian Racing room nahi hai.');if(r.starChallenge&&!window.confirm('Star Challenge: aap '+r.starChallenge.stake+' stars stake karenge. Winner ko dono ka total '+(r.starChallenge.stake*2)+' stars milega. Kya aap accept karte hain?'))throw Error('Aapne Star Challenge accept nahi kiya.');
+   const r=snap.data();if(r.type!=='racing')throw Error('Yeh Indian Racing room nahi hai.');
    const players=Array.isArray(r.players)?r.players:[];
    if(players.some(p=>p.uid===user.uid)){
     if(players.length<2||r.status!=='playing')throw Error('Aap isi Indian account se room bana chuke hain. Friend ko alag Indian account se sign in karke link kholna hoga.');
@@ -437,7 +440,7 @@ async function joinRace(raw){
    tx.update(ref,{players:[...players,{uid:user.uid,name:playerName(),carId:selectedCarId}],status:r.starChallenge?'waiting':'playing',...(r.starChallenge?{}:{raceStartAtMs:Date.now()+4000}),updatedAt:serverTimestamp()});
   });
   roomId=id;$('roomInput').value=id;mode='online';
-  const joinedSnap=await getDoc(roomRef(id));if(!joinedSnap.exists())throw Error('Room update ke baad nahi mila.');
+  let joinedSnap=await getDoc(roomRef(id));if(!joinedSnap.exists())throw Error('Room update ke baad nahi mila.');
   room=joinedSnap.data();
   if(room.starChallenge&&room.status==='waiting'){
    await callStarWorker('acceptStarChallenge',{roomId:id});

@@ -141,7 +141,7 @@ body.racing-active #legacySetupPanel.hidden{display:none!important}
 <div class="mode-card"><h3>🏎️ Play with Friend</h3><p>Indian Messages mein dost chunein aur race invitation bhejein.</p><button type="button" class="primary" id="playWithFriendBtn">Play with Friend</button></div>
 <div class="mode-card"><h3>🏁 Single Player</h3><p>Akele practice karein aur track par race lagayein.</p><button type="button" class="primary" id="singlePlayerBtn">Single Player</button></div>
 <div class="mode-card"><h3>⭐ Star Wallet</h3><p id="starWalletBalance" role="status" aria-live="polite">Sign in karke wallet load karein.</p><p class="muted small">Har account ko pehli baar 10 free stars. Normal online race winner ko 3 stars.</p><button type="button" id="refreshStarWalletBtn">Refresh Star Balance</button></div>
-<div class="mode-card"><h3>⭐ Star Challenge</h3><p>Do players apne stars laga kar race khelenge. Dono ki sahmati, locked stake aur winner payout ke saath.</p><button type="button" id="starChallengeBtn" disabled>Star Challenge — Coming Soon</button><p id="starChallengeInfo" class="muted small" role="status">Stake aur refund system ko secure backend par test karna baaki hai. Abhi stars stake nahi honge.</p></div><p>Do players stars laga kar race khelenge. Secure Star Wallet taiyar hone ke baad shuru hoga.</p><button type="button" id="starChallengeBtn">Star Challenge Details</button><p id="starChallengeInfo" class="muted small" role="status">Abhi star balance aur safe reward system taiyar nahi hai.</p></div>
+<div class="mode-card"><h3>⭐ Star Challenge</h3><p>Stake chunein. Aap aur dost barabar stars lagayenge. Dono accept karenge tabhi race shuru hogi.</p><label class="field">Har player ka stake (1–100 stars)<input id="starStakeInput" type="number" min="1" max="100" step="1" value="5"></label><button type="button" class="primary" id="starChallengeBtn">Create Star Challenge</button><p id="starChallengeInfo" class="muted small" role="status">Winner ko dono players ka total stake milega. Draw par dono ko refund.</p></div><p>Do players stars laga kar race khelenge. Secure Star Wallet taiyar hone ke baad shuru hoga.</p><button type="button" id="starChallengeBtn">Star Challenge Details</button><p id="starChallengeInfo" class="muted small" role="status">Abhi star balance aur safe reward system taiyar nahi hai.</p></div>
 </div>
 <div class="screen-actions"><button type="button" id="backToCarsBtn">Back to Car Selection</button></div>
 </section>
@@ -305,7 +305,7 @@ $('nextToModeBtn').addEventListener('click',()=>{requestLandscape();showModeScre
 $('backToGamesBtn').addEventListener('click',()=>location.href='./games.html');
 $('backToCarsBtn').addEventListener('click',showCarScreen);
 $('refreshStarWalletBtn').addEventListener('click',refreshStarWallet);
-$('starChallengeBtn').addEventListener('click',()=>{$('starChallengeInfo').textContent='Star Challenge ke liye dono players ka verified Star Wallet, locked stake aur trusted one-time winner payout banana zaroori hai. Ye system abhi taiyar nahi hai; isliye abhi stars kaatna ya transfer karna shuru nahi kiya gaya.';});
+$('starChallengeBtn').addEventListener('click',createStarChallenge);
 $('raceAgainBtn').addEventListener('click',()=>{location.href='./indian-racing.html';});
 $('winnerBackBtn').addEventListener('click',()=>{location.href='./games.html';});
 $('playWithFriendBtn').addEventListener('click',()=>{requestLandscape();showRaceScreen();$('legacySetupPanel').classList.remove('hidden');$('createBtn').classList.add('hidden');$('joinBtn').classList.add('hidden');$('practiceBtn').classList.add('hidden');inviteFriend();});
@@ -366,8 +366,9 @@ function showWinnerOverlay(){
  $('winnerName').textContent='Winner: '+winnerName;
  $('winnerStars').textContent=won?'★★★':'';
  $('winnerStars').setAttribute('aria-label',won?'Three-star victory badge':'No victory stars');
- $('winnerReward').textContent=won?'3-STAR VICTORY BADGE':winnerKnown?'Better luck next race!':'No reward given';
- $('winnerNote').textContent=won?'Ye abhi victory display badge hai. Secure Star Wallet banne ke baad hi stars balance mein jama honge.':winnerKnown?'Race ka winner '+winnerName+' hai. Star Challenge ka balance abhi active nahi hai.':'Race result verify nahi ho saka, isliye koi star reward nahi diya gaya.';
+ const awarded=Number(room?.starReward||0);
+ $('winnerReward').textContent=room?.starDraw?'STAKE REFUNDED':awarded>0?'+'+awarded+' STARS':won?'3-STAR VICTORY BADGE':winnerKnown?'Better luck next race!':'No reward given';
+ $('winnerNote').textContent=room?.starDraw?'Race draw rahi. Dono players ke stake stars wapas kar diye gaye.':awarded>0?(room?.starChallenge?'Star Challenge jeet gaye! Dono ka stake aapke wallet mein aa gaya.':'Aapke wallet mein 3 stars add hue.') :won?'Victory badge. Practice race mein wallet stars nahi milte.':winnerKnown?'Race ka winner '+winnerName+' hai.':'Race result verify nahi ho saka, isliye koi star reward nahi diya gaya.';
  const overlay=$('winnerOverlay');overlay.hidden=false;overlay.classList.add('show');$('raceAgainBtn').focus();
 }
 function roomRef(id){return doc(db,'games',id)}
@@ -385,6 +386,26 @@ try{
  });
 }catch(e){status('Firebase connection error: '+e.message);}
 
+async function createStarChallenge(){
+ if(!user){raceStatus('Star Challenge ke liye Indian account mein sign in karein.');return;}
+ if(roomId){raceStatus('Pehle current room se bahar niklein.');return;}
+ const stake=Number($('starStakeInput').value);
+ if(!Number.isInteger(stake)||stake<1||stake>100){$('starChallengeInfo').textContent='1 se 100 stars ke beech poori sankhya chunein.';return;}
+ try{
+  const wallet=await callStarWorker('getRacingWallet');
+  if(wallet.wallet.available<stake){$('starChallengeInfo').textContent='Aapke paas '+wallet.wallet.available+' stars hain. Itne stars stake nahi kar sakte.';return;}
+  resetFinishState();hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;
+  const id=randomId(),name=playerName();
+  const data={type:'racing',status:'waiting',createdBy:user.uid,players:[{uid:user.uid,name,carId:selectedCarId}],starChallenge:{stake,status:'waiting',hostUid:user.uid,hostAccepted:true},createdAt:serverTimestamp(),updatedAt:serverTimestamp(),state:{track:'city',finishDistance:FINISH_DISTANCE}};
+  await setDoc(roomRef(id),data);
+  roomId=id;room=data;mode='online';$('roomInput').value=id;updatePlayerCarColors();
+  await setDoc(raceRef(id,user.uid),{uid:user.uid,name,distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
+  watchRoom();requestLandscape();showRaceScreen();$('legacySetupPanel').classList.remove('hidden');
+  $('createBtn').classList.add('hidden');$('joinBtn').classList.add('hidden');$('practiceBtn').classList.add('hidden');
+  await inviteFriend();
+  $('starChallengeInfo').textContent='Challenge room '+id+' ready. Aapke '+stake+' stars tabhi lock honge jab dost invite accept karega.';
+ }catch(e){$('starChallengeInfo').textContent='Challenge create nahi hua: '+e.message;}
+}
 async function createRace(){
  if(!user||roomId)return;
  resetFinishState();hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;
@@ -406,18 +427,23 @@ async function joinRace(raw){
  try{
   await runTransaction(db,async tx=>{
    const ref=roomRef(id),snap=await tx.get(ref);if(!snap.exists())throw Error('Room nahi mila ya invitation expire ho gaya.');
-   const r=snap.data();if(r.type!=='racing')throw Error('Yeh Indian Racing room nahi hai.');
+   const r=snap.data();if(r.type!=='racing')throw Error('Yeh Indian Racing room nahi hai.');if(r.starChallenge&&!window.confirm('Star Challenge: aap '+r.starChallenge.stake+' stars stake karenge. Winner ko dono ka total '+(r.starChallenge.stake*2)+' stars milega. Kya aap accept karte hain?'))throw Error('Aapne Star Challenge accept nahi kiya.');
    const players=Array.isArray(r.players)?r.players:[];
    if(players.some(p=>p.uid===user.uid)){
     if(players.length<2||r.status!=='playing')throw Error('Aap isi Indian account se room bana chuke hain. Friend ko alag Indian account se sign in karke link kholna hoga.');
     return;
    }
    if(players.length>=2||r.status!=='waiting')throw Error('Room full hai ya invitation cancel ho chuka hai. Dost se naya invitation mangwayein.');
-   tx.update(ref,{players:[...players,{uid:user.uid,name:playerName(),carId:selectedCarId}],status:'playing',raceStartAtMs:Date.now()+4000,updatedAt:serverTimestamp()});
+   tx.update(ref,{players:[...players,{uid:user.uid,name:playerName(),carId:selectedCarId}],status:r.starChallenge?'waiting':'playing',...(r.starChallenge?{}:{raceStartAtMs:Date.now()+4000}),updatedAt:serverTimestamp()});
   });
   roomId=id;$('roomInput').value=id;mode='online';
   const joinedSnap=await getDoc(roomRef(id));if(!joinedSnap.exists())throw Error('Room update ke baad nahi mila.');
   room=joinedSnap.data();
+  if(room.starChallenge&&room.status==='waiting'){
+   await callStarWorker('acceptStarChallenge',{roomId:id});
+   joinedSnap=await getDoc(roomRef(id));if(!joinedSnap.exists())throw Error('Challenge room update ke baad nahi mila.');
+   room=joinedSnap.data();
+  }
   if(room.status!=='playing'||!room.players?.some(p=>p.uid===user.uid)||room.players.length!==2)throw Error('Room mein doosra player add nahi hua. Alag Indian account se link kholein.');
   updatePlayerCarColors();
   await setDoc(raceRef(id,user.uid),{uid:user.uid,name:playerName(),distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});

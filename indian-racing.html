@@ -589,12 +589,16 @@ function updatePlayerCarColors(){
 function drawTrackMap(){
  const canvas=$('trackMapCanvas'),ctx=canvas?.getContext('2d');if(!ctx)return;
  const w=canvas.width,h=canvas.height,pad=24;ctx.clearRect(0,0,w,h);ctx.fillStyle='#101820';ctx.fillRect(0,0,w,h);
- const pts=[];for(let p=0;p<=TRACK_LENGTH;p+=8){pts.push([w/2+(trackX(p)/14)*(w*.34),pad+(p/TRACK_LENGTH)*(h-pad*2)]);}
- ctx.lineWidth=22;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#78838c';ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();
+ const pts=[];let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
+ for(let p=0;p<=TRACK_LENGTH;p+=8){const v=trackPoint(p);pts.push([v.x,v.z]);minX=Math.min(minX,v.x);maxX=Math.max(maxX,v.x);minZ=Math.min(minZ,v.z);maxZ=Math.max(maxZ,v.z);}
+ const scale=Math.min((w-pad*2)/Math.max(1,maxX-minX),(h-pad*2)/Math.max(1,maxZ-minZ));
+ const project=(x,z)=>[pad+(w-(pad*2)-(maxX-minX)*scale)/2+(x-minX)*scale,pad+(h-(pad*2)-(maxZ-minZ)*scale)/2+(maxZ-z)*scale];
+ const screen=pts.map(p=>project(p[0],p[1]));
+ ctx.lineWidth=22;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#78838c';ctx.beginPath();screen.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();
  ctx.lineWidth=2;ctx.strokeStyle='#f4e7ae';ctx.setLineDash([7,8]);ctx.stroke();ctx.setLineDash([]);
- const mark=(p,color,laneValue)=>{const x=w/2+(trackX(p)/14)*(w*.34)+(laneValue||0)*1.45;const y=pad+(Math.max(0,Math.min(TRACK_LENGTH,p))/TRACK_LENGTH)*(h-pad*2);ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();};
+ const mark=(s,color,laneValue)=>{const v=placeOnTrack(s,(laneValue||0)*2.3,0).position,p=project(v.x,v.z);ctx.beginPath();ctx.arc(p[0],p[1],10,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();};
  mark(distance,'#20d878',lane);if(opponentState&&opponentUid)mark(Number(opponentState.distance||0),'#ff3030',Number(opponentState.lane||0));
- ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.fillText('START',8,h-8);ctx.fillText('FINISH',8,15);
+ ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';const start=project(trackPoint(0).x,trackPoint(0).z),finish=project(trackPoint(TRACK_LENGTH).x,trackPoint(TRACK_LENGTH).z);ctx.fillText('START',start[0]+8,start[1]-8);ctx.fillText('FINISH',finish[0]+8,finish[1]-8);
  $('mapStatus').textContent='Track map: aap '+Math.round(distance)+' metre par hain'+(opponentState?' aur opponent '+Math.round(Number(opponentState.distance||0))+' metre par hai.':'.');
 }
 function makeCar(color,model=selectedCarId){
@@ -880,7 +884,12 @@ function syncWorld(){
  const lookPose=placeOnTrack(distance+25,0,1.5),curveAhead=trackFrame(distance+10).tangent.clone().sub(trackFrame(distance-10).tangent),sideSwing=Math.max(-3.5,Math.min(3.5,curveAhead.x*24))+(right?2.2:0)-(left?2.2:0);
  const desiredCamera=pose.position.clone().addScaledVector(pose.frame.tangent,-15).addScaledVector(pose.frame.up,7.2).addScaledVector(pose.frame.right,sideSwing);
  camera.position.lerp(desiredCamera,.13);camera.up.lerp(pose.frame.up,.22).normalize();
- const lookTarget=lookPose.position.clone().addScaledVector(lookPose.frame.up,1.1);camera.lookAt(lookTarget);
+ let lookTarget=lookPose.position.clone().addScaledVector(lookPose.frame.up,1.1);
+ if(opponentState&&opponentUid&&Math.abs(opponentRenderDistance-distance)<420){
+  const otherPose=placeOnTrack(opponentRenderDistance,opponentRenderLane*2.3,1.2);
+  lookTarget.lerp(otherPose.position,.28);
+ }
+ camera.lookAt(lookTarget);
  const targetFov=62+Math.min(7,speed/245*7);camera.fov+=(targetFov-camera.fov)*.08;camera.updateProjectionMatrix();drawTrackMap();
 }
 let lastRaceWriteAtMs=0;

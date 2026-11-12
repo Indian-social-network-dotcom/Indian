@@ -61,6 +61,38 @@ a{color:#ffd180}
 @media(max-width:760px) and (orientation:landscape){#carSelectionScreen,#modeSelectionScreen{min-height:80vh;padding:10px;gap:8px}.car-preview{min-height:180px}.car-preview svg{max-height:145px}.car-stage{grid-template-columns:48px minmax(0,1fr) 48px}.car-arrow{width:44px;height:44px}.mode-options{margin:4px auto}.mode-card{padding:12px}}
 @media(max-width:520px){.mode-options{grid-template-columns:1fr}.mode-card p{min-height:0}}
 
+
+/* Fixed full-screen racing cockpit: controls never require page scrolling. */
+body.racing-active{overflow:hidden;height:100dvh}
+body.racing-active>header{position:fixed;top:0;left:0;right:0;height:52px;z-index:1000;padding:5px 10px}
+body.racing-active>header button{padding:6px 10px;min-height:38px}
+body.racing-active>header h1{font-size:1rem}
+body.racing-active>.wrap{width:100%;height:100dvh;margin:0;padding:0}
+body.racing-active #raceGamePanel{display:block!important;position:fixed;inset:52px 0 0 0;z-index:900;margin:0;padding:0;border:0;border-radius:0;background:#07111b;overflow:hidden}
+body.racing-active #scene{position:absolute;inset:0 0 94px 0;width:100%;height:auto;min-height:0;border:0;border-radius:0}
+body.racing-active #scene canvas{width:100%;height:100%}
+body.racing-active .hud{position:absolute;top:5px;left:5px;z-index:5;max-width:230px;margin:0;padding:6px 8px;gap:4px;font-size:12px;background:#101923dd}
+body.racing-active .hud strong{font-size:1rem}
+body.racing-active #raceStatus{position:absolute;top:64px;left:6px;z-index:5;max-width:min(65vw,460px);margin:0;padding:5px 8px;font-size:12px;background:#101923dc}
+body.racing-active #trackMap{top:5px;right:5px;width:104px;height:128px;padding:3px}
+body.racing-active #trackMap canvas{height:94px}
+body.racing-active #mapLegend{font-size:8px}
+body.racing-active #mapStatus,body.racing-active #raceGamePanel>.muted.small{display:none!important}
+body.racing-active .controls{position:fixed;left:50%;bottom:max(6px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1200;width:min(900px,calc(100vw - 12px));display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:0;padding:6px;background:#07111beF;border:1px solid #61798a;border-radius:14px;box-shadow:0 4px 24px #0009}
+body.racing-active .controls button{grid-column:auto!important;min-width:0;min-height:54px;padding:6px 3px;font-size:clamp(11px,1.7vw,15px);white-space:normal}
+body.racing-active #legacySetupPanel{position:fixed;left:50%;top:58px;transform:translateX(-50%);z-index:1300;width:min(520px,calc(100vw - 20px));max-height:calc(100dvh - 150px);overflow:auto;background:#17232ef5}
+body.racing-active #legacySetupPanel.hidden{display:none!important}
+@media(max-width:760px) and (orientation:landscape){
+ body.racing-active>header{height:42px}
+ body.racing-active #raceGamePanel{inset:42px 0 0 0}
+ body.racing-active #scene{inset:0 0 78px 0}
+ body.racing-active .controls{bottom:max(3px,env(safe-area-inset-bottom));gap:4px;padding:4px}
+ body.racing-active .controls button{min-height:48px;font-size:11px}
+ body.racing-active .hud{max-width:190px;font-size:10px}
+ body.racing-active #raceStatus{top:58px;font-size:10px}
+}
+@media(max-width:760px) and (orientation:portrait){body.racing-active #raceGamePanel{display:none!important}}
+/* A smoother sculpted body, metallic finish and cockpit lighting. */
 </style>
 </head>
 <body>
@@ -224,9 +256,9 @@ function renderCarChoice(){
  if(typeof scene!=='undefined'&&scene&&car){rebuildSelectedCars();}
 }
 function chooseCar(delta){selectedCarIndex=(selectedCarIndex+delta+carCatalog.length)%carCatalog.length;renderCarChoice();}
-function showRaceScreen(){ $('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){} }
-function showModeScreen(){ $('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
-function showCarScreen(){ $('modeSelectionScreen').classList.add('hidden');$('carSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
+function showRaceScreen(){document.body.classList.add('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
+function showModeScreen(){document.body.classList.remove('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
+function showCarScreen(){document.body.classList.remove('racing-active');$('modeSelectionScreen').classList.add('hidden');$('carSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
 function requestLandscape(){try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
 $('previousCarBtn').addEventListener('click',()=>chooseCar(-1));$('nextCarBtn').addEventListener('click',()=>chooseCar(1));
 $('nextToModeBtn').addEventListener('click',()=>{requestLandscape();showModeScreen();});
@@ -239,20 +271,26 @@ function hideRoomSetup(){['roomSetupFields','roomSetupActions','roomSetupHelp'].
 function showRoomSetup(){['roomSetupFields','roomSetupActions','roomSetupHelp'].forEach(id=>$(id)?.classList.remove('hidden'));$('waitingRoomActions').hidden=true;}
 function showWaitingRoom(){hideRoomSetup();$('waitingRoomActions').hidden=false;}
 async function cancelWaitingRoom(){
- if(!user||!roomId){showRoomSetup();$('waitingRoomActions').hidden=true;return;}
+ const cancelBtn=$('cancelWaitingBtn');if(cancelBtn)cancelBtn.disabled=true;
+ const oldId=roomId;
  try{
-  const snap=await getDoc(roomRef(roomId));
+  if(!user||!oldId)throw Error('Waiting room ki jankari nahi mili. Game screen dobara kholein.');
+  const snap=await getDoc(roomRef(oldId));
   if(snap.exists()){
    const current=snap.data();
-   if(current.status!=='waiting')throw Error('Dost join kar chuka hai; race shuru ho gayi hai.');
+   if(current.status!=='waiting')throw Error('Dost join kar chuka hai ya race shuru ho gayi hai. Ab cancel nahi kar sakte.');
    if(current.createdBy!==user.uid)throw Error('Sirf room banane wala player waiting cancel kar sakta hai.');
-   await updateDoc(roomRef(roomId),{status:'finished',updatedAt:serverTimestamp()});
+   await updateDoc(roomRef(oldId),{status:'finished',updatedAt:serverTimestamp()});
   }
   try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}
-  leaveOnline();mode='idle';finished=false;speed=0;distance=0;lane=0;opponentCar.visible=false;
-  $('roomInput').value='';showRoomSetup();
-  raceStatus('Waiting cancel ho gaya. Ab Create Race Room dabakar naya Room ID bana sakte hain.');
- }catch(e){raceStatus('Waiting cancel nahi hua: '+e.message+'. Room abhi waiting mein hai.');}
+  leaveOnline();mode='idle';finished=false;speed=0;distance=0;lane=0;nitro=100;opponentCar.visible=false;
+  $('roomInput').value='';
+  $('modeSelectionTitle').textContent='Waiting cancelled';
+  $('modeSelectionScreen').querySelector('.intro').textContent='Room band ho gaya. Dobara Play with Friend ya Single Player chunein.';
+  showModeScreen();
+ }catch(e){
+  raceStatus('Waiting cancel nahi hua: '+e.message);
+ }finally{if(cancelBtn)cancelBtn.disabled=false;}
 }
 $('cancelWaitingBtn').addEventListener('click',cancelWaitingRoom);
 async function restoreWaitingRoom(){
@@ -296,42 +334,60 @@ async function createRace(){
  }catch(e){raceStatus('Room create nahi hua: '+e.message+' Rules update zaroori ho sakta hai.');}
 }
 async function joinRace(raw){
- if(!user||!raw)return;
+ if(!user){raceStatus('Race join karne ke liye pehle Indian account mein sign in karein.');return;}
+ if(!raw){raceStatus('Invitation link mein Room ID nahi hai.');return;}
  hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;
- const id=String(raw).trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(id)){raceStatus('Room ID 6 characters ka hona chahiye.');return;}
+ const id=String(raw).trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(id)){raceStatus('Room ID galat hai. Link dobara mangwayein.');return;}
+ raceStatus('Invitation room se connect ho rahe hain…');
  try{
   await runTransaction(db,async tx=>{
-   const ref=roomRef(id),snap=await tx.get(ref);if(!snap.exists())throw Error('Room nahi mila.');
+   const ref=roomRef(id),snap=await tx.get(ref);if(!snap.exists())throw Error('Room nahi mila ya invitation expire ho gaya.');
    const r=snap.data();if(r.type!=='racing')throw Error('Yeh Indian Racing room nahi hai.');
-   if(r.players.some(p=>p.uid===user.uid))return;
-   if(r.players.length>=2||r.status!=='waiting')throw Error('Room full hai ya race shuru ho chuki hai.');
-   tx.update(ref,{players:[...r.players,{uid:user.uid,name:playerName()}],status:'playing',raceStartAtMs:Date.now()+4000,updatedAt:serverTimestamp()});
+   const players=Array.isArray(r.players)?r.players:[];
+   if(players.some(p=>p.uid===user.uid)){
+    if(players.length<2||r.status!=='playing')throw Error('Aap isi Indian account se room bana chuke hain. Friend ko alag Indian account se sign in karke link kholna hoga.');
+    return;
+   }
+   if(players.length>=2||r.status!=='waiting')throw Error('Room full hai ya invitation cancel ho chuka hai. Dost se naya invitation mangwayein.');
+   tx.update(ref,{players:[...players,{uid:user.uid,name:playerName()}],status:'playing',raceStartAtMs:Date.now()+4000,updatedAt:serverTimestamp()});
   });
-  roomId=id;$('roomInput').value=id;mode='online';const joinedSnap=await getDoc(roomRef(id));room=joinedSnap.data();updatePlayerCarColors();
+  roomId=id;$('roomInput').value=id;mode='online';
+  const joinedSnap=await getDoc(roomRef(id));if(!joinedSnap.exists())throw Error('Room update ke baad nahi mila.');
+  room=joinedSnap.data();
+  if(room.status!=='playing'||!room.players?.some(p=>p.uid===user.uid)||room.players.length!==2)throw Error('Room mein doosra player add nahi hua. Alag Indian account se link kholein.');
+  updatePlayerCarColors();
   await setDoc(raceRef(id,user.uid),{uid:user.uid,name:playerName(),distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
-  watchRoom();raceStatus('Aap race mein shamil ho gaye. Race shuru! Accelerator dabayein.');
- }catch(e){raceStatus('Join nahi hua: '+e.message);}
+  showRaceScreen();$('legacySetupPanel').classList.add('hidden');watchRoom();
+  startRaceCountdown(room.raceStartAtMs||Date.now()+4000,id);
+  raceStatus('Dono players jud gaye! One, Two, Three, Go!');
+ }catch(e){raceStatus('Invitation se join nahi hua: '+e.message);console.error('Indian Racing join failed',e);}
 }
 function watchRoom(){
  if(roomUnsub)roomUnsub();
  roomUnsub=onSnapshot(roomRef(roomId),snap=>{
   if(!snap.exists()){raceStatus('Room nahi mila.');return;}
   room=snap.data();updatePlayerCarColors();
-  const other=room.players.find(p=>p.uid!==user.uid);opponentUid=other?.uid||'';
+  const other=(room.players||[]).find(p=>p.uid!==user.uid);opponentUid=other?.uid||'';
   if(opponentUnsub){opponentUnsub();opponentUnsub=null;}
   if(opponentUid){
-   opponentUnsub=onSnapshot(raceRef(roomId,opponentUid),s=>{opponentState=s.exists()?s.data():null;});
-   hideRoomSetup();$('waitingRoomActions').hidden=true;try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}
-   if(room.status==='playing')startRaceCountdown(room.raceStartAtMs||Date.now()+1000,roomId);
-   raceStatus('Opponent: '+other.name+'. Dono players ready ho rahe hain.');
-  }else raceStatus('Friend ke join karne ka intezar hai. Room ID '+roomId+'.');
+   opponentUnsub=onSnapshot(raceRef(roomId,opponentUid),s=>{opponentState=s.exists()?s.data():null;},err=>raceStatus('Opponent sync error: '+err.message));
+   hideRoomSetup();$('waitingRoomActions').hidden=true;
+   try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}
+   if(room.status==='playing'){
+    showRaceScreen();
+    startRaceCountdown(Number(room.raceStartAtMs)||Date.now()+4000,roomId);
+    raceStatus('Dono players jud gaye! Countdown shuru ho raha hai.');
+   }else if(room.status==='waiting')raceStatus('Friend join ho gaya hai; room start hone ki taiyari ho rahi hai.');
+  }else if(room.status==='waiting'){
+   raceStatus('Friend ke join karne ka intezar hai. Room ID '+roomId+'.');
+  }
   if(room.status==='finished'){
    finished=true;speed=0;accelerating=braking=boosting=false;
    if(crashCount>=3)raceStatus('GAME OVER! Aap 3 drums se takraye aur race haar gaye.');
    else if(room.winnerUid)raceStatus(room.winnerUid===user.uid?'🏆 AAP JEET GAYE! Aap sabse pehle finish line par pahunche.':'🏁 '+(room.winnerName||'Opponent')+' pehle finish line par pahunch gaye. Aap race haar gaye.');
-   else raceStatus('Race khatam ho gayi.');
+   else raceStatus('Race khatam ya cancel ho gayi.');
   }
- });
+ },err=>raceStatus('Room live update error: '+err.message));
 }
 async function inviteFriend(){
  if(!user){raceStatus('Pehle Indian account mein sign in karein.');return;}
@@ -383,29 +439,66 @@ function drawTrackMap(){
  $('mapStatus').textContent='Track map: aap '+Math.round(distance)+' metre par hain'+(opponentState?' aur opponent '+Math.round(Number(opponentState.distance||0))+' metre par hai.':'.');
 }
 function makeCar(color,model=selectedCarId){
- const group=new THREE.Group(),isLuxury=model==='luxury',isSuper=model==='supercar',isSUV=model==='rally';
- const bodyLength=isSuper?3.75:isSUV?3.45:3.85,bodyWidth=isSUV?1.95:1.88;
- const paint=new THREE.MeshStandardMaterial({color,metalness:.72,roughness:.2});
- const body=new THREE.Mesh(new THREE.BoxGeometry(bodyWidth,isSuper?.42:.55,bodyLength),paint);
- body.position.y=isSuper?.59:.67;group.add(body);
- const bonnet=new THREE.Mesh(new THREE.BoxGeometry(bodyWidth*.88,.16,isLuxury?1.28:1.48),paint);bonnet.position.set(0,isSuper?.78:.92,-1.13);group.add(bonnet);
- const cabinShape=isSuper?new THREE.BoxGeometry(1.18,.52,1.35):isSUV?new THREE.BoxGeometry(1.42,.82,1.72):new THREE.BoxGeometry(isLuxury?1.38:1.32,isLuxury?.72:.64,isLuxury?1.82:1.62);
- const cabin=new THREE.Mesh(cabinShape,new THREE.MeshStandardMaterial({color:0x102b3b,metalness:.55,roughness:.13}));cabin.position.set(0,isSuper?1.03:isSUV?1.32:1.2,isLuxury?.05:-.12);group.add(cabin);
- const roof=new THREE.Mesh(new THREE.BoxGeometry(isSUV?1.4:1.32,.09,isLuxury?1.5:1.3),paint);roof.position.set(0,isSUV?1.75:isLuxury?1.59:1.48,isLuxury?.04:-.12);group.add(roof);
- const bumper=new THREE.Mesh(new THREE.BoxGeometry(2.02,.22,.32),new THREE.MeshStandardMaterial({color:0x10151b,metalness:.7,roughness:.28}));bumper.position.set(0,.43,-bodyLength/2);group.add(bumper);
- for(const x of [-1,1])for(const z of [-1,1]){
-  const wheel=new THREE.Mesh(new THREE.CylinderGeometry(isSUV?.39:.34,isSUV?.39:.34,.23,24),new THREE.MeshStandardMaterial({color:0x080a0d,metalness:.25,roughness:.75}));
-  wheel.rotation.z=Math.PI/2;wheel.position.set(x*(bodyWidth/2-.04),.39,z*1.12);group.add(wheel);
-  const rim=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.24,16),new THREE.MeshStandardMaterial({color:0xb9c7d1,metalness:.85,roughness:.2}));
-  rim.rotation.z=Math.PI/2;rim.position.copy(wheel.position);group.add(rim);
+ const group=new THREE.Group();
+ const isLuxury=model==='luxury',isSuper=model==='supercar',isSUV=model==='rally';
+ const paint=new THREE.MeshPhysicalMaterial({color,metalness:.78,roughness:.2,clearcoat:1,clearcoatRoughness:.12});
+ const glass=new THREE.MeshPhysicalMaterial({color:0x102b3b,metalness:.35,roughness:.12,clearcoat:1,transparent:true,opacity:.96});
+ const dark=new THREE.MeshStandardMaterial({color:0x101820,metalness:.72,roughness:.28});
+ const chrome=new THREE.MeshStandardMaterial({color:0xb9c8d2,metalness:.92,roughness:.16});
+ const light=new THREE.MeshStandardMaterial({color:0xe8fbff,emissive:0x8edfff,emissiveIntensity:1.5});
+ const redLight=new THREE.MeshStandardMaterial({color:0xff2020,emissive:0x8f0000,emissiveIntensity:1.2});
+ function loft(profile,material,segments=24){
+  const positions=[],indices=[];
+  profile.forEach(([z,w,cy,h])=>{
+   for(let j=0;j<segments;j++){const a=(j/segments)*Math.PI*2;positions.push(Math.cos(a)*w,cy+Math.sin(a)*h,z);}
+  });
+  for(let i=0;i<profile.length-1;i++)for(let j=0;j<segments;j++){
+   const a=i*segments+j,b=i*segments+(j+1)%segments,c=(i+1)*segments+j,d=(i+1)*segments+(j+1)%segments;
+   indices.push(a,b,c,b,d,c);
+  }
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geo.setIndex(indices);geo.computeVertexNormals();
+  const mesh=new THREE.Mesh(geo,material);mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);return mesh;
  }
- const trimMat=new THREE.MeshStandardMaterial({color:0x111820,metalness:.8,roughness:.22});
- const splitter=new THREE.Mesh(new THREE.BoxGeometry(2.08,.1,.42),trimMat);splitter.position.set(0,.31,-bodyLength/2-.08);group.add(splitter);
- for(const x of [-.62,.62]){const lamp=new THREE.Mesh(new THREE.BoxGeometry(isSuper?.52:.42,.13,.08),new THREE.MeshBasicMaterial({color:0xb9efff}));lamp.position.set(x,.78,-bodyLength/2+.02);group.add(lamp);}
- const grille=new THREE.Mesh(new THREE.BoxGeometry(isLuxury?.72:1.05,.3,.08),new THREE.MeshStandardMaterial({color:isLuxury?0xb6c2cc:0x15191e,metalness:.85,roughness:.18}));grille.position.set(0,.58,-bodyLength/2-.03);group.add(grille);
- if(isSuper){const wing=new THREE.Mesh(new THREE.BoxGeometry(2.05,.12,.42),trimMat);wing.position.set(0,1.13,1.65);group.add(wing);}
- if(isSUV){const rails=new THREE.Mesh(new THREE.BoxGeometry(1.18,.09,1.55),new THREE.MeshStandardMaterial({color:0xaab8c2,metalness:.8}));rails.position.set(0,1.83,-.08);group.add(rails);}
- const tailLights=new THREE.Mesh(new THREE.BoxGeometry(1.45,.13,.08),new THREE.MeshBasicMaterial({color:0xff2020}));tailLights.position.set(0,.78,bodyLength/2);group.add(tailLights);
+ const bodyProfile=isSuper?[[-2.05,.52,.56,.2],[-1.72,.82,.61,.29],[-1.12,.94,.64,.32],[0,.98,.65,.34],[1.35,.9,.61,.3],[1.9,.68,.56,.22]]:
+  isSUV?[[-1.95,.65,.61,.28],[-1.62,.88,.66,.34],[-1.05,.99,.69,.39],[.45,1.02,.7,.4],[1.55,.92,.65,.34],[1.95,.72,.59,.26]]:
+  [[-2.02,.56,.58,.22],[-1.72,.83,.63,.3],[-1.12,.96,.66,.34],[0,.98,.66,.36],[1.42,.91,.62,.32],[1.95,.7,.57,.23]];
+ loft(bodyProfile,paint,32);
+ const cabinProfile=isSuper?[[-1.08,.55,.91,.12],[-.72,.66,1.08,.35],[.35,.64,1.1,.39],[1.05,.47,.91,.13]]:
+  isSUV?[[-1.12,.58,.98,.13],[-.78,.72,1.25,.48],[.72,.72,1.27,.48],[1.2,.58,1.03,.16]]:
+  isLuxury?[[-1.12,.57,.94,.13],[-.72,.72,1.18,.43],[.62,.72,1.19,.43],[1.2,.55,.96,.14]]:
+  [[-1.08,.55,.93,.12],[-.68,.68,1.15,.39],[.52,.66,1.16,.4],[1.08,.5,.94,.13]];
+ loft(cabinProfile,glass,28);
+ const roofProfile=isSUV?[[-.72,.67,1.58,.08],[.65,.67,1.62,.08]]:
+  [[-.62,.61,isSuper?1.43:1.55,.07],[.48,.61,isSuper?1.46:1.58,.07]];
+ loft(roofProfile,paint,24);
+ // Sculpted front and rear bumpers.
+ const front=new THREE.Mesh(new THREE.BoxGeometry(isSUV?1.9:1.78,.2,.22),dark);front.position.set(0,.43,-1.98);group.add(front);
+ const rear=new THREE.Mesh(new THREE.BoxGeometry(1.82,.19,.2),dark);rear.position.set(0,.42,1.94);group.add(rear);
+ // Grille, chrome surround and horizontal slats.
+ const grille=new THREE.Mesh(new THREE.BoxGeometry(isLuxury?.66:1.02,.31,.055),isLuxury?chrome:dark);grille.position.set(0,.59,-2.08);group.add(grille);
+ for(let i=0;i<5;i++){const slat=new THREE.Mesh(new THREE.BoxGeometry(isLuxury?.58:.88,.018,.065),chrome);slat.position.set(0,.48+i*.052,-2.115);group.add(slat);}
+ // Headlights and tail lamps.
+ for(const x of [-1,1]){
+  const lamp=new THREE.Mesh(new THREE.BoxGeometry(isSuper?.48:.38,.13,.09),light);lamp.position.set(x*(isSUV?.68:.7),.75,-1.91);group.add(lamp);
+  const tail=new THREE.Mesh(new THREE.BoxGeometry(.48,.12,.08),redLight);tail.position.set(x*.55,.72,1.96);group.add(tail);
+  const mirror=new THREE.Mesh(new THREE.BoxGeometry(.18,.13,.28),paint);mirror.position.set(x*.92,1.0,-.48);group.add(mirror);
+ }
+ // Four rubber tyres with metallic multi-spoke alloy wheels.
+ for(const x of [-1,1])for(const z of [-1,1]){
+  const wheel=new THREE.Mesh(new THREE.CylinderGeometry(isSUV?.4:.36,isSUV?.4:.36,.27,32),new THREE.MeshStandardMaterial({color:0x080a0d,roughness:.86}));
+  wheel.rotation.z=Math.PI/2;wheel.position.set(x*(isSUV?.94:.88),.42,z*1.23);wheel.castShadow=true;group.add(wheel);
+  const rim=new THREE.Mesh(new THREE.CylinderGeometry(.255,.255,.285,32),chrome);rim.rotation.z=Math.PI/2;rim.position.copy(wheel.position);group.add(rim);
+  const hub=new THREE.Mesh(new THREE.CylinderGeometry(.085,.085,.3,20),dark);hub.rotation.z=Math.PI/2;hub.position.copy(wheel.position);group.add(hub);
+  for(let k=0;k<8;k++){const a=k*Math.PI/4,spoke=new THREE.Mesh(new THREE.BoxGeometry(.035,.29,.045),chrome);spoke.position.set(wheel.position.x+(x>0?.15:-.15),wheel.position.y+Math.cos(a)*.13,wheel.position.z+Math.sin(a)*.13);spoke.rotation.x=a;group.add(spoke);}
+ }
+ // Side skirts and chrome beltline.
+ for(const x of [-1,1]){
+  const skirt=new THREE.Mesh(new THREE.BoxGeometry(.1,.13,2.35),dark);skirt.position.set(x*.91,.36,0);group.add(skirt);
+  const belt=new THREE.Mesh(new THREE.BoxGeometry(.035,.035,2.25),chrome);belt.position.set(x*.91,.88,.02);group.add(belt);
+ }
+ if(isSuper){const wingBar=new THREE.Mesh(new THREE.BoxGeometry(1.9,.1,.28),dark);wingBar.position.set(0,1.18,1.55);group.add(wingBar);for(const x of [-.65,.65]){const leg=new THREE.Mesh(new THREE.BoxGeometry(.07,.32,.08),chrome);leg.position.set(x,1.02,1.55);group.add(leg);}}
+ if(isSUV){for(const x of [-.48,.48]){const rail=new THREE.Mesh(new THREE.BoxGeometry(.09,.1,1.7),chrome);rail.position.set(x,1.83,.05);group.add(rail);}}
+ const shadow=new THREE.Mesh(new THREE.PlaneGeometry(3.4,5.1),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.2}));shadow.rotation.x=-Math.PI/2;shadow.position.y=.05;group.add(shadow);
  return group;
 }
 function rebuildSelectedCars(){

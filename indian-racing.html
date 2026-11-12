@@ -425,7 +425,8 @@ function trackZ(s){if(s<LOOP_START)return -s;if(s<=LOOP_START+LOOP_LENGTH){const
 function trackPoint(s){return new THREE.Vector3(trackX(s),trackY(s),trackZ(s));}
 function trackFrame(s){const tangent=trackPoint(s+.5).sub(trackPoint(s-.5)).normalize();const right=new THREE.Vector3(1,0,0).addScaledVector(tangent,-tangent.x).normalize();if(right.lengthSq()<.001)right.set(1,0,0);const up=right.clone().cross(tangent).normalize();return {tangent,right,up};}
 function placeOnTrack(s,laneOffset=0,heightOffset=0){const p=trackPoint(s),frame=trackFrame(s);p.addScaledVector(frame.right,laneOffset).addScaledVector(frame.up,heightOffset);return {position:p,frame};}
-function setTrackPose(object,s,laneOffset=0,roll=0){const pose=placeOnTrack(s,laneOffset,0),back=pose.frame.tangent.clone().negate(),matrix=new THREE.Matrix4().makeBasis(pose.frame.right,pose.frame.up,back);object.position.copy(pose.position);object.quaternion.setFromRotationMatrix(matrix);if(roll)object.rotateZ(roll);}
+function orientTrackObject(object,frame){const back=frame.tangent.clone().negate(),matrix=new THREE.Matrix4().makeBasis(frame.right,frame.up,back);object.quaternion.setFromRotationMatrix(matrix);}
+function setTrackPose(object,s,laneOffset=0,roll=0){const pose=placeOnTrack(s,laneOffset,0);object.position.copy(pose.position);orientTrackObject(object,pose.frame);if(roll)object.rotateZ(roll);}
 function setBodyColor(vehicle,color){if(vehicle?.children?.[0]?.material?.color)vehicle.children[0].material.color.setHex(color);}
 function updatePlayerCarColors(){
  if(!car||!opponentCar)return;
@@ -558,7 +559,7 @@ function addModernBarrier(side,p){
  const post=new THREE.Mesh(new THREE.BoxGeometry(.16,1.05,.22),new THREE.MeshStandardMaterial({color:0x8999a5,metalness:.72,roughness:.28}));
  post.position.copy(pose.position).addScaledVector(pose.frame.up,.5);scene.add(post);
  const rail=new THREE.Mesh(new THREE.BoxGeometry(.18,.22,7.8),new THREE.MeshStandardMaterial({color:0xb8c7d1,metalness:.82,roughness:.25}));
- rail.position.copy(pose.position).addScaledVector(pose.frame.up,.92);rail.rotation.set(Math.asin(pose.frame.tangent.y),Math.atan2(pose.frame.tangent.x,-pose.frame.tangent.z),0);scene.add(rail);
+ rail.position.copy(pose.position).addScaledVector(pose.frame.up,.92);orientTrackObject(rail,pose.frame);scene.add(rail);
  const light=new THREE.Mesh(new THREE.BoxGeometry(.2,.07,7.5),new THREE.MeshBasicMaterial({color:0x27dfff}));
  light.position.copy(pose.position).addScaledVector(pose.frame.up,1.06);light.rotation.copy(rail.rotation);scene.add(light);
 }
@@ -613,7 +614,7 @@ function init3D(){
  const centerLineMatYellow=new THREE.MeshBasicMaterial({color:0xffc928});
  for(let p=0;p<=TRACK_LENGTH;p+=14){
   const line=new THREE.Mesh(new THREE.BoxGeometry(.12,.045,5.4),p%56===0?centerLineMatYellow:centerLineMat);
-  const pose=placeOnTrack(p,0,.06);line.position.copy(pose.position);line.rotation.set(Math.asin(pose.frame.tangent.y),Math.atan2(pose.frame.tangent.x,-pose.frame.tangent.z),0);scene.add(line);
+  const pose=placeOnTrack(p,0,.06);line.position.copy(pose.position);orientTrackObject(line,pose.frame);scene.add(line);
  }
  for(const side of [-1,1]){
   const edgePoints=[];for(let p=0;p<=TRACK_LENGTH;p+=6)edgePoints.push(placeOnTrack(p,side*(TRACK_HALF-.38),.075).position);
@@ -625,9 +626,9 @@ function init3D(){
   const pts=[],outer=[];for(let p=0;p<=TRACK_LENGTH;p+=6){pts.push(placeOnTrack(p,side*(TRACK_HALF-.12),.08).position);outer.push(placeOnTrack(p,side*(TRACK_HALF+.85),.62).position);}
   scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),700,.14,8,false),edgeMat));
   scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(outer),700,.075,6,false),neonMat));
-  for(let p=10;p<TRACK_LENGTH;p+=18){const curb=new THREE.Mesh(new THREE.BoxGeometry(.52,.17,3.2),new THREE.MeshStandardMaterial({color:(Math.floor(p/18)%2)?0xf5f5f5:0xe53935,roughness:.75}));const pose=placeOnTrack(p,side*(TRACK_HALF-.18),.11);curb.position.copy(pose.position);curb.rotation.set(Math.asin(pose.frame.tangent.y),Math.atan2(pose.frame.tangent.x,-pose.frame.tangent.z),0);scene.add(curb);}
+  for(let p=10;p<TRACK_LENGTH;p+=18){const curb=new THREE.Mesh(new THREE.BoxGeometry(.52,.17,3.2),new THREE.MeshStandardMaterial({color:(Math.floor(p/18)%2)?0xf5f5f5:0xe53935,roughness:.75}));const pose=placeOnTrack(p,side*(TRACK_HALF-.18),.11);curb.position.copy(pose.position);orientTrackObject(curb,pose.frame);scene.add(curb);}
  }
- for(let p=8;p<TRACK_LENGTH;p+=24){const mark=new THREE.Mesh(new THREE.BoxGeometry(.16,.04,6),new THREE.MeshBasicMaterial({color:0xd7f3ff}));const pose=placeOnTrack(p,0,.045);mark.position.copy(pose.position);mark.rotation.set(Math.asin(pose.frame.tangent.y),Math.atan2(pose.frame.tangent.x,-pose.frame.tangent.z),0);scene.add(mark);roadMarks.push(mark);}
+ for(let p=8;p<TRACK_LENGTH;p+=24){const mark=new THREE.Mesh(new THREE.BoxGeometry(.16,.04,6),new THREE.MeshBasicMaterial({color:0xd7f3ff}));const pose=placeOnTrack(p,0,.045);mark.position.copy(pose.position);orientTrackObject(mark,pose.frame);scene.add(mark);roadMarks.push(mark);}
  for(let p=15;p<TRACK_LENGTH;p+=42){
   if(p>=1180&&p<=2100){
    addSnowPine(trackX(p)-TRACK_HALF-5,-p,1.05+(p%3)*.12);

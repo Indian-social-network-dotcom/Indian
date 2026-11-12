@@ -132,12 +132,7 @@ service cloud.firestore {
                       '😂',
                       '😮'
                     ]
-                    && request.resource.data.updatedAtMs is number
-            && request.resource.data.updatedAtMs <= request.time.toMillis() + 5000
-            && (resource == null
-                || (request.resource.data.distance >= resource.data.distance
-                    && request.resource.data.distance <= resource.data.distance + 120
-                    && request.resource.data.updatedAtMs > resource.data.updatedAtMs));
+                    && request.resource.data.updatedAtMs is number;
 
       // Story interaction records cannot be deleted by clients.
       allow delete: if false;
@@ -616,7 +611,10 @@ service cloud.firestore {
         allow update: if isRoomPlayer()
           && playerUid == request.auth.uid
           && resource.data.uid == request.auth.uid
-          && validRaceState();
+          && validRaceState()
+          && request.resource.data.distance >= resource.data.distance
+          && request.resource.data.distance <= resource.data.distance + 120
+          && request.resource.data.updatedAtMs > resource.data.updatedAtMs;
         allow delete: if false;
       }
     }

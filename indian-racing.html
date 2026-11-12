@@ -493,7 +493,18 @@ function watchRoom(){
   }else if(room.status==='waiting'){
    raceStatus('Friend ke join karne ka intezar hai. Room ID '+roomId+'.');
   }
-
+  if(room.status==='finished'){
+   finished=true;speed=0;accelerating=braking=boosting=false;
+   if(crashCount>=3)raceStatus('GAME OVER! Aap 3 drums se takraye aur race haar gaye.');
+   else if(room.winnerUid){
+    localWon=room.winnerUid===user.uid;breakFinishRope();
+    raceStatus(localWon?'🏆 AAP JEET GAYE! Aap sabse pehle finish line par pahunche.':'🏁 '+(room.winnerName||'Opponent')+' pehle finish line par pahunch gaye. Aap race haar gaye.');
+    if(!finishSequenceActive){finishSequenceActive=true;finishDriveForward=false;finishSequenceStartedAt=performance.now();}
+   }else if(room.starDraw){
+    raceStatus('Race draw! Dono players ke stake stars refund ho gaye.');
+    if(!finishSequenceActive){finishSequenceActive=true;finishDriveForward=false;finishSequenceStartedAt=performance.now();}
+   }else raceStatus('Race khatam ya cancel ho gayi.');
+  }
  },err=>raceStatus('Room live update error: '+err.message));
 }
 async function inviteFriend(){

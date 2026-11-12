@@ -361,7 +361,7 @@ function breakFinishRope(){
 }
 function showWinnerOverlay(){
  if(finishCelebrationShown)return;finishCelebrationShown=true;
- const practice=mode==='practice',winnerUid=room?.winnerUid||(practice?user?.uid:''),winnerKnown=practice||!!winnerUid||localWon,winnerName=room?.winnerName||(localWon?playerName():winnerUid?'Opponent':'Result not confirmed'),won=practice||(!!winnerUid&&winnerUid===user?.uid);
+ const practice=mode==='practice',winnerUid=room?.winnerUid||(practice?user?.uid:''),winnerKnown=practice||!!winnerUid||localWon||!!room?.starDraw,winnerName=room?.starDraw?'Draw - no winner':room?.winnerName||(localWon?playerName():winnerUid?'Opponent':'Result not confirmed'),won=practice||(!!winnerUid&&winnerUid===user?.uid);
  $('winnerTitle').textContent=practice?'🏁 PRACTICE COMPLETE':!winnerKnown?'RESULT NOT CONFIRMED':won?'🏆 YOU ARE THE WINNER!':'🏁 RACE FINISHED';
  $('winnerName').textContent='Winner: '+winnerName;
  $('winnerStars').textContent=won?'★★★':'';
@@ -839,7 +839,8 @@ async function finishRace(){
    await setDoc(raceRef(roomId,user.uid),{uid:user.uid,name:playerName(),distance:FINISH_DISTANCE,lane:Number(lane.toFixed(2)),speed:Math.round(speed),finished:true,updatedAtMs:Date.now()});
    const result=await callStarWorker('finishRacingRace',{roomId});
    localWon=result.winnerUid===user.uid;
-   raceStatus(localWon?'🏆 AAP JEET GAYE! Aapko 3 stars mile.':'🏁 '+(result.winnerName||'Opponent')+' jeet gaye.');
+   room={...(room||{}),status:'finished',winnerUid:result.winnerUid||null,winnerName:result.winnerName||'',starReward:Number(result.starsAwarded||0),starDraw:!!result.draw};
+   raceStatus(result.draw?'Race draw! Dono ke stake refund ho gaye.':localWon?'🏆 AAP JEET GAYE! Aapko '+result.starsAwarded+' stars mile.':'🏁 '+(result.winnerName||'Opponent')+' jeet gaye.');
    refreshStarWallet();
   }catch(e){localWon=false;finishDriveForward=false;speed=0;raceStatus('Winner ya stars verify nahi hue: '+e.message);}
  }else{

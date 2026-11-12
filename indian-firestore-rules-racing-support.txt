@@ -554,7 +554,8 @@ service cloud.firestore {
                         && request.resource.data.players == resource.data.players);
 
       allow delete: if signedIn()
-                    && resource.data.createdBy == request.auth.uid;
+                    && resource.data.createdBy == request.auth.uid
+                    && resource.data.status == 'waiting';
 
       match /private/{secretId} {
         allow create: if signedIn()

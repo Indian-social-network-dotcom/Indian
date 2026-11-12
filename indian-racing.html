@@ -22,6 +22,11 @@ header h1{font-size:1.2rem;color:var(--orange);margin:0;flex:1}.wrap{width:min(1
 #trackMap canvas{width:100%;height:170px;display:block}
 #mapLegend{font-size:11px;display:flex;justify-content:space-around;gap:4px;color:#fff}
 .mapDot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px}
+/* Modern racing circuit and alpine scenery */
+#scene{background:linear-gradient(#8bc6e8 0%,#d9edf6 38%,#314b48 100%);border:1px solid #71899b;box-shadow:inset 0 0 35px #07111b}
+.hud{background:linear-gradient(110deg,#111b27dd,#263b4ddd);border:1px solid #526a7c;border-radius:12px;padding:10px 12px}
+.controls button{box-shadow:0 4px 0 #0005,0 0 12px #ffffff12}
+@media(max-width:520px){#scene{height:54vh;min-height:290px}}
 @media(max-width:520px){#trackMap{width:116px;height:166px;right:6px;top:6px}#trackMap canvas{height:128px}#mapLegend{font-size:9px}}
 .hud{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin:10px 0}
 .hud strong{color:var(--orange);font-size:1.15rem}.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
@@ -307,6 +312,56 @@ function addBuilding(x,z){
  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,4),new THREE.MeshStandardMaterial({color:[0x607d8b,0x8d6e63,0x455a64,0x546e7a][Math.floor(Math.random()*4)]}));
  m.position.set(x,trackY(-z)+h/2,z);scene.add(m);scenery.push(m);
 }
+function addSnowPine(x,z,scale=1){
+ const g=new THREE.Group();
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.12*scale,.2*scale,1.25*scale,7),new THREE.MeshStandardMaterial({color:0x594431,roughness:1}));
+ trunk.position.y=.62*scale;g.add(trunk);
+ for(let i=0;i<3;i++){
+  const layer=new THREE.Mesh(new THREE.ConeGeometry((1.05-i*.18)*scale,(1.55-i*.12)*scale,8),new THREE.MeshStandardMaterial({color:i===2?0xf4fbff:0x174c43,roughness:.95}));
+  layer.position.y=(1.45+i*.55)*scale;g.add(layer);
+  const snow=new THREE.Mesh(new THREE.ConeGeometry((.78-i*.13)*scale,(.72-i*.05)*scale,8),new THREE.MeshStandardMaterial({color:0xf5fbff,roughness:.8}));
+  snow.position.y=(1.72+i*.55)*scale;g.add(snow);
+ }
+ g.position.set(x,trackY(-z),z);scene.add(g);scenery.push(g);
+}
+function addSnowMountain(x,z,radius,height){
+ const g=new THREE.Group();
+ const rockMat=new THREE.MeshStandardMaterial({color:0x657887,roughness:1});
+ const snowMat=new THREE.MeshStandardMaterial({color:0xf1f7fb,roughness:.9});
+ const peak=new THREE.Mesh(new THREE.ConeGeometry(radius,height,7,3),rockMat);peak.position.y=height/2;g.add(peak);
+ const cap=new THREE.Mesh(new THREE.ConeGeometry(radius*.43,height*.48,7,2),snowMat);cap.position.y=height*.73;g.add(cap);
+ const lowerSnow=new THREE.Mesh(new THREE.ConeGeometry(radius*.72,height*.24,7,1),snowMat);lowerSnow.position.y=height*.58;g.add(lowerSnow);
+ g.position.set(x,trackY(-z)-.5,z);scene.add(g);scenery.push(g);
+}
+function addModernBarrier(side,p){
+ const x=trackX(p)+side*(TRACK_HALF+1.15),z=-p;
+ const post=new THREE.Mesh(new THREE.BoxGeometry(.16,1.05,.22),new THREE.MeshStandardMaterial({color:0x8999a5,metalness:.72,roughness:.28}));
+ post.position.set(x,trackY(p)+.5,z);scene.add(post);
+ const rail=new THREE.Mesh(new THREE.BoxGeometry(.18,.22,7.8),new THREE.MeshStandardMaterial({color:0xb8c7d1,metalness:.82,roughness:.25}));
+ rail.position.set(x,trackY(p)+.92,z);rail.rotation.y=-Math.atan(trackSlopeX(p));scene.add(rail);
+ const light=new THREE.Mesh(new THREE.BoxGeometry(.2,.07,7.5),new THREE.MeshBasicMaterial({color:0x27dfff}));
+ light.position.set(x,trackY(p)+1.06,z);light.rotation.y=-Math.atan(trackSlopeX(p));scene.add(light);
+}
+function addFinishGate(){
+ const p=FINISH_DISTANCE,x=trackX(p),y=trackY(p),z=-p;
+ const poleMat=new THREE.MeshStandardMaterial({color:0xe9edf2,metalness:.65,roughness:.3});
+ const redMat=new THREE.MeshStandardMaterial({color:0xe51b32,metalness:.25,roughness:.35});
+ for(const side of [-1,1]){
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.16,.2,5.2,12),poleMat);
+  pole.position.set(x+side*(TRACK_HALF-.2),y+2.6,z);scene.add(pole);
+  const foot=new THREE.Mesh(new THREE.CylinderGeometry(.55,.65,.28,12),redMat);
+  foot.position.set(x+side*(TRACK_HALF-.2),y+.14,z);scene.add(foot);
+ }
+ const ropePoints=[new THREE.Vector3(x-TRACK_HALF,y+4.35,z),new THREE.Vector3(x-TRACK_HALF*.5,y+3.9,z),new THREE.Vector3(x,y+3.7,z),new THREE.Vector3(x+TRACK_HALF*.5,y+3.9,z),new THREE.Vector3(x+TRACK_HALF,y+4.35,z)];
+ const rope=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ropePoints),36,.12,8,false),redMat);scene.add(rope);
+ const checkMatA=new THREE.MeshBasicMaterial({color:0xffffff}),checkMatB=new THREE.MeshBasicMaterial({color:0x15191e});
+ for(let i=0;i<28;i++){
+  const tile=new THREE.Mesh(new THREE.BoxGeometry((TRACK_HALF*2)/28,.035,1.7),i%2?checkMatA:checkMatB);
+  tile.position.set(x-TRACK_HALF+(i+.5)*(TRACK_HALF*2/28),y+.065,z);scene.add(tile);
+ }
+ const banner=new THREE.Mesh(new THREE.BoxGeometry(5,.75,.12),new THREE.MeshBasicMaterial({color:0xd71932}));
+ banner.position.set(x,y+4.8,z);scene.add(banner);
+}
 function addObstacle(p,laneValue,index){
  const group=new THREE.Group();
  const base=new THREE.Mesh(new THREE.CylinderGeometry(.48,.58,.9,10),new THREE.MeshStandardMaterial({color:index%2?0xffb52e:0xe64b36,roughness:.72}));base.position.y=.48;group.add(base);
@@ -319,11 +374,28 @@ function init3D(){
  renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(host.clientWidth,host.clientHeight);renderer.shadowMap.enabled=true;host.appendChild(renderer.domElement);
  scene.add(new THREE.HemisphereLight(0xffffff,0x52634e,2));
  const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-20,35,15);scene.add(sun);
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(700,3600),new THREE.MeshStandardMaterial({color:0x243b36}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-5,-1450);scene.add(ground);
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(900,3700),new THREE.MeshStandardMaterial({color:0x31483e,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-5,-1450);scene.add(ground);
+ const shoulderMat=new THREE.MeshStandardMaterial({color:0x66717a,roughness:.95});
+ for(const side of [-1,1]){
+  const shoulder=new THREE.Mesh(new THREE.PlaneGeometry(2.1,TRACK_LENGTH+120),shoulderMat);
+  shoulder.rotation.x=-Math.PI/2;shoulder.position.set(0,-.08,-TRACK_LENGTH/2);shoulder.position.x=0;scene.add(shoulder);
+ }
  const vertices=[],indices=[],samples=600;
  for(let i=0;i<=samples;i++){const p=-60+(TRACK_LENGTH+120)*i/samples,z=-p,x=trackX(p),y=trackY(p);vertices.push(x-TRACK_HALF,y,z,x+TRACK_HALF,y,z);if(i<samples){const k=i*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}}
  const roadGeo=new THREE.BufferGeometry();roadGeo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));roadGeo.setIndex(indices);roadGeo.computeVertexNormals();
- scene.add(new THREE.Mesh(roadGeo,new THREE.MeshStandardMaterial({color:0x30343a,roughness:1,side:THREE.DoubleSide})));
+ const asphalt=new THREE.Mesh(roadGeo,new THREE.MeshStandardMaterial({color:0x252d35,roughness:.88,metalness:.08,side:THREE.DoubleSide}));
+ scene.add(asphalt);
+ const shoulderEdgeMat=new THREE.MeshStandardMaterial({color:0xe8edf0,roughness:.75});
+ const centerLineMat=new THREE.MeshBasicMaterial({color:0xf6f2df});
+ const centerLineMatYellow=new THREE.MeshBasicMaterial({color:0xffc928});
+ for(let p=0;p<=TRACK_LENGTH;p+=14){
+  const line=new THREE.Mesh(new THREE.BoxGeometry(.12,.045,5.4),p%56===0?centerLineMatYellow:centerLineMat);
+  line.position.set(trackX(p),trackY(p)+.06,-p);line.rotation.y=-Math.atan(trackSlopeX(p));scene.add(line);
+ }
+ for(const side of [-1,1]){
+  const edgeLine=new THREE.Mesh(new THREE.BoxGeometry(.18,.06,TRACK_LENGTH+80),shoulderEdgeMat);
+  edgeLine.position.set(0,.055,-TRACK_LENGTH/2);edgeLine.rotation.y=0;scene.add(edgeLine);
+ }
  const edgeMat=new THREE.MeshStandardMaterial({color:0xffd36a,emissive:0x503000,metalness:.5});
  const neonMat=new THREE.MeshStandardMaterial({color:0x18c9ff,emissive:0x07516c,metalness:.55});
  for(const side of [-1,1]){
@@ -333,7 +405,21 @@ function init3D(){
   for(let p=10;p<TRACK_LENGTH;p+=18){const curb=new THREE.Mesh(new THREE.BoxGeometry(.52,.17,3.2),new THREE.MeshStandardMaterial({color:(Math.floor(p/18)%2)?0xf5f5f5:0xe53935,roughness:.75}));curb.position.set(trackX(p)+side*(TRACK_HALF-.18),trackY(p)+.11,-p);curb.rotation.y=-Math.atan(trackSlopeX(p));scene.add(curb);}
  }
  for(let p=8;p<TRACK_LENGTH;p+=24){const mark=new THREE.Mesh(new THREE.BoxGeometry(.16,.04,6),new THREE.MeshBasicMaterial({color:0xd7f3ff}));mark.position.set(trackX(p),trackY(p)+.045,-p);mark.rotation.y=-Math.atan(trackSlopeX(p));scene.add(mark);roadMarks.push(mark);}
- for(let p=15;p<TRACK_LENGTH;p+=42){addTree(trackX(p)-TRACK_HALF-5,-p);addTree(trackX(p)+TRACK_HALF+5,-p-14);if(p%84<42){addBuilding(trackX(p)-TRACK_HALF-14,-p-24);addBuilding(trackX(p)+TRACK_HALF+14,-p-38);}}
+ for(let p=15;p<TRACK_LENGTH;p+=42){
+  if(p>=1180&&p<=2100){
+   addSnowPine(trackX(p)-TRACK_HALF-5,-p,1.05+(p%3)*.12);
+   addSnowPine(trackX(p)+TRACK_HALF+6,-p-14,.9+(p%4)*.1);
+   if(p%126===15){
+    addSnowMountain(trackX(p)-TRACK_HALF-31,-p-28,13,34+(p%5)*3);
+    addSnowMountain(trackX(p)+TRACK_HALF+34,-p-55,16,42+(p%4)*4);
+   }
+  }else{
+   addTree(trackX(p)-TRACK_HALF-5,-p);addTree(trackX(p)+TRACK_HALF+5,-p-14);
+   if(p%84<42){addBuilding(trackX(p)-TRACK_HALF-14,-p-24);addBuilding(trackX(p)+TRACK_HALF+14,-p-38);}
+  }
+ }
+ for(let p=35;p<TRACK_LENGTH-30;p+=34){addModernBarrier(-1,p);addModernBarrier(1,p);}
+ addFinishGate();
  [[180,-1.8],[360,1.8],[540,0],[760,-1.8],[940,1.8],[1160,0],[1380,-1.8],[1580,1.8],[1800,0],[2020,-1.8],[2240,1.8],[2460,0],[2680,-1.8],[2880,1.8]].forEach((o,i)=>addObstacle(o[0],o[1],i));
  car=makeCar(0xff3030);car.position.set(trackX(0),trackY(0),0);scene.add(car);
  opponentCar=makeCar(0x20c878);opponentCar.position.set(trackX(0),trackY(0),-25);opponentCar.visible=false;scene.add(opponentCar);

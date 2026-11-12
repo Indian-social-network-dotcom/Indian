@@ -613,8 +613,8 @@ service cloud.firestore {
             && request.resource.data.finished is bool
             && request.resource.data.updatedAtMs is number;
         }
-        allow get: if isRoomPlayer();
-        allow list: if false;
+        // Both racers must be able to listen to each other's live position document.
+        allow read: if isRoomPlayer();
         allow create: if isRoomPlayer()
           && playerUid == request.auth.uid
           && validRaceState();
@@ -622,12 +622,19 @@ service cloud.firestore {
           && playerUid == request.auth.uid
           && resource.data.uid == request.auth.uid
           && validRaceState()
-          && request.resource.data.distance >= resource.data.distance
           && request.resource.data.updatedAtMs > resource.data.updatedAtMs
           && request.resource.data.updatedAtMs
               <= request.time.seconds * 1000 + request.time.nanos / 1000000 + 5000
-          && request.resource.data.distance - resource.data.distance
-              <= (request.resource.data.updatedAtMs - resource.data.updatedAtMs) * 0.09 + 10;
+          // Forward and reverse movement are both allowed, with a plausible speed limit.
+          && (
+            (request.resource.data.distance >= resource.data.distance
+              && request.resource.data.distance - resource.data.distance
+                <= (request.resource.data.updatedAtMs - resource.data.updatedAtMs) * 0.09 + 10)
+            ||
+            (request.resource.data.distance < resource.data.distance
+              && resource.data.distance - request.resource.data.distance
+                <= (request.resource.data.updatedAtMs - resource.data.updatedAtMs) * 0.09 + 10)
+          );
         allow delete: if false;
       }
     }

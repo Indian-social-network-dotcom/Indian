@@ -851,7 +851,7 @@ async function loseByDrums(){
  if(finished)return;finished=true;speed=0;accelerating=braking=boosting=false;playLoseSound();
  raceStatus('GAME OVER! Aap 3 baar drums se takraye. Aap race haar gaye.');
  if(mode==='online'&&roomId&&user){
-  try{await updateDoc(roomRef(roomId),{status:'finished',updatedAt:serverTimestamp()});}catch(e){raceStatus('GAME OVER! 3 drum hits. Room result sync nahi hua: '+e.message);}
+  try{await callStarWorker('forfeitRacingRace',{roomId});refreshStarWallet();}catch(e){raceStatus('GAME OVER! 3 drum hits. Winner result sync nahi hua: '+e.message);}
  }
 }
 function animate(now){

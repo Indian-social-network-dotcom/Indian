@@ -232,7 +232,7 @@ $('previousCarBtn').addEventListener('click',()=>chooseCar(-1));$('nextCarBtn').
 $('nextToModeBtn').addEventListener('click',()=>{requestLandscape();showModeScreen();});
 $('backToGamesBtn').addEventListener('click',()=>location.href='./games.html');
 $('backToCarsBtn').addEventListener('click',showCarScreen);
-$('playWithFriendBtn').addEventListener('click',()=>{requestLandscape();showRaceScreen();$('createBtn').classList.add('hidden');$('joinBtn').classList.add('hidden');$('practiceBtn').classList.add('hidden');inviteFriend();});
+$('playWithFriendBtn').addEventListener('click',()=>{requestLandscape();showRaceScreen();$('legacySetupPanel').classList.remove('hidden');$('createBtn').classList.add('hidden');$('joinBtn').classList.add('hidden');$('practiceBtn').classList.add('hidden');inviteFriend();});
 $('singlePlayerBtn').addEventListener('click',()=>{requestLandscape();showRaceScreen();$('createBtn').classList.add('hidden');$('joinBtn').classList.add('hidden');$('inviteBtn').classList.add('hidden');$('practiceBtn').classList.add('hidden');startPractice();});
 function playerName(){return String($('playerName').value||user?.displayName||user?.email?.split('@')[0]||'Indian Player').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,40)||'Indian Player'}
 function hideRoomSetup(){['roomSetupFields','roomSetupActions','roomSetupHelp'].forEach(id=>$(id)?.classList.add('hidden'));}
@@ -263,7 +263,7 @@ async function restoreWaitingRoom(){
   if(!snap.exists()){sessionStorage.removeItem('indianRacingWaitingRoom');return;}
   const data=snap.data();
   if(data.type!=='racing'||!data.players?.some(p=>p.uid===user.uid)||data.status==='finished'){sessionStorage.removeItem('indianRacingWaitingRoom');return;}
-  roomId=saved.roomId;room=data;showRaceScreen();mode='online';distance=0;speed=0;lane=0;nitro=100;finished=false;opponentUid='';opponentState=null;
+  roomId=saved.roomId;room=data;showRaceScreen();$('legacySetupPanel').classList.remove('hidden');mode='online';distance=0;speed=0;lane=0;nitro=100;finished=false;opponentUid='';opponentState=null;
   $('roomInput').value=roomId;showWaitingRoom();updatePlayerCarColors();watchRoom();
   raceStatus(data.status==='playing'?'Friend join ho chuka hai. Race shuru! Accelerator dabayein.':'Room '+roomId+' ready hai. Friend ke invitation link kholne ka intezar hai.');
  }catch(e){}

@@ -1,0 +1,54 @@
+INDIAN RACING STAR WALLET — CLOUDFLARE SECRET SETUP
+======================================================
+
+This setup is required before Star Wallet and Star Challenge can work.
+Never upload the service-account JSON file to GitHub, the Indian website,
+a public chat, or send its private_key to anyone.
+
+1. Open Google Cloud Console:
+   https://console.cloud.google.com/
+
+2. Select project:
+   indian-84a86
+
+3. Open IAM & Admin > Service Accounts.
+   Create a service account named:
+   indian-racing-wallet
+
+4. Give this service account the role:
+   Cloud Datastore User
+   (role ID: roles/datastore.user)
+
+5. Open the new service account > Keys > Add key > Create new key > JSON.
+   Download the JSON file to your own computer.
+   Keep it private. Do not upload it to GitHub.
+
+6. Open Cloudflare Dashboard:
+   https://dash.cloudflare.com/
+
+7. Open Workers & Pages > indian-message-push > Settings > Variables and Secrets.
+
+8. Add a SECRET (not a plain text variable):
+   Name: FIREBASE_SERVICE_ACCOUNT_JSON
+   Value: paste the complete contents of the downloaded JSON file.
+   Save the secret and deploy/redeploy the Worker if Cloudflare asks.
+
+9. Do not paste the JSON contents into ChatGPT or any public page.
+   After saving the secret, test the Star Wallet from the Indian Racing page.
+
+What this secret enables:
+- First-time wallet creation: 10 free virtual stars per account.
+- Normal online race winner: 3 stars.
+- Star Challenge: each player stakes 1–100 stars; after both agree,
+  the server locks both stakes. The winner receives the total pot.
+- Draw: both stakes are refunded.
+- A player who hits the 3-crash limit forfeits; the other player receives
+  the challenge pot (or the normal 3-star race reward).
+- Wallet balances and payouts are written only by the trusted Worker.
+
+Important:
+- These are virtual game stars, not money.
+- The Firestore Rules file must also be published in Firebase Console.
+- The Worker code is deployed from indian-message-push-worker.js.
+- Do not publish the new rules before this Worker code is deployed and
+  the secret is saved, otherwise racing reward actions may fail.

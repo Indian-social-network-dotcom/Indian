@@ -245,24 +245,17 @@ async function settleNormalRaceStars(env, roomId, callerUid) {
     const gameDoc = docs[gamePath];
     if (!gameDoc.exists) throw new Error("Race room not found.");
     const game = gameDoc.data || {};
-    if (game.type !== "racing" || !Array.isArray(game.players) || game.players.length !== 2) throw new Error("This is not a completed two-player racing room.");
+    if (game.type !== "racing" || !Array.isArray(game.players) || game.players.length !== 2) throw new Error("This is not a two-player racing room.");
     if (!game.players.some(p => p && p.uid === callerUid)) throw new Error("You are not a player in this race.");
     if (game.starsSettled) {
       outcome = { settled: true, alreadySettled: true, winnerUid: game.winnerUid || "" };
       return [];
     }
-    if (game.status !== "finished" || game.winnerUid !== callerUid) throw new Error("The server has not confirmed you as the winner.");
-    const winnerPath = "racingWallets/" + callerUid;
-    const winnerWallet = await getOrCreateRacingWallet(env, callerUid);
-    const paths = [winnerPath];
-    // A second transaction below is deliberately avoided: the room is marked first,
-    // and this payout path is subsequently upgraded to a single atomic multi-document transaction.
-    outcome = { settled: false, winnerUid: callerUid, stars: 3, wallet: winnerWallet, note: "Payout requires atomic settlement." };
-    return [];
+    if (game.status !== "playing") throw new Error("Race is not active.");
+    throw new Error("Race settlement requires the live player distance records; retry after the race sync completes.");
   });
   return outcome;
 }
-
 async function updateOneSignalUser(env, uid, properties) {
   const externalId = `indian_firebase_${uid}`;
   const url = `https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/users/by/external_id/${encodeURIComponent(externalId)}`;
@@ -476,6 +469,17 @@ export default {
     const action = typeof body.action === "string" ? body.action.trim() : "";
     if (action) {
       try {
+        if (action === "getRacingWallet") {
+          const wallet = await getOrCreateRacingWallet(env, callerUid);
+          return json({ success: true, wallet }, 200, origin);
+        }
+
+        if (action === "finishRacingRace") {
+          const roomId = typeof body.roomId === "string" ? body.roomId.trim().toUpperCase() : "";
+          const result = await settleNormalRaceStars(env, roomId, callerUid);
+          return json({ success: true, ...result }, 200, origin);
+        }
+
         if (action === "getHelpLocationStatus") {
           const oneSignalUser = await getOneSignalUser(env, callerUid);
           const tags = oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.tags || {};

@@ -417,9 +417,10 @@ window.addEventListener('blur',()=>{left=right=accelerating=braking=boosting=rev
 let scene,camera,renderer,car,opponentCar,roadMarks=[],scenery=[],obstacles=[],hitObstacles=new Set(),clock=new THREE.Clock();
 const TRACK_HALF=7,TRACK_LENGTH=FINISH_DISTANCE,LOOP_START=1050,LOOP_LENGTH=264,LOOP_RADIUS=42;
 function baseTrackX(s){return 4.8*Math.sin(s*.0023)+1.7*Math.sin(s*.0065)+.55*Math.sin(s*.014);}
-function trackX(s){return s>=LOOP_START&&s<=LOOP_START+LOOP_LENGTH?baseTrackX(LOOP_START):baseTrackX(s);}
+function effectiveTrackS(s){return s>LOOP_START+LOOP_LENGTH?s-LOOP_LENGTH:s;}
+function trackX(s){const q=effectiveTrackS(s);return s>=LOOP_START&&s<=LOOP_START+LOOP_LENGTH?baseTrackX(LOOP_START):baseTrackX(q);}
 function smoothStep01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
-function trackY(s){const base=1.4*Math.sin(s*.0035)+.65*Math.sin(s*.009);let y=base;if(s>=LOOP_START&&s<=LOOP_START+LOOP_LENGTH){const a=(s-LOOP_START)/LOOP_LENGTH*Math.PI*2;y+=LOOP_RADIUS*(1-Math.cos(a));}if(s>=2000&&s<2120)y+=40*smoothStep01((s-2000)/120);else if(s>=2120&&s<2180)y+=40;else if(s>=2180&&s<2300)y+=40*(1-smoothStep01((s-2180)/120));return y;}
+function trackY(s){const q=effectiveTrackS(s),base=1.4*Math.sin(q*.0035)+.65*Math.sin(q*.009);let y=base;if(s>=LOOP_START&&s<=LOOP_START+LOOP_LENGTH){const a=(s-LOOP_START)/LOOP_LENGTH*Math.PI*2;y+=LOOP_RADIUS*(1-Math.cos(a));}if(s>=2000&&s<2120)y+=40*smoothStep01((s-2000)/120);else if(s>=2120&&s<2180)y+=40;else if(s>=2180&&s<2300)y+=40*(1-smoothStep01((s-2180)/120));return y;}
 function trackZ(s){if(s<LOOP_START)return -s;if(s<=LOOP_START+LOOP_LENGTH){const a=(s-LOOP_START)/LOOP_LENGTH*Math.PI*2;return -LOOP_START-LOOP_RADIUS*Math.sin(a);}return -s+LOOP_LENGTH;}
 function trackPoint(s){return new THREE.Vector3(trackX(s),trackY(s),trackZ(s));}
 function trackFrame(s){const tangent=trackPoint(s+.5).sub(trackPoint(s-.5)).normalize();const right=new THREE.Vector3(1,0,0).addScaledVector(tangent,-tangent.x).normalize();if(right.lengthSq()<.001)right.set(1,0,0);const up=right.clone().cross(tangent).normalize();return {tangent,right,up};}

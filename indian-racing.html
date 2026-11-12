@@ -641,6 +641,20 @@ function init3D(){
   }
  }
  for(let p=35;p<TRACK_LENGTH-30;p+=34){addModernBarrier(-1,p);addModernBarrier(1,p);}
+ const supportMat=new THREE.MeshStandardMaterial({color:0x64717b,roughness:.9});
+ for(const range of [[1080,1290,30],[2020,2290,24]])for(let p=range[0];p<=range[1];p+=range[2]){
+  const center=trackPoint(p),frame=trackFrame(p);
+  for(const side of [-1,1]){
+   const foot=center.clone().addScaledVector(frame.right,side*(TRACK_HALF+1.8)),height=Math.max(2,foot.y+5);
+   const pillar=new THREE.Mesh(new THREE.BoxGeometry(1.05,height,1.05),supportMat);
+   pillar.position.set(foot.x,-5+height/2,foot.z);scene.add(pillar);
+  }
+ }
+ // A lower cross-road beneath the elevated drop makes the height difference obvious.
+ const lowerRoad=new THREE.Mesh(new THREE.BoxGeometry(100,.5,15),new THREE.MeshStandardMaterial({color:0x252d35,roughness:.9}));
+ lowerRoad.position.set(trackX(2200)+28,-.25,trackZ(2200));scene.add(lowerRoad);
+ const lowerLine=new THREE.Mesh(new THREE.BoxGeometry(92,.06,.18),new THREE.MeshBasicMaterial({color:0xffd34e}));
+ lowerLine.position.set(trackX(2200)+28,.04,trackZ(2200));scene.add(lowerLine);
  addFinishGate();
  [[180,-1.8],[360,1.8],[540,0],[760,-1.8],[940,1.8],[1160,0],[1380,-1.8],[1580,1.8],[1800,0],[2020,-1.8],[2240,1.8],[2460,0],[2680,-1.8],[2880,1.8]].forEach((o,i)=>addObstacle(o[0],o[1],i));
  car=makeCar(0xff3030,selectedCarId);setTrackPose(car,0,0);scene.add(car);

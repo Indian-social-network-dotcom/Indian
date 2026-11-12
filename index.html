@@ -2279,17 +2279,28 @@ function renderChat(personId){
             const text = document.createElement("div");
             const formattedCallLog = indianFormatCallLogText(message.text, message.sender === "me");
             const rawMessageText = formattedCallLog || message.text || "";
-            const inviteMatch = !formattedCallLog && String(message.text || "").match(/Join Game:\s*(https:\/\/[^\s]+)/i);
+            const inviteMatch = !formattedCallLog && String(message.text || "").match(/Join Game:\s*(https?:\/\/[^\s]+)/i);
             if(inviteMatch){
-                const inviteUrlText=inviteMatch[1];
+                const matchedUrlText=inviteMatch[1];
+                const inviteUrlText=matchedUrlText.replace(/[),.!?]+$/g,"");
                 try{
                     const inviteUrl=new URL(inviteUrlText,location.href);
-                    if(inviteUrl.origin===location.origin && inviteUrl.pathname.endsWith('/games.html') && inviteUrl.searchParams.get('join')){
-                        const urlIndex=String(message.text).indexOf(inviteUrlText);
+                    const validGamePath=inviteUrl.pathname.endsWith('/games.html')||inviteUrl.pathname.endsWith('/indian-racing.html');
+                    if(inviteUrl.origin===location.origin && validGamePath && inviteUrl.searchParams.get('join')){
+                        const urlIndex=String(message.text).indexOf(matchedUrlText);
+                        const suffix=matchedUrlText.slice(inviteUrlText.length);
                         text.appendChild(document.createTextNode(String(message.text).slice(0,urlIndex)));
-                        const joinLink=document.createElement('a');joinLink.href=inviteUrl.href;joinLink.textContent='Join Game';joinLink.setAttribute('aria-label','Join invited game room '+inviteUrl.searchParams.get('join'));joinLink.rel='noopener';
+                        const joinLink=document.createElement('a');
+                        joinLink.href=inviteUrl.href;
+                        joinLink.textContent='Join Game';
+                        joinLink.setAttribute('aria-label','Join invited game room '+inviteUrl.searchParams.get('join'));
+                        joinLink.rel='noopener';
+                        joinLink.style.color='#1877f2';
+                        joinLink.style.fontWeight='700';
+                        joinLink.style.textDecoration='underline';
+                        joinLink.style.cursor='pointer';
                         text.appendChild(joinLink);
-                        text.appendChild(document.createTextNode(String(message.text).slice(urlIndex+inviteUrlText.length)));
+                        text.appendChild(document.createTextNode(suffix+String(message.text).slice(urlIndex+matchedUrlText.length)));
                     }else{text.textContent=rawMessageText;}
                 }catch(e){text.textContent=rawMessageText;}
             }else{text.textContent=rawMessageText;}
@@ -4912,6 +4923,7 @@ let indianWebPushMessaging = null;
 let indianWebPushServiceWorkerRegistration = null;
 let indianWebPushToken = "";
 let indianWebPushForegroundListenerAdded = false;
+let indianRacingHostAutoLaunchUnsubscribe = null;
 const INDIAN_WEB_PUSH_VAPID_PUBLIC_KEY = "BCAbYUrZm9eh8ZG-EFBx9sk5unZBqF4PyyBbt1rlkC41yAKKyFfwgddXj2XeMH_egNZ7TxHWoJzupy7Ea8mmKT0";
 
 function $(id){
@@ -6304,6 +6316,7 @@ else{
         });
 
         onAuthStateChanged(firebaseAuth, function(user){
+            if(indianRacingHostAutoLaunchUnsubscribe){try{indianRacingHostAutoLaunchUnsubscribe();}catch(e){}indianRacingHostAutoLaunchUnsubscribe=null;}
             firebaseCurrentUser = user || null;
             window.firebaseCurrentUid = user ? user.uid : "";
             if (window.OneSignalDeferred && !window.__indianFirebaseEmulatorMode) {
@@ -6338,6 +6351,29 @@ else{
                 separatedStoriesByUid.clear();separatedPresenceByUid.clear();separatedLiveByUid.clear();separatedReactionsById.clear();
                 recentFirebaseMessageUnsubs.forEach(fn=>{try{fn();}catch(e){}});recentFirebaseMessageUnsubs=[];recentFirebaseMessageUid="";recentFirebaseMessagesById.clear();
                 window.indianFirebaseAllProfiles=[];window.indianFirebasePublicProfiles=[];
+            }
+            if(user && firebaseDb && !window.__indianFirebaseEmulatorMode){
+                try{
+                    const savedInvite=JSON.parse(sessionStorage.getItem('indianRacingWaitingRoom')||'null');
+                    if(savedInvite && savedInvite.game==='racing' && savedInvite.roomId && savedInvite.uid===user.uid){
+                        const racingRoomRef=doc(firebaseDb,'games',String(savedInvite.roomId));
+                        indianRacingHostAutoLaunchUnsubscribe=onSnapshot(racingRoomRef,function(roomSnap){
+                            if(!roomSnap.exists())return;
+                            const racingRoom=roomSnap.data()||{};
+                            const players=Array.isArray(racingRoom.players)?racingRoom.players:[];
+                            if(racingRoom.type==='racing' && racingRoom.status==='playing' && players.length===2 && players.some(function(player){return player.uid===user.uid;})){
+                                if(indianRacingHostAutoLaunchUnsubscribe){try{indianRacingHostAutoLaunchUnsubscribe();}catch(e){}indianRacingHostAutoLaunchUnsubscribe=null;}
+                                const launchUrl=new URL('./indian-racing.html',location.href);
+                                launchUrl.searchParams.set('join',String(savedInvite.roomId));
+                                launchUrl.searchParams.set('game','racing');
+                                launchUrl.searchParams.set('car',String(savedInvite.car||'luxury'));
+                                launchUrl.searchParams.set('host','1');
+                                try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}
+                                location.href=launchUrl.href;
+                            }
+                        },function(error){console.warn('Indian Racing host auto-launch watch failed:',error);});
+                    }
+                }catch(error){console.warn('Indian Racing host auto-launch setup failed:',error);}
             }
         });
     }

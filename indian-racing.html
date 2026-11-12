@@ -396,7 +396,7 @@ async function inviteFriend(){
  const joinUrl=new URL('./indian-racing.html',location.href);joinUrl.searchParams.set('join',roomId);joinUrl.searchParams.set('game','racing');joinUrl.searchParams.set('car',selectedCarId);
  try{
   sessionStorage.setItem('indianPendingGameInvite',JSON.stringify({game:'racing',roomId,joinUrl:joinUrl.href}));
-  sessionStorage.setItem('indianRacingWaitingRoom',JSON.stringify({game:'racing',roomId,uid:user.uid}));
+  sessionStorage.setItem('indianRacingWaitingRoom',JSON.stringify({game:'racing',roomId,uid:user.uid,car:selectedCarId}));
  }catch(e){raceStatus('Invite ready nahi hua: browser session storage allow karein.');return;}
  showWaitingRoom();raceStatus('Invite bhejne ke liye Messages khul raha hai. Wapas aane par Waiting aur Cancel option dikhega. Friend link kholega to race apne aap shuru hogi.');
  location.href=new URL('./index.html#messages',location.href).href;

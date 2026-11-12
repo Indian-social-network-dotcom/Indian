@@ -510,12 +510,21 @@ service cloud.firestore {
           && resource.data.players[0].uid == resource.data.createdBy
           && request.resource.data.createdBy == resource.data.createdBy
           && request.resource.data.type == resource.data.type
-          && request.resource.data.status == 'playing'
+          && (
+            (resource.data.keys().hasAny(['starChallenge'])
+              && request.resource.data.status == 'waiting')
+            || (!resource.data.keys().hasAny(['starChallenge'])
+              && request.resource.data.status == 'playing')
+          )
+          && (!resource.data.keys().hasAny(['starChallenge'])
+              || request.resource.data.starChallenge == resource.data.starChallenge)
           && request.resource.data.players is list
           && request.resource.data.players.size() == 2
           && request.resource.data.players[0].uid == resource.data.players[0].uid
           && request.resource.data.players[1].uid == request.auth.uid
-          && request.resource.data.players[1].uid != resource.data.players[0].uid;
+          && request.resource.data.players[1].uid != resource.data.players[0].uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['players', 'status', 'raceStartAtMs', 'updatedAt']);
       }
 
       allow read: if signedIn()
@@ -530,14 +539,25 @@ service cloud.firestore {
                     && request.resource.data.status == 'waiting'
                     && request.resource.data.type in ['ttt', 'quiz', 'draw', 'dice', 'racing'];
 
+      // Racing rooms may be joined by the second player or cancelled by
+      // their owner while waiting. Winner/status/payout fields are server-only.
       allow update: if validJoin()
-                    || (isPlayer(resource.data)
+                    || (resource.data.type == 'racing'
+                        && signedIn()
+                        && resource.data.status == 'waiting'
+                        && resource.data.createdBy == request.auth.uid
+                        && request.resource.data.status == 'finished'
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['status', 'updatedAt']))
+                    || (resource.data.type != 'racing'
+                        && isPlayer(resource.data)
                         && request.resource.data.createdBy == resource.data.createdBy
                         && request.resource.data.type == resource.data.type
                         && request.resource.data.players == resource.data.players);
 
       allow delete: if signedIn()
-                    && resource.data.createdBy == request.auth.uid;
+                    && resource.data.createdBy == request.auth.uid
+                    && resource.data.status == 'waiting';
 
       match /private/{secretId} {
         allow create: if signedIn()
@@ -601,9 +621,23 @@ service cloud.firestore {
         allow update: if isRoomPlayer()
           && playerUid == request.auth.uid
           && resource.data.uid == request.auth.uid
-          && validRaceState();
+          && validRaceState()
+          && request.resource.data.distance >= resource.data.distance
+          && request.resource.data.updatedAtMs > resource.data.updatedAtMs
+          && request.resource.data.updatedAtMs
+              <= request.time.seconds * 1000 + request.time.nanos / 1000000 + 5000
+          && request.resource.data.distance - resource.data.distance
+              <= (request.resource.data.updatedAtMs - resource.data.updatedAtMs) * 0.09 + 10;
         allow delete: if false;
       }
+    }
+
+    // Racing Star Wallet is private to its owner. All writes and payouts
+    // are performed by the authenticated Cloudflare Worker service account.
+    match /racingWallets/{walletUid} {
+      allow get: if signedIn() && request.auth.uid == walletUid;
+      allow list: if false;
+      allow create, update, delete: if false;
     }
 
     // Uran Shorts

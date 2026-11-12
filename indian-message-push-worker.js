@@ -87,46 +87,291 @@ async function getFirestoreHelpRequest(requestId, idToken) {
   return response.json();
 }
 
-async function updateOneSignalUser(env, uid, properties) {
-  const externalId = `indian_firebase_${uid}`;
-  const url = `https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/users/by/external_id/${encodeURIComponent(externalId)}`;
-  const response = await fetch(url, {
-    method: "PATCH",
-    headers: {
-      "Authorization": `Key ${env.ONESIGNAL_REST_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ properties })
+
+
+// --- Secure Indian Racing Star Wallet (server-side only) ---
+function base64UrlBytes(bytes) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+function base64UrlText(value) {
+  return base64UrlBytes(new TextEncoder().encode(value));
+}
+function pemBytes(pem) {
+  const body = String(pem || "").replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, "");
+  const raw = atob(body);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  return bytes.buffer;
+}
+async function getFirestoreAdminToken(env) {
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) throw new Error("Star Wallet server secret is not configured.");
+  let account;
+  try { account = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON); }
+  catch { throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON."); }
+  if (!account.client_email || !account.private_key || account.project_id !== FIREBASE_PROJECT_ID) {
+    throw new Error("Firebase service account must belong to Indian project indian-84a86.");
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64UrlText(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claims = base64UrlText(JSON.stringify({
+    iss: account.client_email,
+    scope: "https://www.googleapis.com/auth/datastore",
+    aud: account.token_uri || "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3500
+  }));
+  const unsigned = header + "." + claims;
+  const key = await crypto.subtle.importKey(
+    "pkcs8", pemBytes(account.private_key),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]
+  );
+  const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(unsigned));
+  const assertion = unsigned + "." + base64UrlBytes(new Uint8Array(signature));
+  const tokenResponse = await fetch(account.token_uri || "https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion
+    })
   });
-  const result = await response.json().catch(() => ({}));
-  if (response.status === 404) {
-    const createResponse = await fetch(`https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/users`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Key ${env.ONESIGNAL_REST_API_KEY}`,
-        "Content-Type": "application/json"
-      },
+  const tokenData = await tokenResponse.json().catch(() => ({}));
+  if (!tokenResponse.ok || !tokenData.access_token) {
+    throw new Error("Firebase service-account OAuth failed (" + tokenResponse.status + ").");
+  }
+  return tokenData.access_token;
+}
+function fromFirestoreValue(v) {
+  if (!v || v.nullValue !== undefined) return null;
+  if (v.stringValue !== undefined) return v.stringValue;
+  if (v.integerValue !== undefined) return Number(v.integerValue);
+  if (v.doubleValue !== undefined) return Number(v.doubleValue);
+  if (v.booleanValue !== undefined) return v.booleanValue;
+  if (v.arrayValue) return (v.arrayValue.values || []).map(fromFirestoreValue);
+  if (v.mapValue) return Object.fromEntries(Object.entries(v.mapValue.fields || {}).map(([k, x]) => [k, fromFirestoreValue(x)]));
+  return null;
+}
+function toFirestoreValue(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === "string") return { stringValue: v };
+  if (typeof v === "boolean") return { booleanValue: v };
+  if (typeof v === "number") return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(toFirestoreValue) } };
+  if (typeof v === "object") return { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, toFirestoreValue(x)])) } };
+  throw new Error("Unsupported Firestore value.");
+}
+function decodeFirestoreDoc(doc) {
+  return doc && doc.fields ? Object.fromEntries(Object.entries(doc.fields).map(([k, v]) => [k, fromFirestoreValue(v)])) : null;
+}
+function encodeFirestoreFields(data) {
+  return Object.fromEntries(Object.entries(data).map(([k, v]) => [k, toFirestoreValue(v)]));
+}
+function firestoreDocUrl(path) {
+  return "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID +
+    "/databases/(default)/documents/" + path.split("/").map(encodeURIComponent).join("/");
+}
+async function adminFirestoreTransaction(env, paths, mutate) {
+  const token = await getFirestoreAdminToken(env);
+  const root = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID + "/databases/(default)/documents";
+  const begin = await fetch(root + ":beginTransaction", {
+    method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify({ options: { readWrite: {} } })
+  });
+  const beginData = await begin.json().catch(() => ({}));
+  if (!begin.ok || !beginData.transaction) throw new Error("Firestore transaction could not start (" + begin.status + ").");
+  const transaction = beginData.transaction;
+  try {
+    const docs = {};
+    for (const path of paths) {
+      const response = await fetch(firestoreDocUrl(path) + "?transaction=" + encodeURIComponent(transaction), {
+        headers: { Authorization: "Bearer " + token }
+      });
+      if (response.status === 404) docs[path] = { exists: false, data: null, raw: null };
+      else {
+        const raw = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error("Firestore read failed (" + response.status + ").");
+        docs[path] = { exists: true, data: decodeFirestoreDoc(raw), raw };
+      }
+    }
+    const writes = await mutate(docs);
+    if (!writes || !writes.length) {
+      await fetch(root + ":rollback", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ transaction }) });
+      return null;
+    }
+    const commit = await fetch(root + ":commit", {
+      method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
       body: JSON.stringify({
-        identity: { external_id: externalId },
-        properties: properties
+        transaction,
+        writes: writes.map(w => ({
+          update: { name: root + "/" + w.path.split("/").map(encodeURIComponent).join("/"), fields: encodeFirestoreFields(w.data) },
+          updateMask: { fieldPaths: Object.keys(w.data) },
+          currentDocument: w.exists ? { updateTime: w.updateTime } : { exists: false }
+        }))
       })
     });
-    const created = await createResponse.json().catch(() => ({}));
-    if (!createResponse.ok) {
-      const createErrors = created && created.errors;
-      const createDetail = Array.isArray(createErrors) ? createErrors.map(x => typeof x === "string" ? x : (x.title || x.code || JSON.stringify(x))).join("; ") : (created.message || createResponse.statusText);
-      throw new Error(`OneSignal user create failed (${createResponse.status}): ${String(createDetail || "Unknown error").slice(0, 220)}`);
+    const commitData = await commit.json().catch(() => ({}));
+    if (!commit.ok) throw new Error("Firestore transaction commit failed (" + commit.status + ").");
+    return commitData;
+  } catch (error) {
+    try { await fetch(root + ":rollback", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ transaction }) }); } catch {}
+    throw error;
+  }
+}
+function docWrite(path, data, snapshot) {
+  return { path, data, exists: !!snapshot.exists, updateTime: snapshot.raw && snapshot.raw.updateTime };
+}
+async function getOrCreateRacingWallet(env, uid) {
+  const path = "racingWallets/" + uid;
+  let result;
+  await adminFirestoreTransaction(env, [path], async docs => {
+    const d = docs[path];
+    if (!d.exists) {
+      result = { uid, available: 10, locked: 0, totalEarned: 10, starterGranted: true };
+      return [docWrite(path, { ...result, createdAtMs: Date.now(), updatedAtMs: Date.now() }, d)];
     }
-    return created;
-  }
-  if (!response.ok) {
-    const errors = result && result.errors;
-    const detail = Array.isArray(errors) ? errors.map(x => typeof x === "string" ? x : (x.title || x.code || JSON.stringify(x))).join("; ") : (result.message || response.statusText);
-    throw new Error(`OneSignal user update failed (${response.status}): ${String(detail || "Unknown error").slice(0, 220)}`);
-  }
+    const data = d.data || {};
+    result = { uid, available: Number(data.available || 0), locked: Number(data.locked || 0), totalEarned: Number(data.totalEarned || 0), starterGranted: !!data.starterGranted };
+    return [];
+  });
   return result;
 }
-
+async function adminGetDocument(env, path) {
+  const token = await getFirestoreAdminToken(env);
+  const response = await fetch(firestoreDocUrl(path), { headers: { Authorization: "Bearer " + token } });
+  if (response.status === 404) return null;
+  const raw = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error("Firestore document read failed (" + response.status + ").");
+  return { raw, data: decodeFirestoreDoc(raw) };
+}
+async function acceptStarChallenge(env, roomId, callerUid) {
+  if (!/^[A-Z0-9]{6}$/.test(roomId)) throw new Error("Invalid challenge room ID.");
+  const gamePath = "games/" + roomId;
+  const initial = await adminGetDocument(env, gamePath);
+  if (!initial) throw new Error("Star Challenge room not found.");
+  const game = initial.data || {};
+  if (game.type !== "racing" || !game.starChallenge || !Array.isArray(game.players) || game.players.length !== 2 || game.starChallenge.hostAccepted !== true || game.starChallenge.hostUid !== game.players[0].uid) throw new Error("This is not a ready, host-approved Star Challenge.");
+  if (game.players[1].uid !== callerUid) throw new Error("Only the invited second player can accept this challenge.");
+  const stake = Number(game.starChallenge.stake);
+  if (!Number.isInteger(stake) || stake < 1 || stake > 100) throw new Error("Challenge stake must be 1 to 100 stars.");
+  const uids = game.players.map(p => String(p.uid || ""));
+  const walletPaths = uids.map(uid => "racingWallets/" + uid);
+  let result = null;
+  await adminFirestoreTransaction(env, [gamePath, ...walletPaths], async docs => {
+    const current = docs[gamePath], g = current.data || {};
+    if (!current.exists || g.status !== "waiting" || !g.starChallenge || g.players?.length !== 2 ||
+        g.players[1].uid !== callerUid || g.starChallenge.hostAccepted !== true || g.starChallenge.hostUid !== g.players[0].uid || Number(g.starChallenge.stake) !== stake) {
+      throw new Error("Challenge is no longer waiting for acceptance.");
+    }
+    const writes = [];
+    const wallets = [];
+    for (let i = 0; i < 2; i++) {
+      const path = walletPaths[i], d = docs[path], old = d.data || {};
+      const available = d.exists ? Number(old.available || 0) : 10;
+      const locked = d.exists ? Number(old.locked || 0) : 0;
+      const earned = d.exists ? Number(old.totalEarned || 0) : 10;
+      if (available < stake) throw new Error((i === 0 ? "Host" : "Aapke") + " paas stake ke liye kaafi stars nahi hain.");
+      wallets.push({ uid: uids[i], available: available - stake, locked: locked + stake, totalEarned: earned, starterGranted: true, createdAtMs: d.exists ? Number(old.createdAtMs || Date.now()) : Date.now(), updatedAtMs: Date.now() });
+    }
+    for (let i = 0; i < 2; i++) writes.push(docWrite(walletPaths[i], wallets[i], docs[walletPaths[i]]));
+    writes.push(docWrite(gamePath, {
+      status: "playing",
+      raceStartAtMs: Date.now() + 4000,
+      starChallenge: { stake, status: "locked", hostUid: uids[0], challengerUid: uids[1], acceptedAtMs: Date.now() },
+      updatedAtMs: Date.now()
+    }, current));
+    result = { accepted: true, stake, totalPot: stake * 2, raceStartAtMs: Date.now() + 4000 };
+    return writes;
+  });
+  return result;
+}
+async function leaveUnfundedStarChallenge(env, roomId, callerUid) {
+  if (!/^[A-Z0-9]{6}$/.test(roomId)) throw new Error("Invalid challenge room ID.");
+  const path = "games/" + roomId;
+  let left = false;
+  await adminFirestoreTransaction(env, [path], async docs => {
+    const d = docs[path], game = d.data || {};
+    if (!d.exists || game.status !== "waiting" || !game.starChallenge ||
+        game.starChallenge.status !== "waiting" || !Array.isArray(game.players) ||
+        game.players.length !== 2 || game.players[1].uid !== callerUid) {
+      throw new Error("This challenge can no longer be left this way.");
+    }
+    left = true;
+    return [docWrite(path, {
+      players: [game.players[0]],
+      updatedAtMs: Date.now()
+    }, d)];
+  });
+  return { left };
+}
+async function settleNormalRaceStars(env, roomId, callerUid, forfeit = false) {
+  if (!/^[A-Z0-9]{6}$/.test(roomId)) throw new Error("Invalid race room ID.");
+  const gamePath = "games/" + roomId;
+  const initial = await adminGetDocument(env, gamePath);
+  if (!initial) throw new Error("Race room not found.");
+  const initialGame = initial.data || {};
+  if (initialGame.type !== "racing" || !Array.isArray(initialGame.players) || initialGame.players.length !== 2) throw new Error("This is not a two-player racing room.");
+  if (!initialGame.players.some(p => p && p.uid === callerUid)) throw new Error("You are not a player in this race.");
+  const players = initialGame.players, uids = players.map(p => String(p.uid || ""));
+  if (!uids[0] || !uids[1] || uids[0] === uids[1]) throw new Error("Race player list is invalid.");
+  const paths = [gamePath, ...uids.map(uid => "games/" + roomId + "/racePlayers/" + uid), ...uids.map(uid => "racingWallets/" + uid)];
+  let outcome = null;
+  await adminFirestoreTransaction(env, paths, async docs => {
+    const gameDoc = docs[gamePath], game = gameDoc.data || {};
+    if (!gameDoc.exists || game.type !== "racing" || !Array.isArray(game.players) ||
+        game.players.length !== 2 || game.players[0].uid !== uids[0] || game.players[1].uid !== uids[1]) throw new Error("Race room changed. Please retry.");
+    if (!game.players.some(p => p.uid === callerUid)) throw new Error("You are not a player in this race.");
+    if (game.starsSettled) {
+      outcome = { settled: true, alreadySettled: true, winnerUid: game.winnerUid || "", starsAwarded: Number(game.starReward || 0), draw: !!game.starDraw };
+      return [];
+    }
+    if (game.status !== "playing") throw new Error("Race is not active or has already ended.");
+    const a = docs["games/" + roomId + "/racePlayers/" + uids[0]], b = docs["games/" + roomId + "/racePlayers/" + uids[1]];
+    if (!a.exists || !b.exists) throw new Error("Both players' live race records are not ready.");
+    const da = Number(a.data.distance || 0), db = Number(b.data.distance || 0);
+    if (!forfeit && Math.max(da, db) < 3000) throw new Error("Finish line has not been confirmed by the live race records.");
+    const challenge = game.starChallenge && game.starChallenge.status === "locked";
+    const stake = challenge ? Number(game.starChallenge.stake) : 0;
+    if (challenge && (!Number.isInteger(stake) || stake < 1 || stake > 100)) throw new Error("Locked challenge stake is invalid.");
+    const draw = !forfeit && da === db;
+    const winnerUid = forfeit ? uids.find(uid => uid !== callerUid) : (draw ? "" : (da > db ? uids[0] : uids[1]));
+    const winnerPlayer = players.find(p => p.uid === winnerUid);
+    const writes = [];
+    let starsAwarded = 0;
+    for (const uid of uids) {
+      const path = "racingWallets/" + uid, walletDoc = docs[path], old = walletDoc.data || {};
+      const available = walletDoc.exists ? Number(old.available || 0) : 10;
+      const locked = walletDoc.exists ? Number(old.locked || 0) : 0;
+      const earned = walletDoc.exists ? Number(old.totalEarned || 0) : 10;
+      let nextAvailable = available, nextLocked = locked, nextEarned = earned;
+      if (challenge) {
+        if (locked < stake) throw new Error("Locked star balance does not match this challenge.");
+        nextLocked -= stake;
+        if (draw) nextAvailable += stake;
+        else if (uid === winnerUid) { nextAvailable += stake * 2; nextEarned += stake; starsAwarded = stake * 2; }
+      } else if (!draw && uid === winnerUid) {
+        nextAvailable += 3; nextEarned += 3; starsAwarded = 3;
+      }
+      writes.push(docWrite(path, {
+        uid, available: nextAvailable, locked: nextLocked, totalEarned: nextEarned,
+        starterGranted: true, createdAtMs: walletDoc.exists ? Number(old.createdAtMs || Date.now()) : Date.now(),
+        updatedAtMs: Date.now()
+      }, walletDoc));
+    }
+    const winnerName = winnerPlayer ? String(winnerPlayer.name || "Indian Player").slice(0, 60) : "";
+    const gameUpdate = {
+      status: "finished", winnerUid: winnerUid || null, winnerName,
+      starsSettled: true, starReward: starsAwarded, starDraw: draw,
+      finishedAtMs: Date.now(), updatedAtMs: Date.now()
+    };
+    if (challenge) gameUpdate.starChallenge = { ...game.starChallenge, status: draw ? "refunded" : "settled", winnerUid: winnerUid || null, pot: stake * 2, settledAtMs: Date.now() };
+    writes.push(docWrite(gamePath, gameUpdate, gameDoc));
+    outcome = { settled: true, alreadySettled: false, winnerUid, winnerName, starsAwarded, draw, challenge, stake, totalPot: challenge ? stake * 2 : 0 };
+    return writes;
+  });
+  return outcome;
+}
 async function getOneSignalUser(env, uid) {
   const externalId = `indian_firebase_${uid}`;
   const url = `https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/users/by/external_id/${encodeURIComponent(externalId)}`;
@@ -300,6 +545,35 @@ export default {
     const action = typeof body.action === "string" ? body.action.trim() : "";
     if (action) {
       try {
+        if (action === "leaveUnfundedStarChallenge") {
+          const roomId = typeof body.roomId === "string" ? body.roomId.trim().toUpperCase() : "";
+          const result = await leaveUnfundedStarChallenge(env, roomId, callerUid);
+          return json({ success: true, ...result }, 200, origin);
+        }
+
+        if (action === "acceptStarChallenge") {
+          const roomId = typeof body.roomId === "string" ? body.roomId.trim().toUpperCase() : "";
+          const result = await acceptStarChallenge(env, roomId, callerUid);
+          return json({ success: true, ...result }, 200, origin);
+        }
+
+        if (action === "getRacingWallet") {
+          const wallet = await getOrCreateRacingWallet(env, callerUid);
+          return json({ success: true, wallet }, 200, origin);
+        }
+
+        if (action === "forfeitRacingRace") {
+          const roomId = typeof body.roomId === "string" ? body.roomId.trim().toUpperCase() : "";
+          const result = await settleNormalRaceStars(env, roomId, callerUid, true);
+          return json({ success: true, ...result }, 200, origin);
+        }
+
+        if (action === "finishRacingRace") {
+          const roomId = typeof body.roomId === "string" ? body.roomId.trim().toUpperCase() : "";
+          const result = await settleNormalRaceStars(env, roomId, callerUid);
+          return json({ success: true, ...result }, 200, origin);
+        }
+
         if (action === "getHelpLocationStatus") {
           const oneSignalUser = await getOneSignalUser(env, callerUid);
           const tags = oneSignalUser && oneSignalUser.properties && oneSignalUser.properties.tags || {};

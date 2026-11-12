@@ -184,7 +184,7 @@ import { getFirestore, doc, collection, setDoc, updateDoc, getDoc, runTransactio
 const firebaseConfig={apiKey:'AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs',authDomain:'indian-84a86.firebaseapp.com',projectId:'indian-84a86',storageBucket:'indian-84a86.firebasestorage.app',messagingSenderId:'333987809341',appId:'1:333987809341:web:27a351f770aa7b4e808254'};
 const $=id=>document.getElementById(id);
 let auth,db,user=null,roomId='',room=null,roomUnsub=null,opponentUnsub=null,opponentState=null;
-let selectedCarId=(new URLSearchParams(location.search).get('car')||'luxury'),mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false,reversing=false,direction=1;
+let selectedCarId=(()=>{try{return localStorage.getItem('indianRacingSelectedCar')||'luxury'}catch(e){return 'luxury'}})(),mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false,reversing=false,direction=1;
 let lastFrame=0,lastSync=0,finished=false,opponentUid='',localWon=false,syncBusy=false,crashCount=0,audioEnabled=true,audioCtx=null,engineOsc=null,engineOsc2=null,engineGain=null,engineGain2=null,raceStartAtMs=0,countdownKey='',countdownTimers=[];
 const FINISH_DISTANCE=3000;
 function status(t){$('connectionStatus').textContent=t}function raceStatus(t){$('raceStatus').textContent=t}
@@ -249,7 +249,7 @@ function carIllustration(item){
  return '<svg viewBox="0 0 520 240" role="img" aria-label="'+item.name+' car preview"><defs><linearGradient id="paint-'+item.id+'" x1="0" y1="0" x2="1" y2="1"><stop stop-color="'+col[0]+'"/><stop offset="1" stop-color="'+col[1]+'"/></linearGradient><linearGradient id="glass-'+item.id+'" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#a5e5fb"/><stop offset="1" stop-color="#102637"/></linearGradient></defs><ellipse cx="260" cy="204" rx="190" ry="17" fill="#02070c" opacity=".65"/><path d="'+shape+'" fill="url(#paint-'+item.id+')" stroke="#eaf6fc" stroke-width="3"/><path d="'+roof+'" fill="url(#glass-'+item.id+')" stroke="#d5e8f2" stroke-width="3"/><path d="M250 58 L239 105 M337 59 L361 104" stroke="#d9e8ef" stroke-width="3"/><path d="M88 135 L165 121 L157 151 L77 156Z" fill="#dff5ff"/><path d="M397 119 L447 137 L454 155 L402 153Z" fill="#f33"/><path d="M68 166 L456 166" stroke="#e6c16a" stroke-width="4"/><circle cx="151" cy="174" r="31" fill="#080d13" stroke="#a9bbc7" stroke-width="5"/><circle cx="151" cy="174" r="13" fill="#718795"/><circle cx="383" cy="174" r="31" fill="#080d13" stroke="#a9bbc7" stroke-width="5"/><circle cx="383" cy="174" r="13" fill="#718795"/><path d="M205 119 L324 119" stroke="#fff" opacity=".4" stroke-width="3"/></svg>';
 }
 function renderCarChoice(){
- const item=carCatalog[selectedCarIndex];selectedCarId=item.id;
+ const item=carCatalog[selectedCarIndex];selectedCarId=item.id;try{localStorage.setItem('indianRacingSelectedCar',selectedCarId);}catch(e){}
  $('selectedCarName').textContent=item.name;$('selectedCarDescription').textContent=item.description;
  $('carPreview').querySelector('svg')?.remove();$('carPreview').insertAdjacentHTML('afterbegin',carIllustration(item));
  $('carDots').innerHTML=carCatalog.map((x,i)=>'<span class="car-dot'+(i===selectedCarIndex?' active':'')+'"></span>').join('');
@@ -316,7 +316,7 @@ try{
  onAuthStateChanged(auth,u=>{
   user=u;
   if(u){$('playerName').value=$('playerName').value||u.displayName||u.email?.split('@')[0]||'Indian Player';status('Firebase connected. Signed in: '+(u.displayName||u.email||'Indian account'));$('createBtn').disabled=false;$('joinBtn').disabled=false;$('inviteBtn').disabled=false;
-   const p=new URLSearchParams(location.search),join=p.get('join');if(join&&!roomId){selectedCarId=p.get('car')||selectedCarId;selectedCarIndex=Math.max(0,carCatalog.findIndex(x=>x.id===selectedCarId));renderCarChoice();showRaceScreen();hideRoomSetup();joinRace(join);}else restoreWaitingRoom();
+   const p=new URLSearchParams(location.search),join=p.get('join');if(join&&!roomId){selectedCarIndex=Math.max(0,carCatalog.findIndex(x=>x.id===selectedCarId));renderCarChoice();showRaceScreen();hideRoomSetup();joinRace(join);}else restoreWaitingRoom();
   }else{status('Online race ke liye Indian account mein sign in karein. Solo Practice bina sign-in ke chalega.');}
  });
 }catch(e){status('Firebase connection error: '+e.message);}
@@ -325,11 +325,11 @@ async function createRace(){
  if(!user||roomId)return;
  hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;
  const id=randomId(),name=playerName();
- const data={type:'racing',status:'waiting',createdBy:user.uid,players:[{uid:user.uid,name}],createdAt:serverTimestamp(),updatedAt:serverTimestamp(),state:{track:'city',finishDistance:FINISH_DISTANCE}};
+ const data={type:'racing',status:'waiting',createdBy:user.uid,players:[{uid:user.uid,name,carId:selectedCarId}],createdAt:serverTimestamp(),updatedAt:serverTimestamp(),state:{track:'city',finishDistance:FINISH_DISTANCE}};
  try{
   await setDoc(roomRef(id),data);
   roomId=id;room=data;$('roomInput').value=id;mode='online';updatePlayerCarColors();
-  await setDoc(raceRef(id,user.uid),{uid:user.uid,name,distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
+  await setDoc(raceRef(id,user.uid),{uid:user.uid,name,carId:selectedCarId,distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
   watchRoom();raceStatus('Race room '+id+' ban gaya. Friend ko invite bhejein. Friend join karega to race shuru hogi.');status('Room ready. Friend ka intezar hai.');
  }catch(e){raceStatus('Room create nahi hua: '+e.message+' Rules update zaroori ho sakta hai.');}
 }
@@ -349,14 +349,14 @@ async function joinRace(raw){
     return;
    }
    if(players.length>=2||r.status!=='waiting')throw Error('Room full hai ya invitation cancel ho chuka hai. Dost se naya invitation mangwayein.');
-   tx.update(ref,{players:[...players,{uid:user.uid,name:playerName()}],status:'playing',raceStartAtMs:Date.now()+4000,updatedAt:serverTimestamp()});
+   tx.update(ref,{players:[...players,{uid:user.uid,name:playerName(),carId:selectedCarId}],status:'playing',raceStartAtMs:Date.now()+4000,updatedAt:serverTimestamp()});
   });
   roomId=id;$('roomInput').value=id;mode='online';
   const joinedSnap=await getDoc(roomRef(id));if(!joinedSnap.exists())throw Error('Room update ke baad nahi mila.');
   room=joinedSnap.data();
   if(room.status!=='playing'||!room.players?.some(p=>p.uid===user.uid)||room.players.length!==2)throw Error('Room mein doosra player add nahi hua. Alag Indian account se link kholein.');
   updatePlayerCarColors();
-  await setDoc(raceRef(id,user.uid),{uid:user.uid,name:playerName(),distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
+  await setDoc(raceRef(id,user.uid),{uid:user.uid,name:playerName(),carId:selectedCarId,distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
   showRaceScreen();$('legacySetupPanel').classList.add('hidden');watchRoom();
   startRaceCountdown(room.raceStartAtMs||Date.now()+4000,id);
   raceStatus('Dono players jud gaye! One, Two, Three, Go!');
@@ -393,7 +393,7 @@ async function inviteFriend(){
  if(!user){raceStatus('Pehle Indian account mein sign in karein.');return;}
  if(room&&room.status!=='waiting'){raceStatus('Race shuru ho chuki hai. Naya room banakar invite bhejein.');return;}
  if(!roomId){await createRace();if(!roomId)return;}
- const joinUrl=new URL('./indian-racing.html',location.href);joinUrl.searchParams.set('join',roomId);joinUrl.searchParams.set('game','racing');joinUrl.searchParams.set('car',selectedCarId);
+ const joinUrl=new URL('./indian-racing.html',location.href);joinUrl.searchParams.set('join',roomId);joinUrl.searchParams.set('game','racing');
  try{
   sessionStorage.setItem('indianPendingGameInvite',JSON.stringify({game:'racing',roomId,joinUrl:joinUrl.href}));
   sessionStorage.setItem('indianRacingWaitingRoom',JSON.stringify({game:'racing',roomId,uid:user.uid,car:selectedCarId}));
@@ -423,7 +423,13 @@ function trackSlopeY(s){return (trackY(s+1)-trackY(s-1))*.5;}
 function setBodyColor(vehicle,color){if(vehicle?.children?.[0]?.material?.color)vehicle.children[0].material.color.setHex(color);}
 function updatePlayerCarColors(){
  if(!car||!opponentCar)return;
- const myIndex=room?.players?.findIndex(p=>p.uid===user?.uid)??0;
+ const players=Array.isArray(room?.players)?room.players:[];
+ const myIndex=Math.max(0,players.findIndex(p=>p.uid===user?.uid));
+ const mine=players.find(p=>p.uid===user?.uid);
+ const other=players.find(p=>p.uid!==user?.uid);
+ const myModel=mine?.carId||selectedCarId;
+ const otherModel=other?.carId||selectedCarId;
+ if(car.userData.model!==myModel||opponentCar.userData.model!==otherModel)rebuildSelectedCars();
  setBodyColor(car,myIndex===1?0x20c878:0xff3030);
  setBodyColor(opponentCar,myIndex===1?0xff3030:0x20c878);
 }
@@ -439,7 +445,7 @@ function drawTrackMap(){
  $('mapStatus').textContent='Track map: aap '+Math.round(distance)+' metre par hain'+(opponentState?' aur opponent '+Math.round(Number(opponentState.distance||0))+' metre par hai.':'.');
 }
 function makeCar(color,model=selectedCarId){
- const group=new THREE.Group();
+ const group=new THREE.Group();group.userData.model=model;
  const isLuxury=model==='luxury',isSuper=model==='supercar',isSUV=model==='rally';
  const paint=new THREE.MeshPhysicalMaterial({color,metalness:.78,roughness:.2,clearcoat:1,clearcoatRoughness:.12});
  const glass=new THREE.MeshPhysicalMaterial({color:0x102b3b,metalness:.35,roughness:.12,clearcoat:1,transparent:true,opacity:.96});
@@ -504,8 +510,12 @@ function makeCar(color,model=selectedCarId){
 function rebuildSelectedCars(){
  if(!scene)return;
  if(car)scene.remove(car);if(opponentCar)scene.remove(opponentCar);
- car=makeCar(0xff3030,selectedCarId);car.position.set(trackX(distance),trackY(distance),-distance);scene.add(car);
- opponentCar=makeCar(0x20c878,selectedCarId);opponentCar.position.set(trackX(0),trackY(0),-25);opponentCar.visible=!!opponentUid;scene.add(opponentCar);
+ const players=Array.isArray(room?.players)?room.players:[];
+ const mine=players.find(p=>p.uid===user?.uid);
+ const other=players.find(p=>p.uid!==user?.uid);
+ const myIndex=Math.max(0,players.findIndex(p=>p.uid===user?.uid));
+ car=makeCar(myIndex===1?0x20c878:0xff3030,mine?.carId||selectedCarId);car.position.set(trackX(distance)+lane*2.3,trackY(distance),-distance);scene.add(car);
+ opponentCar=makeCar(myIndex===1?0xff3030:0x20c878,other?.carId||selectedCarId);opponentCar.position.set(trackX(0),trackY(0),-25);opponentCar.visible=!!opponentUid;scene.add(opponentCar);
 }
 function addTree(x,z){
  const g=new THREE.Group(),trunk=new THREE.Mesh(new THREE.CylinderGeometry(.13,.18,1.4,7),new THREE.MeshStandardMaterial({color:0x76502e}));trunk.position.y=.7;g.add(trunk);
@@ -642,7 +652,7 @@ function syncWorld(){
 async function pushRaceState(){
  if(syncBusy||mode!=='online'||!roomId||!user||!room||room.status!=='playing')return;
  syncBusy=true;
- try{await setDoc(raceRef(roomId,user.uid),{uid:user.uid,name:playerName(),distance:Math.round(distance),lane:Number(lane.toFixed(2)),speed:Math.round(speed),finished,updatedAtMs:Date.now()});}
+ try{await setDoc(raceRef(roomId,user.uid),{uid:user.uid,name:playerName(),carId:selectedCarId,distance:Math.round(distance),lane:Number(lane.toFixed(2)),speed:Math.round(speed),finished,updatedAtMs:Date.now()});}
  catch(e){raceStatus('Live sync issue: '+e.message);}
  finally{syncBusy=false;}
 }

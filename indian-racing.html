@@ -445,7 +445,8 @@ async function joinRace(raw){
   let joinedSnap=await getDoc(roomRef(id));if(!joinedSnap.exists())throw Error('Room update ke baad nahi mila.');
   room=joinedSnap.data();
   if(room.starChallenge&&room.status==='waiting'){
-   await callStarWorker('acceptStarChallenge',{roomId:id});
+   try{await callStarWorker('acceptStarChallenge',{roomId:id});}
+   catch(acceptError){try{await callStarWorker('leaveUnfundedStarChallenge',{roomId:id});}catch(cleanupError){}throw acceptError;}
    joinedSnap=await getDoc(roomRef(id));if(!joinedSnap.exists())throw Error('Challenge room update ke baad nahi mila.');
    room=joinedSnap.data();
   }

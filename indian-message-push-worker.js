@@ -237,26 +237,77 @@ async function getOrCreateRacingWallet(env, uid) {
   });
   return result;
 }
+async function adminGetDocument(env, path) {
+  const token = await getFirestoreAdminToken(env);
+  const response = await fetch(firestoreDocUrl(path), { headers: { Authorization: "Bearer " + token } });
+  if (response.status === 404) return null;
+  const raw = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error("Firestore document read failed (" + response.status + ").");
+  return { raw, data: decodeFirestoreDoc(raw) };
+}
 async function settleNormalRaceStars(env, roomId, callerUid) {
   if (!/^[A-Z0-9]{6}$/.test(roomId)) throw new Error("Invalid race room ID.");
   const gamePath = "games/" + roomId;
+  const initial = await adminGetDocument(env, gamePath);
+  if (!initial) throw new Error("Race room not found.");
+  const initialGame = initial.data || {};
+  if (initialGame.type !== "racing" || !Array.isArray(initialGame.players) || initialGame.players.length !== 2) throw new Error("This is not a two-player racing room.");
+  if (!initialGame.players.some(p => p && p.uid === callerUid)) throw new Error("You are not a player in this race.");
+  const players = initialGame.players;
+  const uids = players.map(p => String(p.uid || ""));
+  if (!uids[0] || !uids[1] || uids[0] === uids[1]) throw new Error("Race player list is invalid.");
+  const paths = [gamePath, ...uids.map(uid => "games/" + roomId + "/racePlayers/" + uid), ...uids.map(uid => "racingWallets/" + uid)];
   let outcome = null;
-  await adminFirestoreTransaction(env, [gamePath], async docs => {
-    const gameDoc = docs[gamePath];
-    if (!gameDoc.exists) throw new Error("Race room not found.");
-    const game = gameDoc.data || {};
-    if (game.type !== "racing" || !Array.isArray(game.players) || game.players.length !== 2) throw new Error("This is not a two-player racing room.");
-    if (!game.players.some(p => p && p.uid === callerUid)) throw new Error("You are not a player in this race.");
+  await adminFirestoreTransaction(env, paths, async docs => {
+    const gameDoc = docs[gamePath], game = gameDoc.data || {};
+    if (!gameDoc.exists || game.type !== "racing" || !Array.isArray(game.players) ||
+        game.players.length !== 2 || game.players[0].uid !== uids[0] || game.players[1].uid !== uids[1]) {
+      throw new Error("Race room changed. Please retry.");
+    }
+    if (!game.players.some(p => p.uid === callerUid)) throw new Error("You are not a player in this race.");
     if (game.starsSettled) {
-      outcome = { settled: true, alreadySettled: true, winnerUid: game.winnerUid || "" };
+      outcome = { settled: true, alreadySettled: true, winnerUid: game.winnerUid || "", starsAwarded: Number(game.starReward || 0) };
       return [];
     }
-    if (game.status !== "playing") throw new Error("Race is not active.");
-    throw new Error("Race settlement requires the live player distance records; retry after the race sync completes.");
+    if (game.status !== "playing") throw new Error("Race is not active or has already ended.");
+    const a = docs["games/" + roomId + "/racePlayers/" + uids[0]];
+    const b = docs["games/" + roomId + "/racePlayers/" + uids[1]];
+    if (!a.exists || !b.exists) throw new Error("Both players' live race records are not ready.");
+    const da = Number(a.data.distance || 0), db = Number(b.data.distance || 0);
+    if (Math.max(da, db) < 3000) throw new Error("Finish line has not been confirmed by the live race records.");
+    if (da === db) throw new Error("Race result is tied; no stars were awarded.");
+    const winnerUid = da > db ? uids[0] : uids[1];
+    const winnerPlayer = players.find(p => p.uid === winnerUid);
+    const writes = [];
+    for (const uid of uids) {
+      const path = "racingWallets/" + uid, walletDoc = docs[path], old = walletDoc.data || {};
+      const starter = walletDoc.exists ? Number(old.available || 0) : 10;
+      const locked = walletDoc.exists ? Number(old.locked || 0) : 0;
+      const earned = walletDoc.exists ? Number(old.totalEarned || 0) : 10;
+      const reward = uid === winnerUid ? 3 : 0;
+      writes.push(docWrite(path, {
+        uid, available: starter + reward, locked,
+        totalEarned: earned + reward, starterGranted: true,
+        createdAtMs: walletDoc.exists ? Number(old.createdAtMs || Date.now()) : Date.now(),
+        updatedAtMs: Date.now()
+      }, walletDoc));
+    }
+    const gameUpdated = {
+      status: "finished",
+      winnerUid,
+      winnerName: String(winnerPlayer && winnerPlayer.name || "Indian Player").slice(0, 60),
+      winnerCarId: String(winnerPlayer && winnerPlayer.carId || ""),
+      starsSettled: true,
+      starReward: 3,
+      finishedAtMs: Date.now(),
+      updatedAtMs: Date.now()
+    };
+    writes.push(docWrite(gamePath, gameUpdated, gameDoc));
+    outcome = { settled: true, alreadySettled: false, winnerUid, winnerName: gameUpdated.winnerName, starsAwarded: 3 };
+    return writes;
   });
   return outcome;
-}
-async function updateOneSignalUser(env, uid, properties) {
+}async function updateOneSignalUser(env, uid, properties) {
   const externalId = `indian_firebase_${uid}`;
   const url = `https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/users/by/external_id/${encodeURIComponent(externalId)}`;
   const response = await fetch(url, {

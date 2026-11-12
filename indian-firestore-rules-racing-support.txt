@@ -620,8 +620,11 @@ service cloud.firestore {
           && resource.data.uid == request.auth.uid
           && validRaceState()
           && request.resource.data.distance >= resource.data.distance
-          && request.resource.data.distance <= resource.data.distance + 120
-          && request.resource.data.updatedAtMs > resource.data.updatedAtMs;
+          && request.resource.data.updatedAtMs > resource.data.updatedAtMs
+          && request.resource.data.updatedAtMs
+              <= request.time.seconds * 1000 + request.time.nanos / 1000000 + 5000
+          && request.resource.data.distance - resource.data.distance
+              <= (request.resource.data.updatedAtMs - resource.data.updatedAtMs) * 0.09 + 10;
         allow delete: if false;
       }
     }

@@ -522,7 +522,9 @@ service cloud.firestore {
           && request.resource.data.players.size() == 2
           && request.resource.data.players[0].uid == resource.data.players[0].uid
           && request.resource.data.players[1].uid == request.auth.uid
-          && request.resource.data.players[1].uid != resource.data.players[0].uid;
+          && request.resource.data.players[1].uid != resource.data.players[0].uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['players', 'status', 'raceStartAtMs', 'updatedAt']);
       }
 
       allow read: if signedIn()

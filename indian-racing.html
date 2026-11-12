@@ -524,12 +524,12 @@ function rebuildSelectedCars(){
 }
 function addTree(x,z){
  const g=new THREE.Group(),trunk=new THREE.Mesh(new THREE.CylinderGeometry(.13,.18,1.4,7),new THREE.MeshStandardMaterial({color:0x76502e}));trunk.position.y=.7;g.add(trunk);
- const crown=new THREE.Mesh(new THREE.ConeGeometry(.9,2.3,8),new THREE.MeshStandardMaterial({color:0x176b3a}));crown.position.y=2.25;g.add(crown);g.position.set(x,trackY(Math.max(0,-z)),z);scene.add(g);scenery.push(g);
+ const crown=new THREE.Mesh(new THREE.ConeGeometry(.9,2.3,8),new THREE.MeshStandardMaterial({color:0x176b3a}));crown.position.y=2.25;g.add(crown);g.position.set(x,-5,z);scene.add(g);scenery.push(g);
 }
 function addBuilding(x,z){
  const h=4+Math.random()*10,w=3+Math.random()*3;
  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,4),new THREE.MeshStandardMaterial({color:[0x607d8b,0x8d6e63,0x455a64,0x546e7a][Math.floor(Math.random()*4)]}));
- m.position.set(x,trackY(Math.max(0,-z))+h/2,z);scene.add(m);scenery.push(m);
+ m.position.set(x,-5+h/2,z);scene.add(m);scenery.push(m);
 }
 function addSnowPine(x,z,scale=1){
  const g=new THREE.Group();
@@ -541,7 +541,7 @@ function addSnowPine(x,z,scale=1){
   const snow=new THREE.Mesh(new THREE.ConeGeometry((.78-i*.13)*scale,(.72-i*.05)*scale,8),new THREE.MeshStandardMaterial({color:0xf5fbff,roughness:.8}));
   snow.position.y=(1.72+i*.55)*scale;g.add(snow);
  }
- g.position.set(x,trackY(-z),z);scene.add(g);scenery.push(g);
+ g.position.set(x,-5,z);scene.add(g);scenery.push(g);
 }
 function addSnowMountain(x,z,radius,height){
  const g=new THREE.Group();
@@ -550,7 +550,7 @@ function addSnowMountain(x,z,radius,height){
  const peak=new THREE.Mesh(new THREE.ConeGeometry(radius,height,7,3),rockMat);peak.position.y=height/2;g.add(peak);
  const cap=new THREE.Mesh(new THREE.ConeGeometry(radius*.43,height*.48,7,2),snowMat);cap.position.y=height*.73;g.add(cap);
  const lowerSnow=new THREE.Mesh(new THREE.ConeGeometry(radius*.72,height*.24,7,1),snowMat);lowerSnow.position.y=height*.58;g.add(lowerSnow);
- g.position.set(x,trackY(Math.max(0,-z))-.5,z);scene.add(g);scenery.push(g);
+ g.position.set(x,-5,z);scene.add(g);scenery.push(g);
 }
 function addModernBarrier(side,p){
  const pose=placeOnTrack(p,side*(TRACK_HALF+1.15),0),x=pose.position.x,z=pose.position.z;

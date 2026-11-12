@@ -343,13 +343,13 @@ function breakFinishRope(){
 }
 function showWinnerOverlay(){
  if(finishCelebrationShown)return;finishCelebrationShown=true;
- const practice=mode==='practice',winnerUid=room?.winnerUid||(practice?user?.uid:''),winnerName=room?.winnerName||(localWon?playerName():'Opponent'),won=practice||(!!winnerUid&&winnerUid===user?.uid);
- $('winnerTitle').textContent=practice?'🏁 PRACTICE COMPLETE':won?'🏆 YOU ARE THE WINNER!':'🏁 RACE FINISHED';
+ const practice=mode==='practice',winnerUid=room?.winnerUid||(practice?user?.uid:''),winnerKnown=practice||!!winnerUid||localWon,winnerName=room?.winnerName||(localWon?playerName():winnerUid?'Opponent':'Result not confirmed'),won=practice||(!!winnerUid&&winnerUid===user?.uid);
+ $('winnerTitle').textContent=practice?'🏁 PRACTICE COMPLETE':!winnerKnown?'RESULT NOT CONFIRMED':won?'🏆 YOU ARE THE WINNER!':'🏁 RACE FINISHED';
  $('winnerName').textContent='Winner: '+winnerName;
  $('winnerStars').textContent=won?'★★★':'';
  $('winnerStars').setAttribute('aria-label',won?'Three-star victory badge':'No victory stars');
- $('winnerReward').textContent=won?'3-STAR VICTORY BADGE':'Better luck next race!';
- $('winnerNote').textContent=won?'Ye abhi victory display badge hai. Secure Star Wallet banne ke baad hi stars balance mein jama honge.':'Race ka winner '+winnerName+' hai. Star Challenge ka balance abhi active nahi hai.';
+ $('winnerReward').textContent=won?'3-STAR VICTORY BADGE':winnerKnown?'Better luck next race!':'No reward given';
+ $('winnerNote').textContent=won?'Ye abhi victory display badge hai. Secure Star Wallet banne ke baad hi stars balance mein jama honge.':winnerKnown?'Race ka winner '+winnerName+' hai. Star Challenge ka balance abhi active nahi hai.':'Race result verify nahi ho saka, isliye koi star reward nahi diya gaya.';
  const overlay=$('winnerOverlay');overlay.hidden=false;overlay.classList.add('show');$('raceAgainBtn').focus();
 }
 function roomRef(id){return doc(db,'games',id)}
@@ -786,7 +786,7 @@ async function pushRaceState(){
 async function finishRace(){
  if(finished)return;
  finished=true;finishSequenceActive=true;finishDriveForward=true;finishSequenceStartedAt=performance.now();
- speed=Math.max(speed,42);accelerating=braking=boosting=false;breakFinishRope();playFinishSound();
+ speed=Math.max(speed,85);accelerating=braking=boosting=false;breakFinishRope();playFinishSound();
  if(mode==='online'&&roomId&&user){
   try{
    const won=await runTransaction(db,async tx=>{

@@ -35,12 +35,75 @@ header h1{font-size:1.2rem;color:var(--orange);margin:0;flex:1}.wrap{width:min(1
 .small{font-size:.9rem}.hidden{display:none!important}.bottom{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 a{color:#ffd180}
 @media(max-width:520px){.wrap{padding:10px}.panel{padding:11px}header h1{font-size:1rem}#scene{height:48vh;min-height:270px}.controls button{padding:8px 3px;font-size:.88rem;min-height:62px}}
+
+/* New car-selection and game-mode screens */
+#carSelectionScreen,#modeSelectionScreen{background:radial-gradient(ellipse at 50% 15%,#29485b 0%,#142330 55%,#0a111a 100%);border:1px solid #426076;border-radius:18px;padding:clamp(16px,3vw,30px);min-height:68vh;display:flex;flex-direction:column;justify-content:center;gap:18px;overflow:hidden}
+#carSelectionScreen h2,#modeSelectionScreen h2{margin:0;text-align:center;font-size:clamp(1.35rem,3vw,2rem);color:#ffbd55}
+#carSelectionScreen .intro,#modeSelectionScreen .intro{text-align:center;color:#d5e3ed;margin:0}
+.car-stage{display:grid;grid-template-columns:58px minmax(0,1fr) 58px;align-items:center;gap:12px;max-width:760px;width:100%;margin:0 auto}
+.car-arrow{width:54px;height:54px;border-radius:50%;font-size:1.5rem;padding:0;background:#20394b;border:1px solid #79a5bd}
+.car-preview{min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:linear-gradient(145deg,#203a4b,#101923);border:1px solid #58758a;border-radius:18px;padding:14px;box-shadow:0 18px 45px #0007}
+.car-preview svg{width:min(100%,490px);height:auto;max-height:235px;filter:drop-shadow(0 16px 12px #0008)}
+.car-preview h3{margin:0;color:#fff;font-size:1.3rem;text-align:center}
+.car-preview p{margin:0;text-align:center;color:#c8d8e4}
+.car-dots{display:flex;justify-content:center;gap:9px}
+.car-dot{width:10px;height:10px;border-radius:50%;background:#61798a}
+.car-dot.active{background:#ff9800;box-shadow:0 0 12px #ff9800}
+.screen-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.screen-actions button{min-width:170px;min-height:52px;font-weight:800}
+.mode-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:700px;width:100%;margin:12px auto}
+.mode-card{background:linear-gradient(145deg,#20394b,#111b26);border:1px solid #5d7a8e;border-radius:16px;padding:24px 16px;text-align:center}
+.mode-card h3{margin:0 0 8px;color:#fff;font-size:1.25rem}
+.mode-card p{color:#c6d6e2;min-height:48px}
+.mode-card button{width:100%;min-height:54px;font-weight:800}
+#rotateNotice{display:none}
+@media(max-width:760px) and (orientation:portrait){#rotateNotice{display:flex;position:fixed;inset:0;z-index:99999;background:#08111b;color:#fff;align-items:center;justify-content:center;text-align:center;padding:28px;font-size:1.25rem;font-weight:800}#rotateNotice span{display:block;font-size:3rem;margin-bottom:14px}body{overflow:hidden}}
+@media(max-width:760px) and (orientation:landscape){#carSelectionScreen,#modeSelectionScreen{min-height:80vh;padding:10px;gap:8px}.car-preview{min-height:180px}.car-preview svg{max-height:145px}.car-stage{grid-template-columns:48px minmax(0,1fr) 48px}.car-arrow{width:44px;height:44px}.mode-options{margin:4px auto}.mode-card{padding:12px}}
+@media(max-width:520px){.mode-options{grid-template-columns:1fr}.mode-card p{min-height:0}}
+
 </style>
 </head>
 <body>
 <header><button type="button" id="backBtn">Back to Game Zone</button><h1>🏁 Indian Racing</h1><button type="button" id="soundBtn" aria-pressed="true">Sound: On</button></header>
 <main class="wrap bottom">
-<section class="panel" aria-labelledby="roomTitle">
+
+<div id="rotateNotice" role="alert"><div><span aria-hidden="true">↻</span>Please rotate your phone to landscape mode to play Indian Racing.</div></div>
+<section id="carSelectionScreen" aria-labelledby="carSelectionTitle">
+<h2 id="carSelectionTitle">Choose Your Racing Car</h2>
+<p class="intro">Left aur Right buttons se apni pasand ki car chunein.</p>
+<div class="car-stage">
+<button type="button" class="car-arrow" id="previousCarBtn" aria-label="Previous car">‹</button>
+<div class="car-preview" id="carPreview" aria-live="polite">
+<svg viewBox="0 0 520 240" role="img" aria-label="Luxury grand tourer car illustration">
+<defs><linearGradient id="carPaint" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dfe8ee"/><stop offset=".48" stop-color="#758b9d"/><stop offset="1" stop-color="#253746"/></linearGradient><linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#8bd7f2"/><stop offset="1" stop-color="#122a3a"/></linearGradient></defs>
+<ellipse cx="260" cy="204" rx="190" ry="17" fill="#02070c" opacity=".65"/>
+<path d="M72 163 L91 124 Q112 107 177 99 L222 53 Q240 37 286 38 L347 45 Q374 51 398 91 L438 113 Q458 123 461 153 L448 177 L77 177Z" fill="url(#carPaint)" stroke="#e6f3fa" stroke-width="3"/>
+<path d="M192 98 L234 56 Q248 47 284 48 L337 55 Q355 60 377 96Z" fill="url(#glass)" stroke="#d4e8f2" stroke-width="3"/>
+<path d="M238 55 L229 98 M337 56 L359 99" stroke="#d9e8ef" stroke-width="3"/>
+<path d="M91 129 L169 119 L160 147 L81 153Z" fill="#e7f6ff"/><path d="M390 119 L444 133 L451 153 L398 151Z" fill="#f33"/>
+<path d="M72 165 L452 165" stroke="#f4c66c" stroke-width="4"/>
+<rect x="202" y="117" width="120" height="4" rx="2" fill="#dce8ee"/>
+<circle cx="151" cy="174" r="31" fill="#080d13" stroke="#a9bbc7" stroke-width="5"/><circle cx="151" cy="174" r="13" fill="#718795"/>
+<circle cx="383" cy="174" r="31" fill="#080d13" stroke="#a9bbc7" stroke-width="5"/><circle cx="383" cy="174" r="13" fill="#718795"/>
+<path d="M260 122 L260 159" stroke="#fff" opacity=".45" stroke-width="2"/>
+</svg>
+<h3 id="selectedCarName">Regal Luxury GT</h3><p id="selectedCarDescription">Long elegant luxury saloon — Rolls-Royce-inspired design</p>
+</div>
+<button type="button" class="car-arrow" id="nextCarBtn" aria-label="Next car">›</button>
+</div>
+<div class="car-dots" id="carDots" aria-hidden="true"><span class="car-dot active"></span><span class="car-dot"></span><span class="car-dot"></span><span class="car-dot"></span><span class="car-dot"></span></div>
+<div class="screen-actions"><button type="button" id="backToGamesBtn">Back to Game Zone</button><button type="button" class="primary" id="nextToModeBtn">Next</button></div>
+</section>
+<section id="modeSelectionScreen" class="hidden" aria-labelledby="modeSelectionTitle">
+<h2 id="modeSelectionTitle">Choose Game Mode</h2><p class="intro">Aap kis tarah race khelna chahte hain?</p>
+<div class="mode-options">
+<div class="mode-card"><h3>🏎️ Play with Friend</h3><p>Indian Messages mein dost chunein aur race invitation bhejein.</p><button type="button" class="primary" id="playWithFriendBtn">Play with Friend</button></div>
+<div class="mode-card"><h3>🏁 Single Player</h3><p>Akele practice karein aur track par race lagayein.</p><button type="button" class="primary" id="singlePlayerBtn">Single Player</button></div>
+</div>
+<div class="screen-actions"><button type="button" id="backToCarsBtn">Back to Car Selection</button></div>
+</section>
+
+<section class="panel hidden" id="legacySetupPanel" aria-labelledby="roomTitle">
 <h2 id="roomTitle">Online Race</h2>
 <p id="connectionStatus" class="status" role="status" aria-live="polite">Firebase se connect ho raha hai…</p>
 <div class="row" id="roomSetupFields">
@@ -59,7 +122,7 @@ a{color:#ffd180}
  <button type="button" id="cancelWaitingBtn">Cancel Waiting / Naya Room Banayein</button>
 </div>
 </section>
-<section class="panel" aria-label="Race game">
+<section class="panel hidden" id="raceGamePanel" aria-label="Race game">
 <div id="scene" role="group" aria-label="Three dimensional Indian Racing track"><div id="trackMap" aria-label="Race track map. Your position is green and opponent position is red."><canvas id="trackMapCanvas" width="280" height="340" aria-hidden="true"></canvas><div id="mapLegend"><span><i class="mapDot" style="background:#20d878"></i>You</span><span><i class="mapDot" style="background:#ff3030"></i>Opponent</span></div></div></div><p id="mapStatus" class="muted small">Track map: race shuru hone par positions dikhenge.</p>
 <div class="hud">
 <div>Speed: <strong id="speed">0</strong> km/h</div>
@@ -89,7 +152,7 @@ import { getFirestore, doc, collection, setDoc, updateDoc, getDoc, runTransactio
 const firebaseConfig={apiKey:'AIzaSyDyXo7dNZXnSZkRKFnLujjiElMIjcuRQUs',authDomain:'indian-84a86.firebaseapp.com',projectId:'indian-84a86',storageBucket:'indian-84a86.firebasestorage.app',messagingSenderId:'333987809341',appId:'1:333987809341:web:27a351f770aa7b4e808254'};
 const $=id=>document.getElementById(id);
 let auth,db,user=null,roomId='',room=null,roomUnsub=null,opponentUnsub=null,opponentState=null;
-let mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false,reversing=false,direction=1;
+let selectedCarId=(new URLSearchParams(location.search).get('car')||'luxury'),mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false,reversing=false,direction=1;
 let lastFrame=0,lastSync=0,finished=false,opponentUid='',localWon=false,syncBusy=false,crashCount=0,audioEnabled=true,audioCtx=null,engineOsc=null,engineOsc2=null,engineGain=null,engineGain2=null,raceStartAtMs=0,countdownKey='',countdownTimers=[];
 const FINISH_DISTANCE=3000;
 function status(t){$('connectionStatus').textContent=t}function raceStatus(t){$('raceStatus').textContent=t}
@@ -138,6 +201,39 @@ $('soundBtn').addEventListener('click',()=>{
 });
 document.addEventListener('pointerdown',unlockAudio,{capture:true});
 document.addEventListener('keydown',unlockAudio,{capture:true});
+const carCatalog=[
+ {id:'luxury',name:'Regal Luxury GT',description:'Long elegant luxury saloon — Rolls-Royce-inspired design',paint:'#c7d4df'},
+ {id:'supercar',name:'Aero V12 Supercar',description:'Low, sharp and dramatic supercar — Lamborghini-inspired design',paint:'#f2c400'},
+ {id:'sport',name:'M Sport Coupe',description:'Athletic performance coupe — BMW-inspired design',paint:'#1976d2'},
+ {id:'executive',name:'Grand Executive Coupe',description:'Sculpted premium grand tourer — Mercedes-inspired design',paint:'#d5dce4'},
+ {id:'rally',name:'Alpine Rally SUV',description:'Powerful high-clearance performance SUV',paint:'#b32635'}
+];
+let selectedCarIndex=Math.max(0,carCatalog.findIndex(x=>x.id===selectedCarId));
+function carIllustration(item){
+ const colors={luxury:['#e6edf3','#74899b'],supercar:['#ffe34a','#c28a00'],sport:['#55a8ff','#123f86'],executive:['#f0f4f8','#7b8794'],rally:['#ed6874','#721e2c']};
+ const col=colors[item.id]||colors.luxury;
+ const roof=item.id==='luxury'?'M184 101 L224 53 Q238 42 284 43 L341 51 Q366 56 390 101Z':item.id==='supercar'?'M190 105 L239 69 Q258 57 310 65 L364 103Z':item.id==='sport'?'M188 103 L232 60 Q249 49 294 51 L358 100Z':item.id==='executive'?'M192 103 L236 55 Q253 47 315 53 L370 101Z':'M181 101 L222 51 Q244 42 314 48 L375 101Z';
+ const shape=item.id==='supercar'?'M60 165 L88 129 L175 111 L213 78 L369 82 L414 115 L463 135 L466 172 L60 177Z':item.id==='rally'?'M63 164 L84 120 L167 108 L203 65 L355 65 L397 109 L454 128 L466 173 L63 178Z':'M65 164 L89 126 L174 109 L'+(item.id==='luxury'?'205 95':'220 78')+' L402 104 L448 129 L462 164 L65 178Z';
+ return '<svg viewBox="0 0 520 240" role="img" aria-label="'+item.name+' car preview"><defs><linearGradient id="paint-'+item.id+'" x1="0" y1="0" x2="1" y2="1"><stop stop-color="'+col[0]+'"/><stop offset="1" stop-color="'+col[1]+'"/></linearGradient><linearGradient id="glass-'+item.id+'" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#a5e5fb"/><stop offset="1" stop-color="#102637"/></linearGradient></defs><ellipse cx="260" cy="204" rx="190" ry="17" fill="#02070c" opacity=".65"/><path d="'+shape+'" fill="url(#paint-'+item.id+')" stroke="#eaf6fc" stroke-width="3"/><path d="'+roof+'" fill="url(#glass-'+item.id+')" stroke="#d5e8f2" stroke-width="3"/><path d="M250 58 L239 105 M337 59 L361 104" stroke="#d9e8ef" stroke-width="3"/><path d="M88 135 L165 121 L157 151 L77 156Z" fill="#dff5ff"/><path d="M397 119 L447 137 L454 155 L402 153Z" fill="#f33"/><path d="M68 166 L456 166" stroke="#e6c16a" stroke-width="4"/><circle cx="151" cy="174" r="31" fill="#080d13" stroke="#a9bbc7" stroke-width="5"/><circle cx="151" cy="174" r="13" fill="#718795"/><circle cx="383" cy="174" r="31" fill="#080d13" stroke="#a9bbc7" stroke-width="5"/><circle cx="383" cy="174" r="13" fill="#718795"/><path d="M205 119 L324 119" stroke="#fff" opacity=".4" stroke-width="3"/></svg>';
+}
+function renderCarChoice(){
+ const item=carCatalog[selectedCarIndex];selectedCarId=item.id;
+ $('selectedCarName').textContent=item.name;$('selectedCarDescription').textContent=item.description;
+ $('carPreview').querySelector('svg')?.remove();$('carPreview').insertAdjacentHTML('afterbegin',carIllustration(item));
+ $('carDots').innerHTML=carCatalog.map((x,i)=>'<span class="car-dot'+(i===selectedCarIndex?' active':'')+'"></span>').join('');
+ if(typeof scene!=='undefined'&&scene&&car){rebuildSelectedCars();}
+}
+function chooseCar(delta){selectedCarIndex=(selectedCarIndex+delta+carCatalog.length)%carCatalog.length;renderCarChoice();}
+function showRaceScreen(){ $('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){} }
+function showModeScreen(){ $('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
+function showCarScreen(){ $('modeSelectionScreen').classList.add('hidden');$('carSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
+function requestLandscape(){try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
+$('previousCarBtn').addEventListener('click',()=>chooseCar(-1));$('nextCarBtn').addEventListener('click',()=>chooseCar(1));
+$('nextToModeBtn').addEventListener('click',()=>{requestLandscape();showModeScreen();});
+$('backToGamesBtn').addEventListener('click',()=>location.href='./games.html');
+$('backToCarsBtn').addEventListener('click',showCarScreen);
+$('playWithFriendBtn').addEventListener('click',()=>{requestLandscape();showRaceScreen();$('legacySetupPanel').classList.remove('hidden');$('createBtn').classList.add('hidden');$('joinBtn').classList.add('hidden');$('practiceBtn').classList.add('hidden');inviteFriend();});
+$('singlePlayerBtn').addEventListener('click',()=>{requestLandscape();showRaceScreen();$('createBtn').classList.add('hidden');$('joinBtn').classList.add('hidden');$('inviteBtn').classList.add('hidden');$('practiceBtn').classList.add('hidden');startPractice();});
 function playerName(){return String($('playerName').value||user?.displayName||user?.email?.split('@')[0]||'Indian Player').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,40)||'Indian Player'}
 function hideRoomSetup(){['roomSetupFields','roomSetupActions','roomSetupHelp'].forEach(id=>$(id)?.classList.add('hidden'));}
 function showRoomSetup(){['roomSetupFields','roomSetupActions','roomSetupHelp'].forEach(id=>$(id)?.classList.remove('hidden'));$('waitingRoomActions').hidden=true;}
@@ -167,7 +263,7 @@ async function restoreWaitingRoom(){
   if(!snap.exists()){sessionStorage.removeItem('indianRacingWaitingRoom');return;}
   const data=snap.data();
   if(data.type!=='racing'||!data.players?.some(p=>p.uid===user.uid)||data.status==='finished'){sessionStorage.removeItem('indianRacingWaitingRoom');return;}
-  roomId=saved.roomId;room=data;mode='online';distance=0;speed=0;lane=0;nitro=100;finished=false;opponentUid='';opponentState=null;
+  roomId=saved.roomId;room=data;showRaceScreen();$('legacySetupPanel').classList.remove('hidden');mode='online';distance=0;speed=0;lane=0;nitro=100;finished=false;opponentUid='';opponentState=null;
   $('roomInput').value=roomId;showWaitingRoom();updatePlayerCarColors();watchRoom();
   raceStatus(data.status==='playing'?'Friend join ho chuka hai. Race shuru! Accelerator dabayein.':'Room '+roomId+' ready hai. Friend ke invitation link kholne ka intezar hai.');
  }catch(e){}
@@ -175,14 +271,14 @@ async function restoreWaitingRoom(){
 function roomRef(id){return doc(db,'games',id)}
 function raceRef(id,uid){return doc(db,'games',id,'racePlayers',uid)}
 function randomId(){return Math.random().toString(36).slice(2,8).toUpperCase()}
-$('backBtn').addEventListener('click',()=>{leaveOnline();try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}location.href='./games.html';});
+$('backBtn').addEventListener('click',()=>{if(!$('raceGamePanel').classList.contains('hidden')&&!new URLSearchParams(location.search).get('join')){leaveOnline();try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}showModeScreen();}else{leaveOnline();try{sessionStorage.removeItem('indianRacingWaitingRoom');}catch(e){}location.href='./games.html';}});
 
 try{
  const app=initializeApp(firebaseConfig);auth=getAuth(app);db=getFirestore(app);
  onAuthStateChanged(auth,u=>{
   user=u;
   if(u){$('playerName').value=$('playerName').value||u.displayName||u.email?.split('@')[0]||'Indian Player';status('Firebase connected. Signed in: '+(u.displayName||u.email||'Indian account'));$('createBtn').disabled=false;$('joinBtn').disabled=false;$('inviteBtn').disabled=false;
-   const p=new URLSearchParams(location.search),join=p.get('join');if(join&&!roomId){hideRoomSetup();joinRace(join);}else restoreWaitingRoom();
+   const p=new URLSearchParams(location.search),join=p.get('join');if(join&&!roomId){selectedCarId=p.get('car')||selectedCarId;selectedCarIndex=Math.max(0,carCatalog.findIndex(x=>x.id===selectedCarId));renderCarChoice();showRaceScreen();hideRoomSetup();joinRace(join);}else restoreWaitingRoom();
   }else{status('Online race ke liye Indian account mein sign in karein. Solo Practice bina sign-in ke chalega.');}
  });
 }catch(e){status('Firebase connection error: '+e.message);}
@@ -241,7 +337,7 @@ async function inviteFriend(){
  if(!user){raceStatus('Pehle Indian account mein sign in karein.');return;}
  if(room&&room.status!=='waiting'){raceStatus('Race shuru ho chuki hai. Naya room banakar invite bhejein.');return;}
  if(!roomId){await createRace();if(!roomId)return;}
- const joinUrl=new URL('./indian-racing.html',location.href);joinUrl.searchParams.set('join',roomId);joinUrl.searchParams.set('game','racing');
+ const joinUrl=new URL('./indian-racing.html',location.href);joinUrl.searchParams.set('join',roomId);joinUrl.searchParams.set('game','racing');joinUrl.searchParams.set('car',selectedCarId);
  try{
   sessionStorage.setItem('indianPendingGameInvite',JSON.stringify({game:'racing',roomId,joinUrl:joinUrl.href}));
   sessionStorage.setItem('indianRacingWaitingRoom',JSON.stringify({game:'racing',roomId,uid:user.uid}));
@@ -286,23 +382,37 @@ function drawTrackMap(){
  ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.fillText('START',8,h-8);ctx.fillText('FINISH',8,15);
  $('mapStatus').textContent='Track map: aap '+Math.round(distance)+' metre par hain'+(opponentState?' aur opponent '+Math.round(Number(opponentState.distance||0))+' metre par hai.':'.');
 }
-function makeCar(color){
- const group=new THREE.Group(),body=new THREE.Mesh(new THREE.BoxGeometry(1.85,.5,3.55),new THREE.MeshStandardMaterial({color,metalness:.58,roughness:.27}));
- body.position.y=.66;group.add(body);
- const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.28,.62,1.55),new THREE.MeshStandardMaterial({color:0x102333,metalness:.48,roughness:.16}));cabin.position.set(0,1.18,-.18);group.add(cabin);
- const bumper=new THREE.Mesh(new THREE.BoxGeometry(1.98,.22,.32),new THREE.MeshStandardMaterial({color:0x10151b,metalness:.6,roughness:.3}));bumper.position.set(0,.43,-1.78);group.add(bumper);
- for(const x of [-.98,.98])for(const z of [-1.08,1.08]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.2,20),new THREE.MeshStandardMaterial({color:0x080a0d,metalness:.2,roughness:.8}));w.rotation.z=Math.PI/2;w.position.set(x,.38,z);group.add(w);}
- const trimMat=new THREE.MeshStandardMaterial({color:0x15191e,metalness:.7,roughness:.25});
- const hood=new THREE.Mesh(new THREE.BoxGeometry(1.55,.13,1.05),new THREE.MeshStandardMaterial({color:0x202b35,metalness:.7,roughness:.24}));hood.position.set(0,.94,-1.08);group.add(hood);
- const splitter=new THREE.Mesh(new THREE.BoxGeometry(2.12,.1,.48),trimMat);splitter.position.set(0,.32,-1.91);group.add(splitter);
- for(const x of [-.58,.58]){const lamp=new THREE.Mesh(new THREE.BoxGeometry(.48,.13,.08),new THREE.MeshBasicMaterial({color:0x9feaff}));lamp.position.set(x,.76,-1.82);group.add(lamp);const fin=new THREE.Mesh(new THREE.BoxGeometry(.12,.28,1.65),trimMat);fin.position.set(x*1.55,.55,.05);group.add(fin);}
- const spoilerSupports=new THREE.Mesh(new THREE.BoxGeometry(1.15,.38,.12),trimMat);spoilerSupports.position.set(0,1.13,1.45);group.add(spoilerSupports);
- const spoiler=new THREE.Mesh(new THREE.BoxGeometry(2.05,.13,.48),new THREE.MeshStandardMaterial({color:0x20252b,metalness:.75,roughness:.22}));spoiler.position.set(0,1.34,1.52);group.add(spoiler);
- const tailLights=new THREE.Mesh(new THREE.BoxGeometry(1.45,.13,.08),new THREE.MeshBasicMaterial({color:0xff2020}));tailLights.position.set(0,.76,1.8);group.add(tailLights);
- const stripeMat=new THREE.MeshStandardMaterial({color:0xffc247,emissive:0x5b2500,metalness:.6,roughness:.3});
- for(const x of [-.28,.28]){const stripe=new THREE.Mesh(new THREE.BoxGeometry(.1,.035,2.45),stripeMat);stripe.position.set(x,.93,-.05);group.add(stripe);}
- const underglow=new THREE.Mesh(new THREE.BoxGeometry(1.7,.035,2.8),new THREE.MeshBasicMaterial({color:0x00d9ff,transparent:true,opacity:.48}));underglow.position.y=.25;group.add(underglow);
+function makeCar(color,model=selectedCarId){
+ const group=new THREE.Group(),isLuxury=model==='luxury',isSuper=model==='supercar',isSUV=model==='rally';
+ const bodyLength=isSuper?3.75:isSUV?3.45:3.85,bodyWidth=isSUV?1.95:1.88;
+ const paint=new THREE.MeshStandardMaterial({color,metalness:.72,roughness:.2});
+ const body=new THREE.Mesh(new THREE.BoxGeometry(bodyWidth,isSuper?.42:.55,bodyLength),paint);
+ body.position.y=isSuper?.59:.67;group.add(body);
+ const bonnet=new THREE.Mesh(new THREE.BoxGeometry(bodyWidth*.88,.16,isLuxury?1.28:1.48),paint);bonnet.position.set(0,isSuper?.78:.92,-1.13);group.add(bonnet);
+ const cabinShape=isSuper?new THREE.BoxGeometry(1.18,.52,1.35):isSUV?new THREE.BoxGeometry(1.42,.82,1.72):new THREE.BoxGeometry(isLuxury?1.38:1.32,isLuxury?.72:.64,isLuxury?1.82:1.62);
+ const cabin=new THREE.Mesh(cabinShape,new THREE.MeshStandardMaterial({color:0x102b3b,metalness:.55,roughness:.13}));cabin.position.set(0,isSuper?1.03:isSUV?1.32:1.2,isLuxury?.05:-.12);group.add(cabin);
+ const roof=new THREE.Mesh(new THREE.BoxGeometry(isSUV?1.4:1.32,.09,isLuxury?1.5:1.3),paint);roof.position.set(0,isSUV?1.75:isLuxury?1.59:1.48,isLuxury?.04:-.12);group.add(roof);
+ const bumper=new THREE.Mesh(new THREE.BoxGeometry(2.02,.22,.32),new THREE.MeshStandardMaterial({color:0x10151b,metalness:.7,roughness:.28}));bumper.position.set(0,.43,-bodyLength/2);group.add(bumper);
+ for(const x of [-1,1])for(const z of [-1,1]){
+  const wheel=new THREE.Mesh(new THREE.CylinderGeometry(isSUV?.39:.34,isSUV?.39:.34,.23,24),new THREE.MeshStandardMaterial({color:0x080a0d,metalness:.25,roughness:.75}));
+  wheel.rotation.z=Math.PI/2;wheel.position.set(x*(bodyWidth/2-.04),.39,z*1.12);group.add(wheel);
+  const rim=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.24,16),new THREE.MeshStandardMaterial({color:0xb9c7d1,metalness:.85,roughness:.2}));
+  rim.rotation.z=Math.PI/2;rim.position.copy(wheel.position);group.add(rim);
+ }
+ const trimMat=new THREE.MeshStandardMaterial({color:0x111820,metalness:.8,roughness:.22});
+ const splitter=new THREE.Mesh(new THREE.BoxGeometry(2.08,.1,.42),trimMat);splitter.position.set(0,.31,-bodyLength/2-.08);group.add(splitter);
+ for(const x of [-.62,.62]){const lamp=new THREE.Mesh(new THREE.BoxGeometry(isSuper?.52:.42,.13,.08),new THREE.MeshBasicMaterial({color:0xb9efff}));lamp.position.set(x,.78,-bodyLength/2+.02);group.add(lamp);}
+ const grille=new THREE.Mesh(new THREE.BoxGeometry(isLuxury?.72:1.05,.3,.08),new THREE.MeshStandardMaterial({color:isLuxury?0xb6c2cc:0x15191e,metalness:.85,roughness:.18}));grille.position.set(0,.58,-bodyLength/2-.03);group.add(grille);
+ if(isSuper){const wing=new THREE.Mesh(new THREE.BoxGeometry(2.05,.12,.42),trimMat);wing.position.set(0,1.13,1.65);group.add(wing);}
+ if(isSUV){const rails=new THREE.Mesh(new THREE.BoxGeometry(1.18,.09,1.55),new THREE.MeshStandardMaterial({color:0xaab8c2,metalness:.8}));rails.position.set(0,1.83,-.08);group.add(rails);}
+ const tailLights=new THREE.Mesh(new THREE.BoxGeometry(1.45,.13,.08),new THREE.MeshBasicMaterial({color:0xff2020}));tailLights.position.set(0,.78,bodyLength/2);group.add(tailLights);
  return group;
+}
+function rebuildSelectedCars(){
+ if(!scene)return;
+ if(car)scene.remove(car);if(opponentCar)scene.remove(opponentCar);
+ car=makeCar(0xff3030,selectedCarId);car.position.set(trackX(distance),trackY(distance),-distance);scene.add(car);
+ opponentCar=makeCar(0x20c878,selectedCarId);opponentCar.position.set(trackX(0),trackY(0),-25);opponentCar.visible=!!opponentUid;scene.add(opponentCar);
 }
 function addTree(x,z){
  const g=new THREE.Group(),trunk=new THREE.Mesh(new THREE.CylinderGeometry(.13,.18,1.4,7),new THREE.MeshStandardMaterial({color:0x76502e}));trunk.position.y=.7;g.add(trunk);
@@ -426,8 +536,8 @@ function init3D(){
  for(let p=35;p<TRACK_LENGTH-30;p+=34){addModernBarrier(-1,p);addModernBarrier(1,p);}
  addFinishGate();
  [[180,-1.8],[360,1.8],[540,0],[760,-1.8],[940,1.8],[1160,0],[1380,-1.8],[1580,1.8],[1800,0],[2020,-1.8],[2240,1.8],[2460,0],[2680,-1.8],[2880,1.8]].forEach((o,i)=>addObstacle(o[0],o[1],i));
- car=makeCar(0xff3030);car.position.set(trackX(0),trackY(0),0);scene.add(car);
- opponentCar=makeCar(0x20c878);opponentCar.position.set(trackX(0),trackY(0),-25);opponentCar.visible=false;scene.add(opponentCar);
+ car=makeCar(0xff3030,selectedCarId);car.position.set(trackX(0),trackY(0),0);scene.add(car);
+ opponentCar=makeCar(0x20c878,selectedCarId);opponentCar.position.set(trackX(0),trackY(0),-25);opponentCar.visible=false;scene.add(opponentCar);
  const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};new ResizeObserver(resize).observe(host);drawTrackMap();
 }
 function syncWorld(){
@@ -496,7 +606,7 @@ function animate(now){
  }else if(mode==='idle')speed=Math.max(0,speed-30*dt);
  if(car&&speed>0){car.children.slice(3,7).forEach(w=>{w.rotation.x+=direction*speed*dt*.025;});}syncWorld();renderer.render(scene,camera);
 }
-init3D();requestAnimationFrame(animate);
+renderCarChoice();init3D();requestAnimationFrame(animate);
 </script>
 </body>
 </html>

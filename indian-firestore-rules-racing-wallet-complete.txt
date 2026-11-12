@@ -1,3 +1,10 @@
+// INDIAN FIRESTORE RULES — COMPLETE MERGED REVIEW COPY
+// Based on the complete Firestore Rules pasted by the project owner on 2026-11-12.
+// Existing feature rules are preserved, with Racing Star Wallet and Star Challenge
+// permissions merged into the existing Games and racePlayers sections.
+// Wallet writes/payouts are restricted to trusted server-side Admin SDK code.
+// Review and publish manually only after confirming this is still the live baseline.
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -6,24 +13,32 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Check whether the requested story is still in the owner's active stories.
-    function hasActiveStory(ownerUid, storyId) {
-      let profile = get(
-        /databases/$(database)/documents/publicProfiles/$(ownerUid)
-      ).data;
-
-      return profile.keys().hasAny(['activeStories'])
-        && profile.activeStories is list
+    // Check the first three active stories in either the separated or legacy record.
+    // The legacy fallback keeps Story interactions working during staged migration.
+    function storyListContains(stories, storyId) {
+      return stories is list
         && (
-          (profile.activeStories.size() > 0
-            && profile.activeStories[0].id == storyId)
+          (stories.size() > 0 && stories[0].id == storyId)
           ||
-          (profile.activeStories.size() > 1
-            && profile.activeStories[1].id == storyId)
+          (stories.size() > 1 && stories[1].id == storyId)
           ||
-          (profile.activeStories.size() > 2
-            && profile.activeStories[2].id == storyId)
+          (stories.size() > 2 && stories[2].id == storyId)
         );
+    }
+
+    function hasActiveStory(ownerUid, storyId) {
+      let separatedPath = /databases/$(database)/documents/userStories/$(ownerUid);
+      let legacyPath = /databases/$(database)/documents/publicProfiles/$(ownerUid);
+
+      return (
+        exists(separatedPath)
+        && get(separatedPath).data.keys().hasAny(['activeStories'])
+        && storyListContains(get(separatedPath).data.activeStories, storyId)
+      ) || (
+        exists(legacyPath)
+        && get(legacyPath).data.keys().hasAny(['activeStories'])
+        && storyListContains(get(legacyPath).data.activeStories, storyId)
+      );
     }
 
     match /users/{userId} {
@@ -104,9 +119,6 @@ service cloud.firestore {
                     && request.resource.data.viewedAtMs is number
                     && request.resource.data.liked == false
                     && request.resource.data.reaction == ''
-                    && exists(
-                      /databases/$(database)/documents/publicProfiles/$(request.resource.data.ownerUid)
-                    )
                     && hasActiveStory(
                       request.resource.data.ownerUid,
                       request.resource.data.storyId
@@ -472,6 +484,7 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Personal Messages
     match /messages/{messageId} {
       allow read: if signedIn()
                   && (resource.data.senderId == request.auth.uid
@@ -483,6 +496,16 @@ service cloud.firestore {
                     && request.resource.data.text is string
                     && request.resource.data.text.size() <= 2000;
 
+      // The receiver may only change read:false (or a missing legacy read field) to read:true.
+      // No message text, attachment, sender, receiver, or other field can be changed by the receiver.
+      allow update: if signedIn()
+                    && resource.data.receiverId == request.auth.uid
+                    && (!resource.data.keys().hasAny(['read']) || resource.data.read == false)
+                    && request.resource.data.read == true
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['read']);
+
+      // The sender retains the existing permission to edit or delete their own message.
       allow update, delete: if signedIn()
                             && resource.data.senderId == request.auth.uid;
     }
@@ -524,7 +547,7 @@ service cloud.firestore {
           && request.resource.data.players[1].uid == request.auth.uid
           && request.resource.data.players[1].uid != resource.data.players[0].uid
           && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['players', 'status', 'raceStartAtMs', 'updatedAt']);
+               .hasOnly(['players', 'status', 'raceStartAtMs', 'updatedAt']);
       }
 
       allow read: if signedIn()
@@ -539,8 +562,6 @@ service cloud.firestore {
                     && request.resource.data.status == 'waiting'
                     && request.resource.data.type in ['ttt', 'quiz', 'draw', 'dice', 'racing'];
 
-      // Racing rooms may be joined by the second player or cancelled by
-      // their owner while waiting. Winner/status/payout fields are server-only.
       allow update: if validJoin()
                     || (resource.data.type == 'racing'
                         && signedIn()
@@ -548,7 +569,7 @@ service cloud.firestore {
                         && resource.data.createdBy == request.auth.uid
                         && request.resource.data.status == 'finished'
                         && request.resource.data.diff(resource.data).affectedKeys()
-                            .hasOnly(['status', 'updatedAt']))
+                             .hasOnly(['status', 'updatedAt']))
                     || (resource.data.type != 'racing'
                         && isPlayer(resource.data)
                         && request.resource.data.createdBy == resource.data.createdBy
@@ -574,73 +595,82 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
-      // Live racing positions: only the two players in this room can read them,
-      // and each player can write only their own validated position document.
+      // Indian Racing live position records.
+      // Each signed-in racer can read the other racer and write only their own state.
       match /racePlayers/{playerUid} {
         function parentGame() {
           return get(/databases/$(database)/documents/games/$(gameId)).data;
         }
-        function isRoomPlayer() {
-          let game = parentGame();
+
+        function isRacePlayer() {
           return signedIn()
-            && game.players is list
-            && game.players.size() >= 1
-            && game.players.size() <= 2
-            && (game.players[0].uid == request.auth.uid
-                || (game.players.size() == 2
-                    && game.players[1].uid == request.auth.uid));
+            && parentGame().type == 'racing'
+            && parentGame().players is list
+            && parentGame().players.size() >= 1
+            && parentGame().players.size() <= 2
+            && (parentGame().players[0].uid == request.auth.uid
+                || (parentGame().players.size() == 2
+                    && parentGame().players[1].uid == request.auth.uid));
         }
-        function validRaceState() {
+
+        allow read: if isRacePlayer();
+
+        function validRacePlayerData() {
           return request.resource.data.keys().hasAll([
-              'uid', 'name', 'distance', 'lane', 'speed', 'finished', 'updatedAtMs'
-            ])
-            && request.resource.data.keys().hasOnly([
-              'uid', 'name', 'distance', 'lane', 'speed', 'finished', 'updatedAtMs'
-            ])
-            && request.resource.data.uid == playerUid
-            && request.resource.data.name is string
-            && request.resource.data.name.size() >= 1
-            && request.resource.data.name.size() <= 60
-            && request.resource.data.distance is number
-            && request.resource.data.distance >= 0
-            && request.resource.data.distance <= 3015
-            && request.resource.data.lane is number
-            && request.resource.data.lane >= -3
-            && request.resource.data.lane <= 3
-            && request.resource.data.speed is number
-            && request.resource.data.speed >= 0
-            && request.resource.data.speed <= 260
-            && request.resource.data.finished is bool
-            && request.resource.data.updatedAtMs is number;
+            'uid', 'name', 'distance', 'lane', 'speed', 'finished', 'updatedAtMs'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'uid', 'name', 'distance', 'lane', 'speed', 'finished', 'updatedAtMs'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 40
+          && request.resource.data.distance is number
+          && request.resource.data.distance >= 0
+          && request.resource.data.distance <= 100000
+          && request.resource.data.lane is number
+          && request.resource.data.lane >= -2.55
+          && request.resource.data.lane <= 2.55
+          && request.resource.data.speed is number
+          && request.resource.data.speed >= 0
+          && request.resource.data.speed <= 260
+          && request.resource.data.finished is bool
+          && request.resource.data.updatedAtMs is number;
         }
-        // Both racers must be able to listen to each other's live position document.
-        allow read: if isRoomPlayer();
-        allow create: if isRoomPlayer()
+
+        allow create: if isRacePlayer()
           && playerUid == request.auth.uid
-          && validRaceState();
-        allow update: if isRoomPlayer()
+          && validRacePlayerData();
+
+        allow update: if isRacePlayer()
           && playerUid == request.auth.uid
-          && resource.data.uid == request.auth.uid
-          && validRaceState()
+          && validRacePlayerData()
           && request.resource.data.updatedAtMs > resource.data.updatedAtMs
           && request.resource.data.updatedAtMs
-              <= request.time.seconds * 1000 + request.time.nanos / 1000000 + 5000
-          // Forward and reverse movement are both allowed, with a plausible speed limit.
+               <= request.time.seconds * 1000 + request.time.nanos / 1000000 + 5000
+          // Permit forward driving and reverse gear, but limit either movement
+          // to a plausible distance for the elapsed client timestamp.
           && (
-            (request.resource.data.distance >= resource.data.distance
+            (
+              request.resource.data.distance >= resource.data.distance
               && request.resource.data.distance - resource.data.distance
-                <= (request.resource.data.updatedAtMs - resource.data.updatedAtMs) * 0.09 + 10)
+                   <= (request.resource.data.updatedAtMs - resource.data.updatedAtMs) * 0.09 + 10
+            )
             ||
-            (request.resource.data.distance < resource.data.distance
+            (
+              request.resource.data.distance < resource.data.distance
               && resource.data.distance - request.resource.data.distance
-                <= (request.resource.data.updatedAtMs - resource.data.updatedAtMs) * 0.09 + 10)
+                   <= (request.resource.data.updatedAtMs - resource.data.updatedAtMs) * 0.09 + 10
+            )
           );
+
         allow delete: if false;
       }
     }
 
-    // Racing Star Wallet is private to its owner. All writes and payouts
-    // are performed by the authenticated Cloudflare Worker service account.
+    // Racing Star Wallet: private owner reads; trusted Worker performs all writes.
+    // Admin SDK requests from the Cloudflare Worker bypass client Firestore Rules.
     match /racingWallets/{walletUid} {
       allow get: if signedIn() && request.auth.uid == walletUid;
       allow list: if false;
@@ -957,6 +987,90 @@ service cloud.firestore {
         allow delete: if isMember()
           && resource.data.senderId == request.auth.uid;
       }
+    }
+
+    // Separated public story records. Stories remain visible to signed-in users.
+    match /userStories/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+                            && request.auth.uid == userId
+                            && request.resource.data.uid == userId;
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Presence is readable by signed-in users; only the owner can write it.
+    match /userPresence/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+                            && request.auth.uid == userId
+                            && request.resource.data.uid == userId;
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Typing state is visible only to its owner and the intended recipient.
+    match /userTyping/{userId} {
+      allow get: if signedIn()
+                 && (
+                   !exists(/databases/$(database)/documents/userTyping/$(userId))
+                   || request.auth.uid == userId
+                   || resource.data.typingToUid == request.auth.uid
+                 );
+      allow list: if false;
+      allow create, update: if signedIn()
+                            && request.auth.uid == userId
+                            && request.resource.data.uid == userId
+                            && request.resource.data.typingToUid is string;
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Live status is readable by signed-in users; only the owner can write.
+    match /userLiveStatus/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+                            && request.auth.uid == userId
+                            && request.resource.data.uid == userId;
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Each reaction record belongs to the user named in its document.
+    match /messageReactions/{reactionId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+                    && request.resource.data.keys().hasAll([
+                      'uid', 'messageId', 'emoji', 'createdAtMs'
+                    ])
+                    && request.resource.data.keys().hasOnly([
+                      'uid', 'messageId', 'emoji', 'createdAtMs'
+                    ])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.messageId is string
+                    && reactionId == request.resource.data.uid + '_' + request.resource.data.messageId
+                    && request.resource.data.emoji is string
+                    && request.resource.data.emoji.size() <= 8
+                    && request.resource.data.createdAtMs is number
+                    && reactionId.size() <= 800;
+      allow update: if signedIn()
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.messageId == resource.data.messageId
+                    && reactionId == resource.data.uid + '_' + resource.data.messageId
+                    && request.resource.data.emoji is string
+                    && request.resource.data.emoji.size() <= 8
+                    && request.resource.data.createdAtMs is number
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['emoji', 'createdAtMs']);
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // Internal per-owner migration marker; never publicly readable.
+    match /publicProfileMigrations/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list: if false;
+      allow create, update: if signedIn()
+                            && request.auth.uid == userId
+                            && request.resource.data.uid == userId
+                            && request.resource.data.status == 'complete';
+      allow delete: if false;
     }
 
     // All other collections remain denied by default.

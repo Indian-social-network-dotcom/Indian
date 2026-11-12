@@ -557,7 +557,7 @@ function addSnowMountain(x,z,radius,height){
 function addModernBarrier(side,p){
  const pose=placeOnTrack(p,side*(TRACK_HALF+1.15),0),x=pose.position.x,z=pose.position.z;
  const post=new THREE.Mesh(new THREE.BoxGeometry(.16,1.05,.22),new THREE.MeshStandardMaterial({color:0x8999a5,metalness:.72,roughness:.28}));
- post.position.copy(pose.position).addScaledVector(pose.frame.up,.5);scene.add(post);
+ post.position.copy(pose.position).addScaledVector(pose.frame.up,.5);orientTrackObject(post,pose.frame);scene.add(post);
  const rail=new THREE.Mesh(new THREE.BoxGeometry(.18,.22,7.8),new THREE.MeshStandardMaterial({color:0xb8c7d1,metalness:.82,roughness:.25}));
  rail.position.copy(pose.position).addScaledVector(pose.frame.up,.92);orientTrackObject(rail,pose.frame);scene.add(rail);
  const light=new THREE.Mesh(new THREE.BoxGeometry(.2,.07,7.5),new THREE.MeshBasicMaterial({color:0x27dfff}));

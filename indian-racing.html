@@ -375,10 +375,14 @@ function init3D(){
  scene.add(new THREE.HemisphereLight(0xffffff,0x52634e,2));
  const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-20,35,15);scene.add(sun);
  const ground=new THREE.Mesh(new THREE.PlaneGeometry(900,3700),new THREE.MeshStandardMaterial({color:0x31483e,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-5,-1450);scene.add(ground);
- const shoulderMat=new THREE.MeshStandardMaterial({color:0x66717a,roughness:.95});
+ const shoulderMat=new THREE.MeshStandardMaterial({color:0x697780,roughness:.92,side:THREE.DoubleSide});
  for(const side of [-1,1]){
-  const shoulder=new THREE.Mesh(new THREE.PlaneGeometry(2.1,TRACK_LENGTH+120),shoulderMat);
-  shoulder.rotation.x=-Math.PI/2;shoulder.position.set(0,-.08,-TRACK_LENGTH/2);shoulder.position.x=0;scene.add(shoulder);
+  const shoulderVertices=[],shoulderIndices=[],steps=600;
+  for(let i=0;i<=steps;i++){const p=-60+(TRACK_LENGTH+120)*i/steps,x=trackX(p),y=trackY(p)-.025,z=-p;
+   shoulderVertices.push(x+side*(TRACK_HALF+.05),y,z,x+side*(TRACK_HALF+2.1),y,z);
+   if(i<steps){const k=i*2;shoulderIndices.push(k,k+1,k+2,k+1,k+3,k+2);}
+  }
+  const shoulderGeo=new THREE.BufferGeometry();shoulderGeo.setAttribute('position',new THREE.Float32BufferAttribute(shoulderVertices,3));shoulderGeo.setIndex(shoulderIndices);shoulderGeo.computeVertexNormals();scene.add(new THREE.Mesh(shoulderGeo,shoulderMat));
  }
  const vertices=[],indices=[],samples=600;
  for(let i=0;i<=samples;i++){const p=-60+(TRACK_LENGTH+120)*i/samples,z=-p,x=trackX(p),y=trackY(p);vertices.push(x-TRACK_HALF,y,z,x+TRACK_HALF,y,z);if(i<samples){const k=i*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}}
@@ -393,8 +397,8 @@ function init3D(){
   line.position.set(trackX(p),trackY(p)+.06,-p);line.rotation.y=-Math.atan(trackSlopeX(p));scene.add(line);
  }
  for(const side of [-1,1]){
-  const edgeLine=new THREE.Mesh(new THREE.BoxGeometry(.18,.06,TRACK_LENGTH+80),shoulderEdgeMat);
-  edgeLine.position.set(0,.055,-TRACK_LENGTH/2);edgeLine.rotation.y=0;scene.add(edgeLine);
+  const edgePoints=[];for(let p=0;p<=TRACK_LENGTH;p+=8)edgePoints.push(new THREE.Vector3(trackX(p)+side*(TRACK_HALF-.38),trackY(p)+.075,-p));
+  scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edgePoints),700,.09,6,false),shoulderEdgeMat));
  }
  const edgeMat=new THREE.MeshStandardMaterial({color:0xffd36a,emissive:0x503000,metalness:.5});
  const neonMat=new THREE.MeshStandardMaterial({color:0x18c9ff,emissive:0x07516c,metalness:.55});

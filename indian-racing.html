@@ -329,7 +329,7 @@ async function createRace(){
  try{
   await setDoc(roomRef(id),data);
   roomId=id;room=data;$('roomInput').value=id;mode='online';updatePlayerCarColors();
-  await setDoc(raceRef(id,user.uid),{uid:user.uid,name,carId:selectedCarId,distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
+  await setDoc(raceRef(id,user.uid),{uid:user.uid,name,distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
   watchRoom();raceStatus('Race room '+id+' ban gaya. Friend ko invite bhejein. Friend join karega to race shuru hogi.');status('Room ready. Friend ka intezar hai.');
  }catch(e){raceStatus('Room create nahi hua: '+e.message+' Rules update zaroori ho sakta hai.');}
 }
@@ -356,7 +356,7 @@ async function joinRace(raw){
   room=joinedSnap.data();
   if(room.status!=='playing'||!room.players?.some(p=>p.uid===user.uid)||room.players.length!==2)throw Error('Room mein doosra player add nahi hua. Alag Indian account se link kholein.');
   updatePlayerCarColors();
-  await setDoc(raceRef(id,user.uid),{uid:user.uid,name:playerName(),carId:selectedCarId,distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
+  await setDoc(raceRef(id,user.uid),{uid:user.uid,name:playerName(),distance:0,lane:0,speed:0,finished:false,updatedAtMs:Date.now()});
   showRaceScreen();$('legacySetupPanel').classList.add('hidden');watchRoom();
   startRaceCountdown(room.raceStartAtMs||Date.now()+4000,id);
   raceStatus('Dono players jud gaye! One, Two, Three, Go!');
@@ -652,7 +652,7 @@ function syncWorld(){
 async function pushRaceState(){
  if(syncBusy||mode!=='online'||!roomId||!user||!room||room.status!=='playing')return;
  syncBusy=true;
- try{await setDoc(raceRef(roomId,user.uid),{uid:user.uid,name:playerName(),carId:selectedCarId,distance:Math.round(distance),lane:Number(lane.toFixed(2)),speed:Math.round(speed),finished,updatedAtMs:Date.now()});}
+ try{await setDoc(raceRef(roomId,user.uid),{uid:user.uid,name:playerName(),distance:Math.round(distance),lane:Number(lane.toFixed(2)),speed:Math.round(speed),finished,updatedAtMs:Date.now()});}
  catch(e){raceStatus('Live sync issue: '+e.message);}
  finally{syncBusy=false;}
 }

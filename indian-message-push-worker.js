@@ -286,7 +286,7 @@ async function acceptStarChallenge(env, roomId, callerUid) {
   });
   return result;
 }
-async function settleNormalRaceStars(env, roomId, callerUid) {
+async function settleNormalRaceStars(env, roomId, callerUid, forfeit = false) {
   if (!/^[A-Z0-9]{6}$/.test(roomId)) throw new Error("Invalid race room ID.");
   const gamePath = "games/" + roomId;
   const initial = await adminGetDocument(env, gamePath);
@@ -311,12 +311,12 @@ async function settleNormalRaceStars(env, roomId, callerUid) {
     const a = docs["games/" + roomId + "/racePlayers/" + uids[0]], b = docs["games/" + roomId + "/racePlayers/" + uids[1]];
     if (!a.exists || !b.exists) throw new Error("Both players' live race records are not ready.");
     const da = Number(a.data.distance || 0), db = Number(b.data.distance || 0);
-    if (Math.max(da, db) < 3000) throw new Error("Finish line has not been confirmed by the live race records.");
+    if (!forfeit && Math.max(da, db) < 3000) throw new Error("Finish line has not been confirmed by the live race records.");
     const challenge = game.starChallenge && game.starChallenge.status === "locked";
     const stake = challenge ? Number(game.starChallenge.stake) : 0;
     if (challenge && (!Number.isInteger(stake) || stake < 1 || stake > 100)) throw new Error("Locked challenge stake is invalid.");
-    const draw = da === db;
-    const winnerUid = draw ? "" : (da > db ? uids[0] : uids[1]);
+    const draw = !forfeit && da === db;
+    const winnerUid = forfeit ? uids.find(uid => uid !== callerUid) : (draw ? "" : (da > db ? uids[0] : uids[1]));
     const winnerPlayer = players.find(p => p.uid === winnerUid);
     const writes = [];
     let starsAwarded = 0;
@@ -535,6 +535,12 @@ export default {
         if (action === "getRacingWallet") {
           const wallet = await getOrCreateRacingWallet(env, callerUid);
           return json({ success: true, wallet }, 200, origin);
+        }
+
+        if (action === "forfeitRacingRace") {
+          const roomId = typeof body.roomId === "string" ? body.roomId.trim().toUpperCase() : "";
+          const result = await settleNormalRaceStars(env, roomId, callerUid, true);
+          return json({ success: true, ...result }, 200, origin);
         }
 
         if (action === "finishRacingRace") {

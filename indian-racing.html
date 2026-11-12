@@ -93,6 +93,15 @@ body.racing-active #legacySetupPanel.hidden{display:none!important}
 }
 @media(max-width:760px) and (orientation:portrait){body.racing-active #raceGamePanel{display:none!important}}
 /* A smoother sculpted body, metallic finish and cockpit lighting. */
+#winnerOverlay{display:none;position:fixed;inset:0;z-index:5000;align-items:center;justify-content:center;padding:18px;background:rgba(3,8,14,.94);text-align:center}
+#winnerOverlay.show{display:flex}
+#winnerCard{width:min(560px,100%);padding:28px 20px;border:2px solid #ffb52e;border-radius:22px;background:linear-gradient(145deg,#24384a,#101820);box-shadow:0 18px 70px #000b}
+#winnerCard h2{margin:0 0 12px;color:#ffd54a;font-size:clamp(1.7rem,5vw,2.6rem)}
+#winnerName{font-size:1.35rem;font-weight:900;color:#fff;margin:10px 0}
+#winnerStars{font-size:clamp(2rem,8vw,3.5rem);letter-spacing:8px;color:#ffd54a;margin:12px 0;text-shadow:0 0 18px #ffb52e}
+#winnerNote{color:#d1deea;font-size:.92rem;margin:12px 0 20px}
+#winnerCard button{min-width:180px;min-height:50px;margin:5px}
+@media(max-width:520px){#winnerCard{padding:22px 14px}}
 </style>
 </head>
 <body>
@@ -131,6 +140,7 @@ body.racing-active #legacySetupPanel.hidden{display:none!important}
 <div class="mode-options">
 <div class="mode-card"><h3>🏎️ Play with Friend</h3><p>Indian Messages mein dost chunein aur race invitation bhejein.</p><button type="button" class="primary" id="playWithFriendBtn">Play with Friend</button></div>
 <div class="mode-card"><h3>🏁 Single Player</h3><p>Akele practice karein aur track par race lagayein.</p><button type="button" class="primary" id="singlePlayerBtn">Single Player</button></div>
+<div class="mode-card"><h3>⭐ Star Challenge</h3><p>Do players stars laga kar race khelenge. Secure Star Wallet taiyar hone ke baad shuru hoga.</p><button type="button" id="starChallengeBtn">Star Challenge Details</button><p id="starChallengeInfo" class="muted small" role="status">Abhi star balance aur safe reward system taiyar nahi hai.</p></div>
 </div>
 <div class="screen-actions"><button type="button" id="backToCarsBtn">Back to Car Selection</button></div>
 </section>
@@ -174,6 +184,17 @@ body.racing-active #legacySetupPanel.hidden{display:none!important}
 </div>
 <p class="muted small">Keyboard: Left/Right arrows se steering, Up se accelerator, Down se brake, R se Reverse, Space se Nitro. Mobile par buttons ko daba kar rakhein.</p>
 </section>
+<div id="winnerOverlay" role="dialog" aria-modal="true" aria-labelledby="winnerTitle" aria-describedby="winnerNote" hidden>
+ <div id="winnerCard">
+  <h2 id="winnerTitle">🏆 RACE FINISHED</h2>
+  <p id="winnerName"></p>
+  <div id="winnerStars" aria-label="Three stars">★★★</div>
+  <p id="winnerReward"></p>
+  <p id="winnerNote">Ye abhi victory display badge hai. Stars wallet mein add nahi hue hain.</p>
+  <button type="button" class="primary" id="raceAgainBtn">Race Again</button>
+  <button type="button" id="winnerBackBtn">Back to Game Zone</button>
+ </div>
+</div>
 </main>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
@@ -186,6 +207,7 @@ const $=id=>document.getElementById(id);
 let auth,db,user=null,roomId='',room=null,roomUnsub=null,opponentUnsub=null,opponentState=null;
 let selectedCarId=(()=>{try{return localStorage.getItem('indianRacingSelectedCar')||'luxury'}catch(e){return 'luxury'}})(),mode='idle',speed=0,distance=0,lane=0,nitro=100,accelerating=false,braking=false,boosting=false,left=false,right=false,reversing=false,direction=1;
 let lastFrame=0,lastSync=0,finished=false,opponentUid='',localWon=false,syncBusy=false,crashCount=0,audioEnabled=true,audioCtx=null,engineOsc=null,engineOsc2=null,engineGain=null,engineGain2=null,raceStartAtMs=0,countdownKey='',countdownTimers=[];
+let finishSequenceActive=false,finishDriveForward=false,finishSequenceStartedAt=0,finishCelebrationShown=false,finishRopeBroken=false,finishRopeParts=[];
 const FINISH_DISTANCE=3000;
 function status(t){$('connectionStatus').textContent=t}function raceStatus(t){$('raceStatus').textContent=t}
 function unlockAudio(){
@@ -265,6 +287,9 @@ $('previousCarBtn').addEventListener('click',()=>chooseCar(-1));$('nextCarBtn').
 $('nextToModeBtn').addEventListener('click',()=>{requestLandscape();showModeScreen();});
 $('backToGamesBtn').addEventListener('click',()=>location.href='./games.html');
 $('backToCarsBtn').addEventListener('click',showCarScreen);
+$('starChallengeBtn').addEventListener('click',()=>{$('starChallengeInfo').textContent='Star Challenge ke liye dono players ka verified Star Wallet, locked stake aur trusted one-time winner payout banana zaroori hai. Ye system abhi taiyar nahi hai; isliye abhi stars kaatna ya transfer karna shuru nahi kiya gaya.';});
+$('raceAgainBtn').addEventListener('click',()=>{location.href='./indian-racing.html';});
+$('winnerBackBtn').addEventListener('click',()=>{location.href='./games.html';});
 $('playWithFriendBtn').addEventListener('click',()=>{requestLandscape();showRaceScreen();$('legacySetupPanel').classList.remove('hidden');$('createBtn').classList.add('hidden');$('joinBtn').classList.add('hidden');$('practiceBtn').classList.add('hidden');inviteFriend();});
 $('singlePlayerBtn').addEventListener('click',()=>{requestLandscape();showRaceScreen();$('createBtn').classList.add('hidden');$('joinBtn').classList.add('hidden');$('inviteBtn').classList.add('hidden');$('practiceBtn').classList.add('hidden');startPractice();});
 function playerName(){return String($('playerName').value||user?.displayName||user?.email?.split('@')[0]||'Indian Player').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,40)||'Indian Player'}
@@ -307,6 +332,26 @@ async function restoreWaitingRoom(){
   raceStatus(data.status==='playing'?'Friend join ho chuka hai. Race shuru! Accelerator dabayein.':'Room '+roomId+' ready hai. Friend ke invitation link kholne ka intezar hai.');
  }catch(e){}
 }
+function resetFinishState(){
+ finished=false;localWon=false;finishSequenceActive=false;finishDriveForward=false;finishSequenceStartedAt=0;finishCelebrationShown=false;finishRopeBroken=false;
+ const overlay=$('winnerOverlay');if(overlay){overlay.hidden=true;overlay.classList.remove('show');}
+ finishRopeParts.forEach(({group})=>{group.position.y=group.userData.baseY;group.rotation.set(0,0,0);});
+}
+function breakFinishRope(){
+ if(finishRopeBroken)return;finishRopeBroken=true;
+ finishRopeParts.forEach(({group,side})=>{group.rotation.z=side<0?-.72:.72;group.rotation.x=side<0?-.18:.18;});
+}
+function showWinnerOverlay(){
+ if(finishCelebrationShown)return;finishCelebrationShown=true;
+ const practice=mode==='practice',winnerUid=room?.winnerUid||(practice?user?.uid:''),winnerName=room?.winnerName||(localWon?playerName():'Opponent'),won=practice||(!!winnerUid&&winnerUid===user?.uid);
+ $('winnerTitle').textContent=practice?'🏁 PRACTICE COMPLETE':won?'🏆 YOU ARE THE WINNER!':'🏁 RACE FINISHED';
+ $('winnerName').textContent='Winner: '+winnerName;
+ $('winnerStars').textContent=won?'★★★':'';
+ $('winnerStars').setAttribute('aria-label',won?'Three-star victory badge':'No victory stars');
+ $('winnerReward').textContent=won?'3-STAR VICTORY BADGE':'Better luck next race!';
+ $('winnerNote').textContent=won?'Ye abhi victory display badge hai. Secure Star Wallet banne ke baad hi stars balance mein jama honge.':'Race ka winner '+winnerName+' hai. Star Challenge ka balance abhi active nahi hai.';
+ const overlay=$('winnerOverlay');overlay.hidden=false;overlay.classList.add('show');$('raceAgainBtn').focus();
+}
 function roomRef(id){return doc(db,'games',id)}
 function raceRef(id,uid){return doc(db,'games',id,'racePlayers',uid)}
 function randomId(){return Math.random().toString(36).slice(2,8).toUpperCase()}
@@ -324,7 +369,7 @@ try{
 
 async function createRace(){
  if(!user||roomId)return;
- hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;
+ resetFinishState();hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;
  const id=randomId(),name=playerName();
  const data={type:'racing',status:'waiting',createdBy:user.uid,players:[{uid:user.uid,name,carId:selectedCarId}],createdAt:serverTimestamp(),updatedAt:serverTimestamp(),state:{track:'city',finishDistance:FINISH_DISTANCE}};
  try{
@@ -337,7 +382,7 @@ async function createRace(){
 async function joinRace(raw){
  if(!user){raceStatus('Race join karne ke liye pehle Indian account mein sign in karein.');return;}
  if(!raw){raceStatus('Invitation link mein Room ID nahi hai.');return;}
- hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;
+ resetFinishState();hitObstacles.clear();crashCount=0;$('hits').textContent='0 / 3';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;
  const id=String(raw).trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(id)){raceStatus('Room ID galat hai. Link dobara mangwayein.');return;}
  raceStatus('Invitation room se connect ho rahe hain…');
  try{
@@ -385,8 +430,11 @@ function watchRoom(){
   if(room.status==='finished'){
    finished=true;speed=0;accelerating=braking=boosting=false;
    if(crashCount>=3)raceStatus('GAME OVER! Aap 3 drums se takraye aur race haar gaye.');
-   else if(room.winnerUid)raceStatus(room.winnerUid===user.uid?'🏆 AAP JEET GAYE! Aap sabse pehle finish line par pahunche.':'🏁 '+(room.winnerName||'Opponent')+' pehle finish line par pahunch gaye. Aap race haar gaye.');
-   else raceStatus('Race khatam ya cancel ho gayi.');
+   else if(room.winnerUid){
+    localWon=room.winnerUid===user.uid;breakFinishRope();
+    raceStatus(localWon?'🏆 AAP JEET GAYE! Aap sabse pehle finish line par pahunche.':'🏁 '+(room.winnerName||'Opponent')+' pehle finish line par pahunch gaye. Aap race haar gaye.');
+    if(!finishSequenceActive){finishSequenceActive=true;finishDriveForward=false;finishSequenceStartedAt=performance.now();}
+   }else raceStatus('Race khatam ya cancel ho gayi.');
   }
  },err=>raceStatus('Room live update error: '+err.message));
 }
@@ -402,7 +450,7 @@ async function inviteFriend(){
  showWaitingRoom();raceStatus('Invite bhejne ke liye Messages khul raha hai. Wapas aane par Waiting aur Cancel option dikhega. Friend link kholega to race apne aap shuru hogi.');
  location.href=new URL('./index.html#messages',location.href).href;
 }
-function startPractice(){leaveOnline(false);mode='practice';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;crashCount=0;$('hits').textContent='0 / 3';hitObstacles.clear();room=null;opponentState=null;opponentCar.visible=false;updatePlayerCarColors();showRoomSetup();raceStartAtMs=Date.now()+4000;countdownKey='';startRaceCountdown(raceStartAtMs,'practice-'+Date.now());raceStatus('Solo Practice ready. One, Two, Three, Go!');}
+function startPractice(){leaveOnline(false);resetFinishState();mode='practice';distance=0;speed=0;lane=0;nitro=100;direction=1;reversing=false;finished=false;crashCount=0;$('hits').textContent='0 / 3';hitObstacles.clear();room=null;opponentState=null;opponentCar.visible=false;updatePlayerCarColors();showRoomSetup();raceStartAtMs=Date.now()+4000;countdownKey='';startRaceCountdown(raceStartAtMs,'practice-'+Date.now());raceStatus('Solo Practice ready. One, Two, Three, Go!');}
 function leaveOnline(reset=true){
  if(roomUnsub)roomUnsub();if(opponentUnsub)opponentUnsub();roomUnsub=null;opponentUnsub=null;roomId='';room=null;opponentUid='';opponentState=null;
  if(reset)mode='idle';
@@ -624,8 +672,12 @@ function addFinishGate(){
   const foot=new THREE.Mesh(new THREE.CylinderGeometry(.55,.65,.28,12),redMat);
   foot.position.set(x+side*(TRACK_HALF-.2),y+.14,z);scene.add(foot);
  }
- const ropePoints=[new THREE.Vector3(x-TRACK_HALF,y+2.65,z),new THREE.Vector3(x-TRACK_HALF*.5,y+2.35,z),new THREE.Vector3(x,y+2.2,z),new THREE.Vector3(x+TRACK_HALF*.5,y+2.35,z),new THREE.Vector3(x+TRACK_HALF,y+2.65,z)];
- const rope=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ropePoints),36,.12,8,false),redMat);scene.add(rope);
+ for(const side of [-1,1]){
+  const ropeGroup=new THREE.Group();ropeGroup.position.set(x+side*TRACK_HALF,y+2.65,z);ropeGroup.userData.baseY=y+2.65;
+  const points=side<0?[new THREE.Vector3(0,0,0),new THREE.Vector3(TRACK_HALF*.5,-.3,0),new THREE.Vector3(TRACK_HALF,-.45,0)]:[new THREE.Vector3(0,0,0),new THREE.Vector3(-TRACK_HALF*.5,-.3,0),new THREE.Vector3(-TRACK_HALF,-.45,0)];
+  const rope=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),20,.12,8,false),redMat);
+  ropeGroup.add(rope);scene.add(ropeGroup);finishRopeParts.push({group:ropeGroup,side});
+ }
  const checkMatA=new THREE.MeshBasicMaterial({color:0xffffff}),checkMatB=new THREE.MeshBasicMaterial({color:0x15191e});
  for(let i=0;i<28;i++){
   const tile=new THREE.Mesh(new THREE.BoxGeometry((TRACK_HALF*2)/28,.035,1.7),i%2?checkMatA:checkMatB);
@@ -732,7 +784,9 @@ async function pushRaceState(){
  finally{syncBusy=false;}
 }
 async function finishRace(){
- if(finished)return;finished=true;speed=0;accelerating=braking=boosting=false;playFinishSound();
+ if(finished)return;
+ finished=true;finishSequenceActive=true;finishDriveForward=true;finishSequenceStartedAt=performance.now();
+ speed=Math.max(speed,42);accelerating=braking=boosting=false;breakFinishRope();playFinishSound();
  if(mode==='online'&&roomId&&user){
   try{
    const won=await runTransaction(db,async tx=>{
@@ -741,12 +795,13 @@ async function finishRace(){
     const data=snap.data();
     if(data.status==='finished')return data.winnerUid===user.uid;
     if(data.status!=='playing')return false;
-    tx.update(ref,{status:'finished',winnerUid:user.uid,winnerName:playerName(),finishedAt:serverTimestamp(),updatedAt:serverTimestamp()});
+    tx.update(ref,{status:'finished',winnerUid:user.uid,winnerName:playerName(),winnerCarId:selectedCarId,finishedAt:serverTimestamp(),updatedAt:serverTimestamp()});
     return true;
    });
    localWon=won;
+   if(!won){finishDriveForward=false;speed=0;}
    raceStatus(won?'🏆 Aap sabse pehle finish line par pahunche! AAP JEET GAYE!':'🏁 Opponent pehle finish line par pahunch gaya. Aap race haar gaye.');
-  }catch(e){raceStatus('Finish line cross ho gayi, lekin winner sync nahi hua: '+e.message);}
+  }catch(e){localWon=false;finishDriveForward=false;speed=0;raceStatus('Finish line cross ho gayi, lekin winner sync nahi hua: '+e.message);}
  }else{
   localWon=true;raceStatus('🏆 Aap finish line par pahunch gaye! Practice complete.');
  }
@@ -781,6 +836,12 @@ function animate(now){
   if(mode==='online'&&now-lastSync>500){lastSync=now;pushRaceState();}
   $('speed').textContent=(direction===-1?'R ':'')+Math.round(speed);$('distance').textContent=Math.round(distance);$('nitro').textContent=Math.round(nitro);updateEngineSound();
   if(opponentState){const d=Number(opponentState.distance||0);$('position').textContent=distance>=d?'1 / 2':'2 / 2';}else $('position').textContent=mode==='practice'?'Practice':'Waiting';
+ }else if(finishSequenceActive){
+  const elapsed=now-finishSequenceStartedAt;
+  if(finishDriveForward){distance=Math.min(FINISH_DISTANCE+13,distance+speed/3.6*dt);speed=Math.max(0,speed-72*dt);}
+  $('speed').textContent=Math.round(speed);$('distance').textContent=Math.round(distance);
+  if(finishRopeBroken)finishRopeParts.forEach(({group,side})=>{group.position.y-=1.25*dt;group.rotation.z+=(side<0?-.35:.35)*dt;});
+  if(elapsed>1550||(!finishDriveForward&&elapsed>1150)){finishSequenceActive=false;speed=0;showWinnerOverlay();}
  }else if(mode==='idle')speed=Math.max(0,speed-30*dt);
  if(car&&speed>0){(car.userData.wheelParts||[]).forEach(w=>{w.rotation.x+=direction*speed*dt*.025;});}syncWorld();renderer.render(scene,camera);
 }

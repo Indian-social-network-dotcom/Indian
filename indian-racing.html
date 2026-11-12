@@ -427,12 +427,14 @@ async function joinRace(raw){
  try{
   const preflight=await getDoc(roomRef(id));if(!preflight.exists())throw Error('Room nahi mila ya invitation expire ho gaya.');
   const preflightData=preflight.data();
-  if(preflightData.starChallenge&&!window.confirm('Star Challenge: aap '+preflightData.starChallenge.stake+' stars stake karenge. Winner ko dono ka total '+(preflightData.starChallenge.stake*2)+' stars milega. Kya aap accept karte hain?'))throw Error('Aapne Star Challenge accept nahi kiya.');
+  const alreadyInRoom=(preflightData.players||[]).some(p=>p.uid===user.uid);
+  if(preflightData.starChallenge&&preflightData.starChallenge.status!=='locked'&&!alreadyInRoom&&!window.confirm('Star Challenge: aap '+preflightData.starChallenge.stake+' stars stake karenge. Winner ko dono ka total '+(preflightData.starChallenge.stake*2)+' stars milega. Kya aap accept karte hain?'))throw Error('Aapne Star Challenge accept nahi kiya.');
   await runTransaction(db,async tx=>{
    const ref=roomRef(id),snap=await tx.get(ref);if(!snap.exists())throw Error('Room nahi mila ya invitation expire ho gaya.');
    const r=snap.data();if(r.type!=='racing')throw Error('Yeh Indian Racing room nahi hai.');
    const players=Array.isArray(r.players)?r.players:[];
    if(players.some(p=>p.uid===user.uid)){
+    if(r.starChallenge&&players.length===2&&r.status==='waiting')return;
     if(players.length<2||r.status!=='playing')throw Error('Aap isi Indian account se room bana chuke hain. Friend ko alag Indian account se sign in karke link kholna hoga.');
     return;
    }

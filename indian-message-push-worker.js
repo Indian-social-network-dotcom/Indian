@@ -251,7 +251,7 @@ async function acceptStarChallenge(env, roomId, callerUid) {
   const initial = await adminGetDocument(env, gamePath);
   if (!initial) throw new Error("Star Challenge room not found.");
   const game = initial.data || {};
-  if (game.type !== "racing" || !game.starChallenge || !Array.isArray(game.players) || game.players.length !== 2) throw new Error("This is not a ready Star Challenge.");
+  if (game.type !== "racing" || !game.starChallenge || !Array.isArray(game.players) || game.players.length !== 2 || game.starChallenge.hostAccepted !== true || game.starChallenge.hostUid !== game.players[0].uid) throw new Error("This is not a ready, host-approved Star Challenge.");
   if (game.players[1].uid !== callerUid) throw new Error("Only the invited second player can accept this challenge.");
   const stake = Number(game.starChallenge.stake);
   if (!Number.isInteger(stake) || stake < 1 || stake > 100) throw new Error("Challenge stake must be 1 to 100 stars.");
@@ -261,7 +261,7 @@ async function acceptStarChallenge(env, roomId, callerUid) {
   await adminFirestoreTransaction(env, [gamePath, ...walletPaths], async docs => {
     const current = docs[gamePath], g = current.data || {};
     if (!current.exists || g.status !== "waiting" || !g.starChallenge || g.players?.length !== 2 ||
-        g.players[1].uid !== callerUid || Number(g.starChallenge.stake) !== stake) {
+        g.players[1].uid !== callerUid || g.starChallenge.hostAccepted !== true || g.starChallenge.hostUid !== g.players[0].uid || Number(g.starChallenge.stake) !== stake) {
       throw new Error("Challenge is no longer waiting for acceptance.");
     }
     const writes = [];
@@ -285,6 +285,25 @@ async function acceptStarChallenge(env, roomId, callerUid) {
     return writes;
   });
   return result;
+}
+async function leaveUnfundedStarChallenge(env, roomId, callerUid) {
+  if (!/^[A-Z0-9]{6}$/.test(roomId)) throw new Error("Invalid challenge room ID.");
+  const path = "games/" + roomId;
+  let left = false;
+  await adminFirestoreTransaction(env, [path], async docs => {
+    const d = docs[path], game = d.data || {};
+    if (!d.exists || game.status !== "waiting" || !game.starChallenge ||
+        game.starChallenge.status !== "waiting" || !Array.isArray(game.players) ||
+        game.players.length !== 2 || game.players[1].uid !== callerUid) {
+      throw new Error("This challenge can no longer be left this way.");
+    }
+    left = true;
+    return [docWrite(path, {
+      players: [game.players[0]],
+      updatedAtMs: Date.now()
+    }, d)];
+  });
+  return { left };
 }
 async function settleNormalRaceStars(env, roomId, callerUid, forfeit = false) {
   if (!/^[A-Z0-9]{6}$/.test(roomId)) throw new Error("Invalid race room ID.");
@@ -526,6 +545,12 @@ export default {
     const action = typeof body.action === "string" ? body.action.trim() : "";
     if (action) {
       try {
+        if (action === "leaveUnfundedStarChallenge") {
+          const roomId = typeof body.roomId === "string" ? body.roomId.trim().toUpperCase() : "";
+          const result = await leaveUnfundedStarChallenge(env, roomId, callerUid);
+          return json({ success: true, ...result }, 200, origin);
+        }
+
         if (action === "acceptStarChallenge") {
           const roomId = typeof body.roomId === "string" ? body.roomId.trim().toUpperCase() : "";
           const result = await acceptStarChallenge(env, roomId, callerUid);

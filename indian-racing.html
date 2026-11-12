@@ -560,7 +560,8 @@ function trackX(s){return trackPoint(s).x;}
 function trackZ(s){return trackPoint(s).z;}
 function trackFrame(s){
  const tangent=trackPoint(s+2).sub(trackPoint(s-2)).normalize();
- const right=new THREE.Vector3(1,0,0).addScaledVector(tangent,-tangent.x).normalize();
+ // Build the road frame from world-up so it stays stable through sideways U-turns.
+ const right=tangent.clone().cross(new THREE.Vector3(0,1,0)).normalize();
  if(right.lengthSq()<.001)right.set(1,0,0);
  const up=right.clone().cross(tangent).normalize();
  return {tangent,right,up};

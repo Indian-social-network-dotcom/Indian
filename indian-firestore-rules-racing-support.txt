@@ -510,7 +510,14 @@ service cloud.firestore {
           && resource.data.players[0].uid == resource.data.createdBy
           && request.resource.data.createdBy == resource.data.createdBy
           && request.resource.data.type == resource.data.type
-          && request.resource.data.status == 'playing'
+          && (
+            (resource.data.keys().hasAny(['starChallenge'])
+              && request.resource.data.status == 'waiting')
+            || (!resource.data.keys().hasAny(['starChallenge'])
+              && request.resource.data.status == 'playing')
+          )
+          && (!resource.data.keys().hasAny(['starChallenge'])
+              || request.resource.data.starChallenge == resource.data.starChallenge)
           && request.resource.data.players is list
           && request.resource.data.players.size() == 2
           && request.resource.data.players[0].uid == resource.data.players[0].uid

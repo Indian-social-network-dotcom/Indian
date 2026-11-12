@@ -648,10 +648,14 @@ function init3D(){
  const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};new ResizeObserver(resize).observe(host);drawTrackMap();
 }
 function syncWorld(){
- const ownX=trackX(distance)+lane*2.3,ownY=trackY(distance);
- car.position.set(ownX,ownY,-distance);car.rotation.y=-Math.atan(trackSlopeX(distance));car.rotation.z=-trackSlopeY(distance)*.45+(right?-.035:0)+(left?.035:0);
- if(opponentState&&opponentUid){const od=Number(opponentState.distance||0);opponentCar.position.set(trackX(od)+Number(opponentState.lane||0)*2.3,trackY(od),-od);opponentCar.rotation.y=-Math.atan(trackSlopeX(od));opponentCar.visible=Math.abs(od-distance)<650;}else opponentCar.visible=false;
- camera.position.x+=(ownX*.72-camera.position.x)*.12;camera.position.y+=(ownY+7.5-camera.position.y)*.1;camera.position.z=-distance+13;camera.lookAt(trackX(distance+24),trackY(distance+24)+1,-distance-24);drawTrackMap();
+ const pose=placeOnTrack(distance,lane*2.3,0);
+ setTrackPose(car,distance,lane*2.3,(right?-.035:0)+(left?.035:0));
+ if(opponentState&&opponentUid){const od=Number(opponentState.distance||0);setTrackPose(opponentCar,od,Number(opponentState.lane||0)*2.3);opponentCar.visible=Math.abs(od-distance)<650;}else opponentCar.visible=false;
+ const lookPose=placeOnTrack(distance+25,0,1.5),curveAhead=trackFrame(distance+10).tangent.clone().sub(trackFrame(distance-10).tangent),sideSwing=Math.max(-3.5,Math.min(3.5,curveAhead.x*24))+(right?2.2:0)-(left?2.2:0);
+ const desiredCamera=pose.position.clone().addScaledVector(pose.frame.tangent,-15).addScaledVector(pose.frame.up,7.2).addScaledVector(pose.frame.right,sideSwing);
+ camera.position.lerp(desiredCamera,.13);camera.up.lerp(pose.frame.up,.22).normalize();
+ const lookTarget=lookPose.position.clone().addScaledVector(lookPose.frame.up,1.1);camera.lookAt(lookTarget);
+ const targetFov=62+Math.min(7,speed/245*7);camera.fov+=(targetFov-camera.fov)*.08;camera.updateProjectionMatrix();drawTrackMap();
 }
 async function pushRaceState(){
  if(syncBusy||mode!=='online'||!roomId||!user||!room||room.status!=='playing')return;

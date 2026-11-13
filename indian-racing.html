@@ -761,13 +761,13 @@ function makeCar(color,model=selectedCarId){
  const grille=new THREE.Mesh(new THREE.BoxGeometry(isThar?.82:isLuxury?.66:1.02,isThar?.62:.31,.055),isThar?dark:isLuxury?chrome:dark);grille.position.set(0,isThar?.91:.59,-2.08);group.add(grille);
  if(isThar){for(let i=0;i<7;i++){const slot=new THREE.Mesh(new THREE.BoxGeometry(.055,.49,.075),chrome);slot.position.set(-.27+i*.09,.91,-2.125);group.add(slot);}}else for(let i=0;i<5;i++){const slat=new THREE.Mesh(new THREE.BoxGeometry(isLuxury?.58:.88,.018,.065),chrome);slat.position.set(0,.48+i*.052,-2.115);group.add(slat);}
  // Headlights and tail lamps.
+ const wheelParts=[],tailLights=[];
  for(const x of [-1,1]){
   const lamp=isThar?new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.12,32),light):new THREE.Mesh(new THREE.BoxGeometry(isSuper?.62:.38,isSuper?.075:.13,.09),light);if(isThar){lamp.rotation.x=Math.PI/2;lamp.position.set(x*.72,.98,-2.02);}else{lamp.position.set(x*(isSUV?.68:isSuper?.69:.7),isSuper?.79:.75,-1.91);if(isSuper)lamp.rotation.z=x*.16;}group.add(lamp);
   const tail=new THREE.Mesh(new THREE.BoxGeometry(.48,.12,.08),redLight.clone());tail.position.set(x*.55,.72,1.96);group.add(tail);tailLights.push(tail);
   const mirror=new THREE.Mesh(new THREE.BoxGeometry(.18,.13,.28),paint);mirror.position.set(x*.92,1.0,-.48);group.add(mirror);
  }
  // Four complete rotating wheel assemblies with ventilated brake discs and red calipers.
- const wheelParts=[],tailLights=[];
  for(const x of [-1,1])for(const z of [-1,1]){
   const wheelGroup=new THREE.Group();
   wheelGroup.position.set(x*(isThar?1.02:isSUV?.94:.88),isThar?.49:.42,z*(isThar?1.36:1.23));

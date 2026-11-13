@@ -18,6 +18,7 @@ header h1{font-size:1.2rem;color:var(--orange);margin:0;flex:1}.wrap{width:min(1
 .status{background:#17232e;border:1px solid #40505f;padding:10px;border-radius:9px;margin:8px 0}.muted{color:var(--muted)}
 #scene{height:min(58vh,520px);min-height:300px;background:#15232b;border-radius:12px;overflow:hidden;position:relative}
 #scene canvas{display:block;width:100%;height:100%;touch-action:none}
+#scene>canvas{position:absolute;inset:0;z-index:0;width:100%!important;height:100%!important}
 #trackMap{position:absolute;right:10px;top:10px;width:154px;height:210px;background:rgba(8,15,22,.9);border:1px solid #b7c8d8;border-radius:10px;padding:6px;z-index:2;pointer-events:none}
 #trackMap canvas{width:100%;height:170px;display:block}
 #mapLegend{font-size:11px;display:flex;justify-content:space-around;gap:4px;color:#fff}
@@ -416,7 +417,7 @@ function renderCarPreview(){
  previewCar=makeRealCar(0xc7d4df,selectedCarId);previewCar.position.y=0;previewScene.add(previewCar);
 }
 function chooseCar(delta){selectedCarIndex=(selectedCarIndex+delta+carCatalog.length)%carCatalog.length;renderCarChoice();}
-function showRaceScreen(){if(previewRenderer){previewRenderer.dispose();previewRenderer.domElement.remove();previewRenderer=null;previewScene=null;previewCamera=null;previewCar=null;}document.body.classList.add('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';resizeRaceScene();try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
+function showRaceScreen(){if(previewRenderer){previewRenderer.dispose();previewRenderer.domElement.remove();previewRenderer=null;previewScene=null;previewCamera=null;previewCar=null;}document.body.classList.add('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';resizeRaceScene();requestAnimationFrame(()=>{if(renderer&&camera){syncWorld();resizeRaceScene();}});try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
 function showModeScreen(){document.body.classList.remove('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
 function showCarScreen(){document.body.classList.remove('racing-active');$('modeSelectionScreen').classList.add('hidden');$('carSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
 function requestLandscape(){try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
@@ -1111,9 +1112,15 @@ function init3D(){
 function resizeRaceScene(){
  if(!renderer||!camera)return;
  const host=$('scene');
- const apply=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
+ const apply=()=>{
+  const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;
+  camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,true);
+  renderer.domElement.style.position='absolute';renderer.domElement.style.left='0';renderer.domElement.style.top='0';renderer.domElement.style.width=w+'px';renderer.domElement.style.height=h+'px';renderer.domElement.style.zIndex='0';
+ };
  requestAnimationFrame(()=>{apply();requestAnimationFrame(apply);});
 }
+window.addEventListener('resize',resizeRaceScene,{passive:true});
+window.addEventListener('orientationchange',()=>setTimeout(resizeRaceScene,120),{passive:true});
 function syncWorld(){
  const pose=placeOnTrack(distance,lane*2.3,0);
  const steerTarget=(right?-.48:0)+(left?.48:0);

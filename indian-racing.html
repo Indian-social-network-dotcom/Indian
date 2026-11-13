@@ -638,7 +638,7 @@ function buildTrackCurve(){
   [150,0,170],[-20,0,70],[-150,0,-80],[-230,0,-260]
  ].map(p=>new THREE.Vector3(p[0],p[1],p[2]));
  // Give the circuit real elevation: rolling hills and long uphill/downhill sections.
- route.forEach((p,i)=>{const t=i/(route.length-1);p.y=55*Math.sin(t*Math.PI*6)+22*Math.sin(t*Math.PI*13);});
+ route.forEach((p,i)=>{const t=i/(route.length-1);p.y=40+55*Math.sin(t*Math.PI*6)+22*Math.sin(t*Math.PI*13);});
  trackCurve=new THREE.CatmullRomCurve3(route,false,'centripetal',.42);
  const scale=TRACK_LENGTH/trackCurve.getLength();
  route.forEach(p=>p.multiplyScalar(scale));

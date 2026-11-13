@@ -5,6 +5,7 @@ on:
       - feature/racing-real-glb-cars
     paths:
       - '.github/workflows/fetch-racing-cars.yml'
+      - 'indian-racing.html'
   workflow_dispatch:
 permissions:
   contents: write

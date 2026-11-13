@@ -44,6 +44,9 @@ a{color:#ffd180}
 .car-arrow{width:54px;height:54px;border-radius:50%;font-size:1.5rem;padding:0;background:#20394b;border:1px solid #79a5bd}
 .car-preview{min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:linear-gradient(145deg,#203a4b,#101923);border:1px solid #58758a;border-radius:18px;padding:14px;box-shadow:0 18px 45px #0007}
 .car-preview svg{width:min(100%,490px);height:auto;max-height:235px;filter:drop-shadow(0 16px 12px #0008)}
+#carPreview3D{width:100%;height:235px;max-width:620px;position:relative;overflow:hidden;border-radius:12px;background:radial-gradient(ellipse at 50% 35%,#476477,#172633 75%)}
+#carPreview3D canvas{display:block;width:100%;height:100%}
+#carPreviewLoading{display:grid;place-items:center;height:100%;color:#fff;font-weight:800}
 .car-preview h3{margin:0;color:#fff;font-size:1.3rem;text-align:center}
 .car-preview p{margin:0;text-align:center;color:#c8d8e4}
 .car-dots{display:flex;justify-content:center;gap:9px}
@@ -58,7 +61,7 @@ a{color:#ffd180}
 .mode-card button{width:100%;min-height:54px;font-weight:800}
 #rotateNotice{display:none}
 @media(max-width:760px) and (orientation:portrait){#rotateNotice{display:flex;position:fixed;inset:0;z-index:99999;background:#08111b;color:#fff;align-items:center;justify-content:center;text-align:center;padding:28px;font-size:1.25rem;font-weight:800}#rotateNotice span{display:block;font-size:3rem;margin-bottom:14px}body{overflow:hidden}}
-@media(max-width:760px) and (orientation:landscape){#carSelectionScreen,#modeSelectionScreen{min-height:80vh;padding:10px;gap:8px}.car-preview{min-height:180px}.car-preview svg{max-height:145px}.car-stage{grid-template-columns:48px minmax(0,1fr) 48px}.car-arrow{width:44px;height:44px}.mode-options{margin:4px auto}.mode-card{padding:12px}}
+@media(max-width:760px) and (orientation:landscape){#carSelectionScreen,#modeSelectionScreen{min-height:80vh;padding:10px;gap:8px}.car-preview{min-height:180px}#carPreview3D{height:145px}.car-preview svg{max-height:145px}.car-stage{grid-template-columns:48px minmax(0,1fr) 48px}.car-arrow{width:44px;height:44px}.mode-options{margin:4px auto}.mode-card{padding:12px}}
 @media(max-width:520px){.mode-options{grid-template-columns:1fr}.mode-card p{min-height:0}}
 
 
@@ -133,6 +136,9 @@ body.racing-active .hud{max-width:250px}
  body.racing-active .controls .brake{min-width:58px}
 }
 </style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
+</script>
 </head>
 <body>
 <header><button type="button" id="backBtn">Back to Game Zone</button><h1>🏁 Indian Racing</h1><button type="button" id="soundBtn" aria-pressed="true">Sound: On</button></header>
@@ -145,19 +151,8 @@ body.racing-active .hud{max-width:250px}
 <div class="car-stage">
 <button type="button" class="car-arrow" id="previousCarBtn" aria-label="Previous car">‹</button>
 <div class="car-preview" id="carPreview" aria-live="polite">
-<svg viewBox="0 0 520 240" role="img" aria-label="Luxury grand tourer car illustration">
-<defs><linearGradient id="carPaint" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dfe8ee"/><stop offset=".48" stop-color="#758b9d"/><stop offset="1" stop-color="#253746"/></linearGradient><linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#8bd7f2"/><stop offset="1" stop-color="#122a3a"/></linearGradient></defs>
-<ellipse cx="260" cy="204" rx="190" ry="17" fill="#02070c" opacity=".65"/>
-<path d="M72 163 L91 124 Q112 107 177 99 L222 53 Q240 37 286 38 L347 45 Q374 51 398 91 L438 113 Q458 123 461 153 L448 177 L77 177Z" fill="url(#carPaint)" stroke="#e6f3fa" stroke-width="3"/>
-<path d="M192 98 L234 56 Q248 47 284 48 L337 55 Q355 60 377 96Z" fill="url(#glass)" stroke="#d4e8f2" stroke-width="3"/>
-<path d="M238 55 L229 98 M337 56 L359 99" stroke="#d9e8ef" stroke-width="3"/>
-<path d="M91 129 L169 119 L160 147 L81 153Z" fill="#e7f6ff"/><path d="M390 119 L444 133 L451 153 L398 151Z" fill="#f33"/>
-<path d="M72 165 L452 165" stroke="#f4c66c" stroke-width="4"/>
-<rect x="202" y="117" width="120" height="4" rx="2" fill="#dce8ee"/>
-<circle cx="151" cy="174" r="31" fill="#080d13" stroke="#a9bbc7" stroke-width="5"/><circle cx="151" cy="174" r="13" fill="#718795"/>
-<circle cx="383" cy="174" r="31" fill="#080d13" stroke="#a9bbc7" stroke-width="5"/><circle cx="383" cy="174" r="13" fill="#718795"/>
-<path d="M260 122 L260 159" stroke="#fff" opacity=".45" stroke-width="2"/>
-</svg>
+<div id="carPreview3D" role="img" aria-label="Three-dimensional racing car preview"><span id="carPreviewLoading">Loading 3D car model…</span></div>
+
 <h3 id="selectedCarName">Regal Luxury GT</h3><p id="selectedCarDescription">Long elegant luxury saloon — Rolls-Royce-inspired design</p>
 </div>
 <button type="button" class="car-arrow" id="nextCarBtn" aria-label="Next car">›</button>
@@ -236,6 +231,7 @@ body.racing-active .hud{max-width:250px}
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
 import { Sky } from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/objects/Sky.js';
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import { getFirestore, doc, collection, setDoc, updateDoc, getDoc, runTransaction, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
@@ -394,12 +390,33 @@ function carIllustration(item){
 function renderCarChoice(){
  const item=carCatalog[selectedCarIndex];selectedCarId=item.id;try{localStorage.setItem('indianRacingSelectedCar',selectedCarId);}catch(e){}
  $('selectedCarName').textContent=item.name;$('selectedCarDescription').textContent=item.description;
- $('carPreview').querySelector('svg')?.remove();$('carPreview').insertAdjacentHTML('afterbegin',carIllustration(item));
  $('carDots').innerHTML=carCatalog.map((x,i)=>'<span class="car-dot'+(i===selectedCarIndex?' active':'')+'"></span>').join('');
+ renderCarPreview();
  if(typeof scene!=='undefined'&&scene&&car){rebuildSelectedCars();}
 }
+function renderCarPreview(){
+ const host=$('carPreview3D');if(!host)return;
+ if(!realCarAssetsReady){const loading=$('carPreviewLoading');if(loading)loading.textContent='Loading real 3D car model…';return;}
+ if(!previewRenderer){
+  previewScene=new THREE.Scene();previewScene.background=new THREE.Color(0x1a2a36);
+  previewCamera=new THREE.PerspectiveCamera(34,1,.1,100);previewCamera.position.set(5.8,2.6,7.1);previewCamera.lookAt(0,.65,0);
+  previewRenderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'low-power'});
+  previewRenderer.setPixelRatio(Math.min(devicePixelRatio,1.25));previewRenderer.outputColorSpace=THREE.SRGBColorSpace;previewRenderer.toneMapping=THREE.ACESFilmicToneMapping;previewRenderer.toneMappingExposure=1.12;
+  previewRenderer.shadowMap.enabled=true;previewRenderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  host.replaceChildren(previewRenderer.domElement);
+  previewScene.add(new THREE.HemisphereLight(0xe8f5ff,0x34404b,2));
+  const keyLight=new THREE.DirectionalLight(0xffffff,3);keyLight.position.set(-4,8,5);keyLight.castShadow=true;previewScene.add(keyLight);
+  const rimLight=new THREE.DirectionalLight(0x55cfff,1.7);rimLight.position.set(5,4,-5);previewScene.add(rimLight);
+  previewFloor=new THREE.Mesh(new THREE.CircleGeometry(5,64),new THREE.MeshStandardMaterial({color:0x263640,roughness:.8,metalness:.12}));previewFloor.rotation.x=-Math.PI/2;previewFloor.position.y=-.015;previewFloor.receiveShadow=true;previewScene.add(previewFloor);
+  const resize=()=>{const w=host.clientWidth||480,h=host.clientHeight||235;previewCamera.aspect=w/h;previewCamera.updateProjectionMatrix();previewRenderer.setSize(w,h,false);};new ResizeObserver(resize).observe(host);resize();
+ }
+ if(previewCar)previewScene.remove(previewCar);
+ const key=selectedCarId==='supercar'?'supercar':'coupe',template=realCarAssets[key]||realCarAssets.supercar||realCarAssets.coupe;
+ if(!template){const loading=$('carPreviewLoading');if(loading)loading.textContent='3D model is unavailable.';return;}
+ previewCar=template.clone(true);previewCar.position.y=0;previewScene.add(previewCar);
+}
 function chooseCar(delta){selectedCarIndex=(selectedCarIndex+delta+carCatalog.length)%carCatalog.length;renderCarChoice();}
-function showRaceScreen(){document.body.classList.add('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
+function showRaceScreen(){if(previewRenderer){previewRenderer.dispose();previewRenderer.domElement.remove();previewRenderer=null;previewScene=null;previewCamera=null;previewCar=null;}document.body.classList.add('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
 function showModeScreen(){document.body.classList.remove('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
 function showCarScreen(){document.body.classList.remove('racing-active');$('modeSelectionScreen').classList.add('hidden');$('carSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
 function requestLandscape(){try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
@@ -635,6 +652,8 @@ window.addEventListener('blur',()=>{left=right=accelerating=braking=boosting=rev
 
 let scene,camera,renderer,car,opponentCar,roadMarks=[],scenery=[],obstacles=[],hitObstacles=new Set(),clock=new THREE.Clock(),opponentRenderDistance=0,opponentRenderLane=0,sunLight=null,skyObject=null;
 let driveParticles=[],driveFxAccumulator=0;
+let realCarAssets={supercar:null,coupe:null},realCarAssetsReady=false,realCarLoadPromise=null;
+let previewRenderer=null,previewScene=null,previewCamera=null,previewCar=null,previewFloor=null;
 const TRACK_HALF=7,TRACK_LENGTH=FINISH_DISTANCE;
 let trackCurve=null;
 function buildTrackCurve(){
@@ -693,7 +712,13 @@ function trackFrame(s){const tangent=trackPoint(s+.5).sub(trackPoint(s-.5)).norm
 function placeOnTrack(s,laneOffset=0,heightOffset=0){const p=trackPoint(s),frame=trackFrame(s);p.addScaledVector(frame.right,laneOffset).addScaledVector(frame.up,heightOffset);return {position:p,frame};}
 function orientTrackObject(object,frame){const back=frame.tangent.clone().negate(),matrix=new THREE.Matrix4().makeBasis(frame.right,frame.up,back);object.quaternion.setFromRotationMatrix(matrix);}
 function setTrackPose(object,s,laneOffset=0,roll=0){const pose=placeOnTrack(s,laneOffset,0);object.position.copy(pose.position);orientTrackObject(object,pose.frame);if(roll)object.rotateZ(roll);}
-function setBodyColor(vehicle,color){if(vehicle?.children?.[0]?.material?.color)vehicle.children[0].material.color.setHex(color);}
+function setBodyColor(vehicle,color){
+ if(!vehicle)return;
+ if(vehicle.userData.isImported3D){
+  const tint=new THREE.Color(color);
+  vehicle.traverse(obj=>{if(!obj.isMesh||!obj.material)return;const n=(obj.name||'').toLowerCase();if(!/body|paint|shell|chassis/.test(n))return;const mats=Array.isArray(obj.material)?obj.material:[obj.material];mats.forEach(mat=>{if(mat.color){mat.color.copy(tint);mat.color.multiplyScalar(.82);mat.needsUpdate=true;}});});
+ }else if(vehicle.children?.[0]?.material?.color)vehicle.children[0].material.color.setHex(color);
+}
 function updatePlayerCarColors(){
  if(!car||!opponentCar)return;
  const players=Array.isArray(room?.players)?room.players:[];
@@ -834,6 +859,66 @@ function makeCar(color,model=selectedCarId){
  group.userData.wheelParts=wheelParts;group.userData.tailLights=tailLights;
  return group;
 }
+function makeRealCar(color,model=selectedCarId){
+ const key=model==='supercar'?'supercar':'coupe',template=realCarAssets[key];
+ if(!template)return makeCar(color,model);
+ const vehicle=new THREE.Group();vehicle.userData.model=model;vehicle.userData.isImported3D=true;
+ const body=template.clone(true);
+ const tint=new THREE.Color(color);
+ const wheelParts=[],frontWheels=[],tailLights=[],headLights=[];
+ body.traverse(obj=>{
+  if(!obj.isMesh)return;
+  obj.castShadow=true;obj.receiveShadow=true;
+  const n=(obj.name||'').toLowerCase();
+  const wheelBox=new THREE.Box3().setFromObject(obj),wheelSize=wheelBox.getSize(new THREE.Vector3()),wheelCenter=wheelBox.getCenter(new THREE.Vector3());
+  const namedWheel=/wheel|tyre|tire|rim/.test(n),shapeWheel=wheelSize.y>.28&&wheelSize.y<.95&&wheelSize.x<.72&&wheelSize.z<.95&&wheelCenter.y<.78&&Math.abs(wheelCenter.x)>.52&&Math.abs(wheelCenter.z)>.72;
+  if(namedWheel||shapeWheel){wheelParts.push(obj);if(/front|fl_|fr_|wheel.?[01]/.test(n)||wheelCenter.z<-.55)frontWheels.push(obj);}
+  if(/tail|brake.?light|rear.?light/.test(n))tailLights.push(obj);
+  if(/head.?light|front.?light/.test(n))headLights.push(obj);
+  if(/body|paint|shell|chassis/.test(n)&&obj.material){
+   const mats=Array.isArray(obj.material)?obj.material:[obj.material];
+   mats.forEach(mat=>{if(mat.color){mat.color.copy(tint);mat.color.multiplyScalar(.88);mat.metalness=Math.max(mat.metalness||0,.42);mat.roughness=Math.min(mat.roughness??.5,.34);mat.needsUpdate=true;}});
+  }
+ });
+ vehicle.add(body);
+ vehicle.userData.wheelParts=wheelParts;vehicle.userData.frontWheels=frontWheels;
+ vehicle.userData.tailLights=tailLights;vehicle.userData.headLights=headLights;
+ vehicle.userData.body=body;vehicle.userData.suspensionPhase=Math.random()*Math.PI*2;
+ return vehicle;
+}
+function loadRealRacingCars(){
+ if(realCarLoadPromise)return realCarLoadPromise;
+ realCarLoadPromise=new Promise(resolve=>{
+  const loader=new GLTFLoader();
+  const definitions=[
+   ['supercar','assets/racing-cars/generic-mid-engine-supercar.glb'],
+   ['coupe','assets/racing-cars/generic-1990s-sports-coupe.glb']
+  ];
+  let completed=0;
+  const finish=()=>{completed++;if(completed===definitions.length){realCarAssetsReady=!!(realCarAssets.supercar||realCarAssets.coupe);if(realCarAssetsReady){rebuildSelectedCars();renderCarChoice();}resolve(realCarAssetsReady);}};
+  definitions.forEach(([key,url])=>loader.load(url,gltf=>{
+   const template=gltf.scene.clone(true);
+   const box=new THREE.Box3().setFromObject(template),size=box.getSize(new THREE.Vector3());
+   const center=box.getCenter(new THREE.Vector3());
+   // Keep the model's vertical axis and turn its longest horizontal dimension toward the track.
+   const longestAxis=size.x>size.z?'x':'z';
+   const rotationY=longestAxis==='x'?-Math.PI/2:0;
+   template.rotation.y=rotationY;template.updateMatrixWorld(true);
+   const rotatedBox=new THREE.Box3().setFromObject(template),rotatedSize=rotatedBox.getSize(new THREE.Vector3());
+   const scale=4.35/Math.max(rotatedSize.z,.01);
+   template.scale.setScalar(scale);template.updateMatrixWorld(true);
+   const scaledBox=new THREE.Box3().setFromObject(template),scaledCenter=scaledBox.getCenter(new THREE.Vector3());
+   const scaledMin=scaledBox.min.clone();
+   template.position.set(-scaledCenter.x,-scaledMin.y,-scaledCenter.z);
+   template.updateMatrixWorld(true);
+   template.userData.rotationY=0;template.userData.normalizedScale=1;template.userData.normalizedOffset=new THREE.Vector3();
+   // Store the already normalized scene as the reusable template.
+   realCarAssets[key]=template;
+   finish();
+  },undefined,error=>{console.warn('3D car model could not load:',url,error);finish();}));
+ });
+ return realCarLoadPromise;
+}
 function rebuildSelectedCars(){
  if(!scene)return;
  if(car)scene.remove(car);if(opponentCar)scene.remove(opponentCar);
@@ -841,8 +926,9 @@ function rebuildSelectedCars(){
  const mine=players.find(p=>p.uid===user?.uid);
  const other=players.find(p=>p.uid!==user?.uid);
  const myIndex=Math.max(0,players.findIndex(p=>p.uid===user?.uid));
- car=makeCar(myIndex===1?0x20c878:0xff3030,mine?.carId||selectedCarId);setTrackPose(car,distance,lane*2.3);scene.add(car);
- opponentCar=makeCar(myIndex===1?0xff3030:0x20c878,other?.carId||selectedCarId);setTrackPose(opponentCar,25,0);opponentCar.visible=!!opponentUid;scene.add(opponentCar);
+ const make=realCarAssetsReady?makeRealCar:makeCar;
+ car=make(myIndex===1?0x20c878:0xff3030,mine?.carId||selectedCarId);setTrackPose(car,distance,lane*2.3);scene.add(car);
+ opponentCar=make(myIndex===1?0xff3030:0x20c878,other?.carId||selectedCarId);setTrackPose(opponentCar,25,0);opponentCar.visible=!!opponentUid;scene.add(opponentCar);
 }
 function addTree(x,z,y=-5){
  const g=new THREE.Group(),trunk=new THREE.Mesh(new THREE.CylinderGeometry(.13,.18,1.4,7),new THREE.MeshStandardMaterial({color:0x76502e}));trunk.position.y=.7;g.add(trunk);
@@ -1018,6 +1104,7 @@ function init3D(){
  addFinishGate();
  [[180,-1.8],[360,1.8],[540,0],[760,-1.8],[940,1.8],[1160,0],[1380,-1.8],[1580,1.8],[1800,0],[2020,-1.8],[2240,1.8],[2460,0],[2680,-1.8],[2880,1.8]].forEach((o,i)=>addObstacle(o[0],o[1],i));
  car=makeCar(0xff3030,selectedCarId);setTrackPose(car,0,0);scene.add(car);
+ loadRealRacingCars().then(loaded=>{if(loaded){$('raceStatus').textContent='Real 3D racing car models loaded.';}});
  opponentCar=makeCar(0x20c878,selectedCarId);setTrackPose(opponentCar,25,0);opponentCar.visible=false;scene.add(opponentCar);
  [car,opponentCar].forEach(vehicle=>vehicle.traverse(obj=>{if(obj.isMesh){obj.castShadow=true;obj.receiveShadow=true;}}));
  const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};new ResizeObserver(resize).observe(host);drawTrackMap();
@@ -1029,7 +1116,8 @@ function syncWorld(){
  const rollTarget=(right?-.075:0)+(left?.075:0)+Math.sin(worldAnimTime*2.1)*Math.min(.012,speed/1800);
  carBodyRoll+=(rollTarget-carBodyRoll)*.12;
  if(car){
-  (car.userData.wheelParts||[]).forEach((wheel,index)=>{if(index===0||index===1)wheel.rotation.y=steeringAngle;});
+  (car.userData.frontWheels?.length?car.userData.frontWheels:(car.userData.wheelParts||[]).slice(0,2)).forEach(wheel=>{wheel.rotation.y=steeringAngle;});
+  if(car.userData.body){car.userData.body.rotation.x=braking?-.018:accelerating?.012:0;car.userData.body.position.y=Math.sin(worldAnimTime*8+(car.userData.suspensionPhase||0))*.012*Math.min(1,speed/35)+(braking?-.018:accelerating?.008:0);}
   const glow=braking?2.8:1.15;
   (car.userData.tailLights||[]).forEach(light=>{if(light.material?.emissiveIntensity!==undefined)light.material.emissiveIntensity+=(glow-light.material.emissiveIntensity)*.3;});
  }
@@ -1161,8 +1249,10 @@ function animate(now){
   if(elapsed>1550||(!finishDriveForward&&elapsed>1150)){finishSequenceActive=false;speed=0;showWinnerOverlay();}
  }else if(mode==='idle')speed=Math.max(0,speed-30*dt);
  if(car&&speed>0){(car.userData.wheelParts||[]).forEach(w=>{w.rotation.x+=direction*speed*dt*.025;});}
+ if(opponentCar&&opponentState&&Number(opponentState.speed||0)>0)(opponentCar.userData.wheelParts||[]).forEach(w=>{w.rotation.x+=Number(opponentState.direction||1)*Number(opponentState.speed||0)*dt*.025;});
  if(car){const targetBrake=braking?2.8:1.15;(car.userData.tailLights||[]).forEach(l=>{l.material.emissiveIntensity+=(targetBrake-l.material.emissiveIntensity)*Math.min(1,dt*10);});}
  spawnDriveEffects(dt);updateDriveEffects(dt);
+ if(previewRenderer&&previewCar){previewCar.rotation.y+=dt*.18;previewRenderer.render(previewScene,previewCamera);}
  syncWorld();renderer.render(scene,camera);
 }
 renderCarChoice();init3D();requestAnimationFrame(animate);

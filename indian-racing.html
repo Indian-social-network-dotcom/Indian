@@ -36,37 +36,6 @@ header h1{font-size:1.2rem;color:var(--orange);margin:0;flex:1}.wrap{width:min(1
 a{color:#ffd180}
 @media(max-width:520px){.wrap{padding:10px}.panel{padding:11px}header h1{font-size:1rem}#scene{height:48vh;min-height:270px}.controls button{padding:8px 3px;font-size:.88rem;min-height:62px}}
 
-/* Modern touch-first racing cockpit controls */
-body.racing-active .controls{position:fixed;left:50%;bottom:max(8px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1200;width:min(1040px,calc(100vw - 18px));display:grid;grid-template-columns:minmax(130px,1fr) auto minmax(150px,1fr);align-items:end;gap:12px;margin:0;padding:9px 12px;background:linear-gradient(135deg,rgba(7,15,24,.94),rgba(24,39,53,.94));border:1px solid #7890a3;border-radius:20px;box-shadow:0 8px 32px #000b,inset 0 1px #ffffff20;backdrop-filter:blur(12px)}
-body.racing-active .steering-pad{display:flex;align-items:center;justify-content:flex-start;gap:10px}
-body.racing-active .pedal-pad{display:flex;align-items:stretch;justify-content:flex-end;gap:10px}
-body.racing-active .utility-pad{display:flex;flex-direction:column;gap:7px;align-items:center}
-body.racing-active .controls button{min-width:0;min-height:64px;padding:8px 12px;border-radius:18px;font-weight:900;font-size:clamp(12px,1.8vw,16px);touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 5px 0 #0008,inset 0 1px #ffffff26;transition:filter .12s,transform .12s}
-body.racing-active .controls button:active,.controls button.pressed{filter:brightness(1.35);transform:translateY(3px);box-shadow:0 2px 0 #0008,inset 0 1px #ffffff26}
-body.racing-active .controls .steer{width:clamp(62px,9vw,88px);height:clamp(62px,9vw,88px);border-radius:50%;background:radial-gradient(circle at 35% 25%,#47647a,#172b3c 72%);border:2px solid #9db7c9;font-size:clamp(23px,4vw,34px);padding:0}
-body.racing-active .controls .go{min-width:clamp(92px,14vw,138px);background:linear-gradient(160deg,#35c978,#12623c);border:2px solid #8df0b4}
-body.racing-active .controls .brake{min-width:clamp(78px,11vw,112px);background:linear-gradient(160deg,#e65c55,#76211f);border:2px solid #ffaaa2}
-body.racing-active .controls .nitro{min-height:40px;padding:5px 12px;background:linear-gradient(160deg,#9b72e5,#493077);border:1px solid #d3baff;font-size:12px}
-body.racing-active .controls #reverseBtn{min-height:40px;padding:5px 12px;background:linear-gradient(160deg,#607d8b,#263d4b)!important;border:1px solid #b5d0dc;font-size:12px}
-body.racing-active #scene{inset:0 0 116px 0}
-body.racing-active .hud{max-width:250px}
-@media(max-width:760px) and (orientation:landscape){
- body.racing-active .controls{bottom:max(4px,env(safe-area-inset-bottom));width:calc(100vw - 10px);gap:5px;padding:5px 7px;border-radius:14px}
- body.racing-active .controls button{min-height:50px;padding:4px 7px;border-radius:13px;font-size:11px}
- body.racing-active .controls .steer{width:54px;height:54px;font-size:24px}
- body.racing-active .controls .go{min-width:78px}
- body.racing-active .controls .brake{min-width:66px}
- body.racing-active .controls .nitro,body.racing-active .controls #reverseBtn{min-height:29px;font-size:10px;padding:3px 7px}
- body.racing-active #scene{inset:0 0 88px 0}
-}
-@media(max-width:520px) and (orientation:landscape){
- body.racing-active .controls{grid-template-columns:1fr auto 1fr;gap:3px;padding:4px}
- body.racing-active .steering-pad,body.racing-active .pedal-pad{gap:4px}
- body.racing-active .controls .steer{width:48px;height:48px}
- body.racing-active .controls .go{min-width:68px}
- body.racing-active .controls .brake{min-width:58px}
-}
-
 /* New car-selection and game-mode screens */
 #carSelectionScreen,#modeSelectionScreen{background:radial-gradient(ellipse at 50% 15%,#29485b 0%,#142330 55%,#0a111a 100%);border:1px solid #426076;border-radius:18px;padding:clamp(16px,3vw,30px);min-height:68vh;display:flex;flex-direction:column;justify-content:center;gap:18px;overflow:hidden}
 #carSelectionScreen h2,#modeSelectionScreen h2{margin:0;text-align:center;font-size:clamp(1.35rem,3vw,2rem);color:#ffbd55}
@@ -133,6 +102,36 @@ body.racing-active #legacySetupPanel.hidden{display:none!important}
 #winnerNote{color:#d1deea;font-size:.92rem;margin:12px 0 20px}
 #winnerCard button{min-width:180px;min-height:50px;margin:5px}
 @media(max-width:520px){#winnerCard{padding:22px 14px}}
+/* Modern touch-first racing cockpit controls */
+body.racing-active .controls{position:fixed;left:50%;bottom:max(8px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1200;width:min(1040px,calc(100vw - 18px));display:grid;grid-template-columns:minmax(130px,1fr) auto minmax(150px,1fr);align-items:end;gap:12px;margin:0;padding:9px 12px;background:linear-gradient(135deg,rgba(7,15,24,.94),rgba(24,39,53,.94));border:1px solid #7890a3;border-radius:20px;box-shadow:0 8px 32px #000b,inset 0 1px #ffffff20;backdrop-filter:blur(12px)}
+body.racing-active .steering-pad{display:flex;align-items:center;justify-content:flex-start;gap:10px}
+body.racing-active .pedal-pad{display:flex;align-items:stretch;justify-content:flex-end;gap:10px}
+body.racing-active .utility-pad{display:flex;flex-direction:column;gap:7px;align-items:center}
+body.racing-active .controls button{min-width:0;min-height:64px;padding:8px 12px;border-radius:18px;font-weight:900;font-size:clamp(12px,1.8vw,16px);touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 5px 0 #0008,inset 0 1px #ffffff26;transition:filter .12s,transform .12s}
+body.racing-active .controls button:active,.controls button.pressed{filter:brightness(1.35);transform:translateY(3px);box-shadow:0 2px 0 #0008,inset 0 1px #ffffff26}
+body.racing-active .controls .steer{width:clamp(62px,9vw,88px);height:clamp(62px,9vw,88px);border-radius:50%;background:radial-gradient(circle at 35% 25%,#47647a,#172b3c 72%);border:2px solid #9db7c9;font-size:clamp(23px,4vw,34px);padding:0}
+body.racing-active .controls .go{min-width:clamp(92px,14vw,138px);background:linear-gradient(160deg,#35c978,#12623c);border:2px solid #8df0b4}
+body.racing-active .controls .brake{min-width:clamp(78px,11vw,112px);background:linear-gradient(160deg,#e65c55,#76211f);border:2px solid #ffaaa2}
+body.racing-active .controls .nitro{min-height:40px;padding:5px 12px;background:linear-gradient(160deg,#9b72e5,#493077);border:1px solid #d3baff;font-size:12px}
+body.racing-active .controls #reverseBtn{min-height:40px;padding:5px 12px;background:linear-gradient(160deg,#607d8b,#263d4b)!important;border:1px solid #b5d0dc;font-size:12px}
+body.racing-active #scene{inset:0 0 116px 0}
+body.racing-active .hud{max-width:250px}
+@media(max-width:760px) and (orientation:landscape){
+ body.racing-active .controls{bottom:max(4px,env(safe-area-inset-bottom));width:calc(100vw - 10px);gap:5px;padding:5px 7px;border-radius:14px}
+ body.racing-active .controls button{min-height:50px;padding:4px 7px;border-radius:13px;font-size:11px}
+ body.racing-active .controls .steer{width:54px;height:54px;font-size:24px}
+ body.racing-active .controls .go{min-width:78px}
+ body.racing-active .controls .brake{min-width:66px}
+ body.racing-active .controls .nitro,body.racing-active .controls #reverseBtn{min-height:29px;font-size:10px;padding:3px 7px}
+ body.racing-active #scene{inset:0 0 88px 0}
+}
+@media(max-width:520px) and (orientation:landscape){
+ body.racing-active .controls{grid-template-columns:1fr auto 1fr;gap:3px;padding:4px}
+ body.racing-active .steering-pad,body.racing-active .pedal-pad{gap:4px}
+ body.racing-active .controls .steer{width:48px;height:48px}
+ body.racing-active .controls .go{min-width:68px}
+ body.racing-active .controls .brake{min-width:58px}
+}
 </style>
 </head>
 <body>
@@ -1029,12 +1028,12 @@ function syncWorld(){
  const rollTarget=(right?-.075:0)+(left?.075:0)+Math.sin(worldAnimTime*2.1)*Math.min(.012,speed/1800);
  carBodyRoll+=(rollTarget-carBodyRoll)*.12;
  if(car){
-  car.rotation.z=carBodyRoll;
   (car.userData.wheelParts||[]).forEach((wheel,index)=>{if(index===0||index===1)wheel.rotation.y=steeringAngle;});
   const glow=braking?2.8:1.15;
   (car.userData.tailLights||[]).forEach(light=>{if(light.material?.emissiveIntensity!==undefined)light.material.emissiveIntensity+=(glow-light.material.emissiveIntensity)*.3;});
  }
  setTrackPose(car,distance,lane*2.3,(right?-.035:0)+(left?.035:0));
+ if(car)car.rotateZ(carBodyRoll);
  if(opponentState&&opponentUid&&room?.status==='playing'){
   const targetDistance=Number(opponentState.distance||0),targetLane=Number(opponentState.lane||0);
   opponentRenderDistance+=(targetDistance-opponentRenderDistance)*.24;

@@ -1,0 +1,38 @@
+name: Fetch CC0 racing car models
+on:
+  push:
+    branches:
+      - feature/racing-real-glb-cars
+    paths:
+      - '.github/workflows/fetch-racing-cars.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch-models:
+    if: "!contains(github.event.head_commit.message, '[assets-bot]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Download CC0 GLB vehicle models
+        run: |
+          mkdir -p assets/racing-cars
+          curl --fail --location --retry 3 --retry-delay 2 \
+            'https://www.innerscene.com/api/library/generic-mid-engine-supercar-73f252c5/download' \
+            --output assets/racing-cars/generic-mid-engine-supercar.glb
+          curl --fail --location --retry 3 --retry-delay 2 \
+            'https://www.innerscene.com/api/library/generic-1990s-japanese-style-sports-coupe-ace64592/download' \
+            --output assets/racing-cars/generic-1990s-sports-coupe.glb
+          test "$(stat -c%s assets/racing-cars/generic-mid-engine-supercar.glb)" -gt 500000
+          test "$(stat -c%s assets/racing-cars/generic-1990s-sports-coupe.glb)" -gt 500000
+          file assets/racing-cars/*.glb
+      - name: Commit downloaded models to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/racing-cars/*.glb
+          git commit -m "[assets-bot] Add CC0 realistic racing car GLB models" || exit 0
+          git push

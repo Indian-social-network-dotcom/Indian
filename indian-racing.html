@@ -807,16 +807,16 @@ function rebuildSelectedCars(){
  car=makeCar(myIndex===1?0x20c878:0xff3030,mine?.carId||selectedCarId);setTrackPose(car,distance,lane*2.3);scene.add(car);
  opponentCar=makeCar(myIndex===1?0xff3030:0x20c878,other?.carId||selectedCarId);setTrackPose(opponentCar,25,0);opponentCar.visible=!!opponentUid;scene.add(opponentCar);
 }
-function addTree(x,z){
+function addTree(x,z,y=-5){
  const g=new THREE.Group(),trunk=new THREE.Mesh(new THREE.CylinderGeometry(.13,.18,1.4,7),new THREE.MeshStandardMaterial({color:0x76502e}));trunk.position.y=.7;g.add(trunk);
- const crown=new THREE.Mesh(new THREE.ConeGeometry(.9,2.3,8),new THREE.MeshStandardMaterial({color:0x176b3a}));crown.position.y=2.25;g.add(crown);g.position.set(x,-5,z);scene.add(g);scenery.push(g);
+ const crown=new THREE.Mesh(new THREE.ConeGeometry(.9,2.3,8),new THREE.MeshStandardMaterial({color:0x176b3a}));crown.position.y=2.25;g.add(crown);g.position.set(x,y,z);trunk.castShadow=true;crown.castShadow=true;scene.add(g);scenery.push(g);
 }
-function addBuilding(x,z){
+function addBuilding(x,z,y=-5){
  const h=4+Math.random()*10,w=3+Math.random()*3;
  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,4),new THREE.MeshStandardMaterial({color:[0x607d8b,0x8d6e63,0x455a64,0x546e7a][Math.floor(Math.random()*4)]}));
- m.position.set(x,-5+h/2,z);scene.add(m);scenery.push(m);
+ m.position.set(x,y+h/2,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);scenery.push(m);
 }
-function addSnowPine(x,z,scale=1){
+function addSnowPine(x,z,scale=1,y=-5){
  const g=new THREE.Group();
  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.12*scale,.2*scale,1.25*scale,7),new THREE.MeshStandardMaterial({color:0x594431,roughness:1}));
  trunk.position.y=.62*scale;g.add(trunk);
@@ -826,16 +826,16 @@ function addSnowPine(x,z,scale=1){
   const snow=new THREE.Mesh(new THREE.ConeGeometry((.78-i*.13)*scale,(.72-i*.05)*scale,8),new THREE.MeshStandardMaterial({color:0xf5fbff,roughness:.8}));
   snow.position.y=(1.72+i*.55)*scale;g.add(snow);
  }
- g.position.set(x,-5,z);scene.add(g);scenery.push(g);
+ g.position.set(x,y,z);g.traverse(o=>{if(o.isMesh)o.castShadow=true;});scene.add(g);scenery.push(g);
 }
-function addSnowMountain(x,z,radius,height){
+function addSnowMountain(x,z,radius,height,y=-5){
  const g=new THREE.Group();
  const rockMat=new THREE.MeshStandardMaterial({color:0x657887,roughness:1});
  const snowMat=new THREE.MeshStandardMaterial({color:0xf1f7fb,roughness:.9});
  const peak=new THREE.Mesh(new THREE.ConeGeometry(radius,height,7,3),rockMat);peak.position.y=height/2;g.add(peak);
  const cap=new THREE.Mesh(new THREE.ConeGeometry(radius*.43,height*.48,7,2),snowMat);cap.position.y=height*.73;g.add(cap);
  const lowerSnow=new THREE.Mesh(new THREE.ConeGeometry(radius*.72,height*.24,7,1),snowMat);lowerSnow.position.y=height*.58;g.add(lowerSnow);
- g.position.set(x,-5,z);scene.add(g);scenery.push(g);
+ g.position.set(x,y,z);g.traverse(o=>{if(o.isMesh)o.castShadow=true;});scene.add(g);scenery.push(g);
 }
 function addModernBarrier(side,p){
  const pose=placeOnTrack(p,side*(TRACK_HALF+1.15),0),x=pose.position.x,z=pose.position.z;
@@ -958,20 +958,20 @@ function init3D(){
   const leftPose=placeOnTrack(p,-(TRACK_HALF+6),-5).position;
   const rightPose=placeOnTrack(p,TRACK_HALF+6,-5).position;
   if(p>=1180&&p<=2100){
-   addSnowPine(leftPose.x,leftPose.z,1.05+(p%3)*.12);
-   addSnowPine(rightPose.x,rightPose.z,.9+(p%4)*.1);
+   addSnowPine(leftPose.x,leftPose.z,1.05+(p%3)*.12,leftPose.y);
+   addSnowPine(rightPose.x,rightPose.z,.9+(p%4)*.1,rightPose.y);
    if(p%126===15){
     const lm=placeOnTrack(p,-(TRACK_HALF+31),-5).position;
     const rm=placeOnTrack(p,TRACK_HALF+34,-5).position;
-    addSnowMountain(lm.x,lm.z,13,34+(p%5)*3);
-    addSnowMountain(rm.x,rm.z,16,42+(p%4)*4);
+    addSnowMountain(lm.x,lm.z,13,34+(p%5)*3,lm.y);
+    addSnowMountain(rm.x,rm.z,16,42+(p%4)*4,rm.y);
    }
   }else{
-   addTree(leftPose.x,leftPose.z);addTree(rightPose.x,rightPose.z);
+   addTree(leftPose.x,leftPose.z,leftPose.y);addTree(rightPose.x,rightPose.z,rightPose.y);
    if(p%84<42){
     const lb=placeOnTrack(p,-(TRACK_HALF+14),-5).position;
     const rb=placeOnTrack(p,TRACK_HALF+14,-5).position;
-    addBuilding(lb.x,lb.z);addBuilding(rb.x,rb.z);
+    addBuilding(lb.x,lb.z,lb.y);addBuilding(rb.x,rb.z,rb.y);
    }
   }
  }

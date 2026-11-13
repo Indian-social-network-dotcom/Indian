@@ -413,7 +413,7 @@ function renderCarPreview(){
  if(previewCar)previewScene.remove(previewCar);
  const key=selectedCarId==='supercar'?'supercar':'coupe',template=realCarAssets[key]||realCarAssets.supercar||realCarAssets.coupe;
  if(!template){const loading=$('carPreviewLoading');if(loading)loading.textContent='3D model is unavailable.';return;}
- previewCar=template.clone(true);previewCar.position.y=0;previewScene.add(previewCar);
+ previewCar=makeRealCar(0xc7d4df,selectedCarId);previewCar.position.y=0;previewScene.add(previewCar);
 }
 function chooseCar(delta){selectedCarIndex=(selectedCarIndex+delta+carCatalog.length)%carCatalog.length;renderCarChoice();}
 function showRaceScreen(){if(previewRenderer){previewRenderer.dispose();previewRenderer.domElement.remove();previewRenderer=null;previewScene=null;previewCamera=null;previewCar=null;}document.body.classList.add('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
@@ -652,7 +652,7 @@ window.addEventListener('blur',()=>{left=right=accelerating=braking=boosting=rev
 
 let scene,camera,renderer,car,opponentCar,roadMarks=[],scenery=[],obstacles=[],hitObstacles=new Set(),clock=new THREE.Clock(),opponentRenderDistance=0,opponentRenderLane=0,sunLight=null,skyObject=null;
 let driveParticles=[],driveFxAccumulator=0;
-let realCarAssets={supercar:null,coupe:null},realCarAssetsReady=false,realCarLoadPromise=null;
+let realCarAssets={supercar:null,coupe:null,supercarFallback:null},realCarAnimations={supercar:[],coupe:[],supercarFallback:[]},realCarAssetsReady=false,realCarLoadPromise=null;
 let previewRenderer=null,previewScene=null,previewCamera=null,previewCar=null,previewFloor=null;
 const TRACK_HALF=7,TRACK_LENGTH=FINISH_DISTANCE;
 let trackCurve=null;
@@ -860,7 +860,9 @@ function makeCar(color,model=selectedCarId){
  return group;
 }
 function makeRealCar(color,model=selectedCarId){
- const key=model==='supercar'?'supercar':'coupe',template=realCarAssets[key];
+ const requestedKey=model==='supercar'?'supercar':'coupe';
+ const actualKey=requestedKey==='supercar'?(realCarAssets.supercar?'supercar':realCarAssets.supercarFallback?'supercarFallback':'coupe'):'coupe';
+ const template=realCarAssets[actualKey]||realCarAssets.supercar||realCarAssets.coupe||realCarAssets.supercarFallback;
  if(!template)return makeCar(color,model);
  const vehicle=new THREE.Group();vehicle.userData.model=model;vehicle.userData.isImported3D=true;
  const body=template.clone(true);
@@ -875,12 +877,18 @@ function makeRealCar(color,model=selectedCarId){
   if(namedWheel||shapeWheel){wheelParts.push(obj);if(/front|fl_|fr_|wheel.?[01]/.test(n)||wheelCenter.z<-.55)frontWheels.push(obj);}
   if(/tail|brake.?light|rear.?light/.test(n))tailLights.push(obj);
   if(/head.?light|front.?light/.test(n))headLights.push(obj);
-  if(/body|paint|shell|chassis/.test(n)&&obj.material){
+  if(/body|paint|shell|chassis|carpaint|coachwork/.test(n)&&obj.material){
    const mats=Array.isArray(obj.material)?obj.material:[obj.material];
    mats.forEach(mat=>{if(mat.color){mat.color.copy(tint);mat.color.multiplyScalar(.88);mat.metalness=Math.max(mat.metalness||0,.42);mat.roughness=Math.min(mat.roughness??.5,.34);mat.needsUpdate=true;}});
   }
  });
  vehicle.add(body);
+ const steeringClip=(realCarAnimations[actualKey]||[]).find(clip=>/steering.*input/i.test(clip.name));
+ if(steeringClip){
+  const mixer=new THREE.AnimationMixer(body);
+  const action=mixer.clipAction(steeringClip);action.setLoop(THREE.LoopPingPong,Infinity);action.play();
+  vehicle.userData.mixer=mixer;
+ }
  vehicle.userData.wheelParts=wheelParts;vehicle.userData.frontWheels=frontWheels;
  vehicle.userData.tailLights=tailLights;vehicle.userData.headLights=headLights;
  vehicle.userData.body=body;vehicle.userData.suspensionPhase=Math.random()*Math.PI*2;
@@ -891,13 +899,15 @@ function loadRealRacingCars(){
  realCarLoadPromise=new Promise(resolve=>{
   const loader=new GLTFLoader();
   const definitions=[
-   ['supercar','assets/racing-cars/generic-mid-engine-supercar.glb'],
-   ['coupe','assets/racing-cars/generic-1990s-sports-coupe.glb']
+   ['supercar','assets/racing-cars/spectral-gt-rs.glb'],
+   ['coupe','assets/racing-cars/generic-1990s-sports-coupe.glb'],
+   ['supercarFallback','assets/racing-cars/generic-mid-engine-supercar.glb']
   ];
   let completed=0;
-  const finish=()=>{completed++;if(completed===definitions.length){realCarAssetsReady=!!(realCarAssets.supercar||realCarAssets.coupe);if(realCarAssetsReady){rebuildSelectedCars();renderCarChoice();}resolve(realCarAssetsReady);}};
+  const finish=()=>{completed++;if(completed===definitions.length){realCarAssetsReady=!!(realCarAssets.supercar||realCarAssets.supercarFallback||realCarAssets.coupe);if(realCarAssetsReady){rebuildSelectedCars();renderCarChoice();}resolve(realCarAssetsReady);}};
   definitions.forEach(([key,url])=>loader.load(url,gltf=>{
    const template=gltf.scene.clone(true);
+   realCarAnimations[key]=Array.isArray(gltf.animations)?gltf.animations:[];
    const box=new THREE.Box3().setFromObject(template),size=box.getSize(new THREE.Vector3());
    const center=box.getCenter(new THREE.Vector3());
    // Keep the model's vertical axis and turn its longest horizontal dimension toward the track.
@@ -1248,6 +1258,9 @@ function animate(now){
   if(finishRopeBroken)finishRopeParts.forEach(({group,side})=>{group.position.y-=1.25*dt;group.rotation.z+=(side<0?-.35:.35)*dt;});
   if(elapsed>1550||(!finishDriveForward&&elapsed>1150)){finishSequenceActive=false;speed=0;showWinnerOverlay();}
  }else if(mode==='idle')speed=Math.max(0,speed-30*dt);
+ if(car?.userData.mixer)car.userData.mixer.update(dt);
+ if(opponentCar?.userData.mixer)opponentCar.userData.mixer.update(dt);
+ if(previewCar?.userData.mixer)previewCar.userData.mixer.update(dt);
  if(car&&speed>0){(car.userData.wheelParts||[]).forEach(w=>{w.rotation.x+=direction*speed*dt*.025;});}
  if(opponentCar&&opponentState&&Number(opponentState.speed||0)>0)(opponentCar.userData.wheelParts||[]).forEach(w=>{w.rotation.x+=Number(opponentState.direction||1)*Number(opponentState.speed||0)*dt*.025;});
  if(car){const targetBrake=braking?2.8:1.15;(car.userData.tailLights||[]).forEach(l=>{l.material.emissiveIntensity+=(targetBrake-l.material.emissiveIntensity)*Math.min(1,dt*10);});}

@@ -413,7 +413,7 @@ function renderCarPreview(){
  previewCar=template.clone(true);previewCar.position.y=0;previewScene.add(previewCar);
 }
 function chooseCar(delta){selectedCarIndex=(selectedCarIndex+delta+carCatalog.length)%carCatalog.length;renderCarChoice();}
-function showRaceScreen(){document.body.classList.add('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
+function showRaceScreen(){if(previewRenderer){previewRenderer.dispose();previewRenderer.domElement.remove();previewRenderer=null;previewScene=null;previewCamera=null;previewCar=null;}document.body.classList.add('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
 function showModeScreen(){document.body.classList.remove('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
 function showCarScreen(){document.body.classList.remove('racing-active');$('modeSelectionScreen').classList.add('hidden');$('carSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
 function requestLandscape(){try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
@@ -1114,7 +1114,7 @@ function syncWorld(){
  carBodyRoll+=(rollTarget-carBodyRoll)*.12;
  if(car){
   (car.userData.frontWheels?.length?car.userData.frontWheels:(car.userData.wheelParts||[]).slice(0,2)).forEach(wheel=>{wheel.rotation.y=steeringAngle;});
-  if(car.userData.body){car.userData.body.rotation.z=carBodyRoll;car.userData.body.position.y=Math.sin(worldAnimTime*8+(car.userData.suspensionPhase||0))*.012*Math.min(1,speed/35);}
+  if(car.userData.body){car.userData.body.rotation.x=braking?-.018:accelerating?.012:0;car.userData.body.position.y=Math.sin(worldAnimTime*8+(car.userData.suspensionPhase||0))*.012*Math.min(1,speed/35)+(braking?-.018:accelerating?.008:0);}
   const glow=braking?2.8:1.15;
   (car.userData.tailLights||[]).forEach(light=>{if(light.material?.emissiveIntensity!==undefined)light.material.emissiveIntensity+=(glow-light.material.emissiveIntensity)*.3;});
  }

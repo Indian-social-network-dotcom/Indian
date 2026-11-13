@@ -416,7 +416,7 @@ function renderCarPreview(){
  previewCar=makeRealCar(0xc7d4df,selectedCarId);previewCar.position.y=0;previewScene.add(previewCar);
 }
 function chooseCar(delta){selectedCarIndex=(selectedCarIndex+delta+carCatalog.length)%carCatalog.length;renderCarChoice();}
-function showRaceScreen(){if(previewRenderer){previewRenderer.dispose();previewRenderer.domElement.remove();previewRenderer=null;previewScene=null;previewCamera=null;previewCar=null;}document.body.classList.add('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
+function showRaceScreen(){if(previewRenderer){previewRenderer.dispose();previewRenderer.domElement.remove();previewRenderer=null;previewScene=null;previewCamera=null;previewCar=null;}document.body.classList.add('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.add('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.remove('hidden');$('backBtn').textContent='Back to Modes';resizeRaceScene();try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
 function showModeScreen(){document.body.classList.remove('racing-active');$('carSelectionScreen').classList.add('hidden');$('modeSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
 function showCarScreen(){document.body.classList.remove('racing-active');$('modeSelectionScreen').classList.add('hidden');$('carSelectionScreen').classList.remove('hidden');$('legacySetupPanel').classList.add('hidden');$('raceGamePanel').classList.add('hidden');$('backBtn').textContent='Back to Game Zone';}
 function requestLandscape(){try{screen.orientation?.lock?.('landscape').catch(()=>{});}catch(e){}}
@@ -694,10 +694,13 @@ function buildTrackCurve(){
   [150,0,170],[-20,0,70],[-150,0,-80],[-230,0,-260]
  ].map(p=>new THREE.Vector3(p[0],p[1],p[2]));
  // Give the circuit real elevation: rolling hills and long uphill/downhill sections.
- route.forEach((p,i)=>{const t=i/(route.length-1);p.y=40+55*Math.sin(t*Math.PI*6)+22*Math.sin(t*Math.PI*13);});
+ route.forEach(p=>{p.y=0;});
  trackCurve=new THREE.CatmullRomCurve3(route,false,'centripetal',.42);
  const scale=TRACK_LENGTH/trackCurve.getLength();
- route.forEach(p=>p.multiplyScalar(scale));
+ // Scale the horizontal circuit first, then add gentle, low-amplitude hills in world units.
+ // The previous code scaled a 40–117 unit elevation together with the map, lifting the road and scenery far above the terrain.
+ route.forEach(p=>{p.x*=scale;p.z*=scale;});
+ route.forEach((p,i)=>{const t=i/(route.length-1);p.y=1.15*Math.sin(t*Math.PI*6)+.38*Math.sin(t*Math.PI*13);});
  trackCurve.points=route;
  trackCurve.updateArcLengths();
 }
@@ -940,16 +943,16 @@ function rebuildSelectedCars(){
  car=make(myIndex===1?0x20c878:0xff3030,mine?.carId||selectedCarId);setTrackPose(car,distance,lane*2.3);scene.add(car);
  opponentCar=make(myIndex===1?0xff3030:0x20c878,other?.carId||selectedCarId);setTrackPose(opponentCar,25,0);opponentCar.visible=!!opponentUid;scene.add(opponentCar);
 }
-function addTree(x,z,y=-5){
+function addTree(x,z,y=-2.0){
  const g=new THREE.Group(),trunk=new THREE.Mesh(new THREE.CylinderGeometry(.13,.18,1.4,7),new THREE.MeshStandardMaterial({color:0x76502e}));trunk.position.y=.7;g.add(trunk);
  const crown=new THREE.Mesh(new THREE.ConeGeometry(.9,2.3,8),new THREE.MeshStandardMaterial({color:0x176b3a}));crown.position.y=2.25;g.add(crown);g.position.set(x,y,z);trunk.castShadow=true;crown.castShadow=true;scene.add(g);scenery.push(g);
 }
-function addBuilding(x,z,y=-5){
+function addBuilding(x,z,y=-2.0){
  const h=4+Math.random()*10,w=3+Math.random()*3;
  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,4),new THREE.MeshStandardMaterial({color:[0x607d8b,0x8d6e63,0x455a64,0x546e7a][Math.floor(Math.random()*4)]}));
  m.position.set(x,y+h/2,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);scenery.push(m);
 }
-function addSnowPine(x,z,scale=1,y=-5){
+function addSnowPine(x,z,scale=1,y=-2.0){
  const g=new THREE.Group();
  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.12*scale,.2*scale,1.25*scale,7),new THREE.MeshStandardMaterial({color:0x594431,roughness:1}));
  trunk.position.y=.62*scale;g.add(trunk);
@@ -961,7 +964,7 @@ function addSnowPine(x,z,scale=1,y=-5){
  }
  g.position.set(x,y,z);g.traverse(o=>{if(o.isMesh)o.castShadow=true;});scene.add(g);scenery.push(g);
 }
-function addSnowMountain(x,z,radius,height,y=-5){
+function addSnowMountain(x,z,radius,height,y=-2.0){
  const g=new THREE.Group();
  const rockMat=new THREE.MeshStandardMaterial({color:0x657887,roughness:1});
  const snowMat=new THREE.MeshStandardMaterial({color:0xf1f7fb,roughness:.9});
@@ -980,28 +983,13 @@ function addModernBarrier(side,p){
  light.position.copy(pose.position).addScaledVector(pose.frame.up,1.06);light.rotation.copy(rail.rotation);scene.add(light);
 }
 function addFinishGate(){
- const p=FINISH_DISTANCE,finishPose=placeOnTrack(p),x=finishPose.position.x,y=finishPose.position.y,z=finishPose.position.z;
- const poleMat=new THREE.MeshStandardMaterial({color:0xe9edf2,metalness:.65,roughness:.3});
- const redMat=new THREE.MeshStandardMaterial({color:0xe51b32,metalness:.25,roughness:.35});
- for(const side of [-1,1]){
-  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.16,.2,4.2,12),poleMat);
-  pole.position.set(x+side*(TRACK_HALF-.2),y+2.1,z);scene.add(pole);
-  const foot=new THREE.Mesh(new THREE.CylinderGeometry(.55,.65,.28,12),redMat);
-  foot.position.set(x+side*(TRACK_HALF-.2),y+.14,z);scene.add(foot);
- }
- for(const side of [-1,1]){
-  const ropeGroup=new THREE.Group();ropeGroup.position.set(x+side*TRACK_HALF,y+2.65,z);ropeGroup.userData.baseY=y+2.65;
-  const points=side<0?[new THREE.Vector3(0,0,0),new THREE.Vector3(TRACK_HALF*.5,-.3,0),new THREE.Vector3(TRACK_HALF,-.45,0)]:[new THREE.Vector3(0,0,0),new THREE.Vector3(-TRACK_HALF*.5,-.3,0),new THREE.Vector3(-TRACK_HALF,-.45,0)];
-  const rope=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),20,.12,8,false),redMat);
-  ropeGroup.add(rope);scene.add(ropeGroup);finishRopeParts.push({group:ropeGroup,side});
- }
- const checkMatA=new THREE.MeshBasicMaterial({color:0xffffff}),checkMatB=new THREE.MeshBasicMaterial({color:0x15191e});
+ // A low-profile checkered strip marks the finish on the road. No hanging rope, poles or overhead banner.
+ const p=FINISH_DISTANCE,checkMatA=new THREE.MeshBasicMaterial({color:0xffffff}),checkMatB=new THREE.MeshBasicMaterial({color:0x15191e});
  for(let i=0;i<28;i++){
-  const tile=new THREE.Mesh(new THREE.BoxGeometry((TRACK_HALF*2)/28,.035,1.7),i%2?checkMatA:checkMatB);
-  tile.position.set(x-TRACK_HALF+(i+.5)*(TRACK_HALF*2/28),y+.065,z);scene.add(tile);
+  const offset=-TRACK_HALF+(i+.5)*(TRACK_HALF*2/28),pose=placeOnTrack(p,offset,.075);
+  const tile=new THREE.Mesh(new THREE.BoxGeometry((TRACK_HALF*2)/28,.045,1.8),i%2?checkMatA:checkMatB);
+  tile.position.copy(pose.position);orientTrackObject(tile,pose.frame);scene.add(tile);
  }
- const banner=new THREE.Mesh(new THREE.BoxGeometry(5,.75,.12),new THREE.MeshBasicMaterial({color:0xd71932}));
- banner.position.set(x,y+3.35,z);scene.add(banner);
 }
 function addObstacle(p,laneValue,index){
  const group=new THREE.Group();
@@ -1045,14 +1033,15 @@ function makeProceduralSurfaceTexture(kind){
 function init3D(){
  buildTrackCurve();
  const host=$('scene');scene=new THREE.Scene();scene.background=new THREE.Color(0x9bc7e8);scene.fog=new THREE.Fog(0xb7d0df,260,1450);
- camera=new THREE.PerspectiveCamera(66,host.clientWidth/host.clientHeight,.1,2200);camera.position.set(0,8,13);camera.lookAt(0,1,-20);
- renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(host.clientWidth,host.clientHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;host.appendChild(renderer.domElement);
+ const initialWidth=host.clientWidth||1280,initialHeight=host.clientHeight||720;
+ camera=new THREE.PerspectiveCamera(66,initialWidth/initialHeight,.1,2200);camera.position.set(0,8,13);camera.lookAt(0,1,-20);
+ renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(initialWidth,initialHeight,false);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;host.appendChild(renderer.domElement);
  skyObject=new Sky();skyObject.scale.setScalar(4500);scene.add(skyObject);skyObject.material.uniforms.turbidity.value=7;skyObject.material.uniforms.rayleigh.value=2.2;skyObject.material.uniforms.mieCoefficient.value=.006;skyObject.material.uniforms.mieDirectionalG.value=.82;
  const sunDirection=new THREE.Vector3().setFromSphericalCoords(1,THREE.MathUtils.degToRad(78),THREE.MathUtils.degToRad(210));skyObject.material.uniforms.sunPosition.value.copy(sunDirection);
  scene.add(new THREE.HemisphereLight(0xe8f5ff,0x536044,1.45));
  sunLight=new THREE.DirectionalLight(0xfff2dc,3.1);sunLight.position.set(-80,110,65);sunLight.castShadow=true;sunLight.shadow.mapSize.set(2048,2048);sunLight.shadow.camera.left=-95;sunLight.shadow.camera.right=95;sunLight.shadow.camera.top=95;sunLight.shadow.camera.bottom=-95;sunLight.shadow.camera.near=1;sunLight.shadow.camera.far=300;sunLight.shadow.bias=-.00018;sunLight.shadow.normalBias=.035;scene.add(sunLight);scene.add(sunLight.target);
  const grassTexture=makeProceduralSurfaceTexture('grass');if(grassTexture)grassTexture.repeat.set(170,170);
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(2600,2600),new THREE.MeshStandardMaterial({color:0xffffff,map:grassTexture,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.set(300,-7,-360);ground.receiveShadow=true;scene.add(ground);
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(2600,2600),new THREE.MeshStandardMaterial({color:0xffffff,map:grassTexture,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.set(300,-2.45,-360);ground.receiveShadow=true;scene.add(ground);
  const shoulderMat=new THREE.MeshStandardMaterial({color:0x777b78,roughness:1,side:THREE.DoubleSide});
  for(const side of [-1,1]){
   const shoulderVertices=[],shoulderIndices=[],steps=900;
@@ -1088,22 +1077,22 @@ function init3D(){
  }
  // Removed the old cross-road bars: they looked like repeated 2D ladder stripes.
  for(let p=15;p<TRACK_LENGTH;p+=42){
-  const leftPose=placeOnTrack(p,-(TRACK_HALF+6),-5).position;
-  const rightPose=placeOnTrack(p,TRACK_HALF+6,-5).position;
+  const leftPose=placeOnTrack(p,-(TRACK_HALF+6),-2.0).position;
+  const rightPose=placeOnTrack(p,TRACK_HALF+6,-2.0).position;
   if(p>=1180&&p<=2100){
    addSnowPine(leftPose.x,leftPose.z,1.05+(p%3)*.12,leftPose.y);
    addSnowPine(rightPose.x,rightPose.z,.9+(p%4)*.1,rightPose.y);
    if(p%126===15){
-    const lm=placeOnTrack(p,-(TRACK_HALF+31),-5).position;
-    const rm=placeOnTrack(p,TRACK_HALF+34,-5).position;
+    const lm=placeOnTrack(p,-(TRACK_HALF+31),-2.0).position;
+    const rm=placeOnTrack(p,TRACK_HALF+34,-2.0).position;
     addSnowMountain(lm.x,lm.z,13,34+(p%5)*3,lm.y);
     addSnowMountain(rm.x,rm.z,16,42+(p%4)*4,rm.y);
    }
   }else{
    addTree(leftPose.x,leftPose.z,leftPose.y);addTree(rightPose.x,rightPose.z,rightPose.y);
    if(p%84<42){
-    const lb=placeOnTrack(p,-(TRACK_HALF+14),-5).position;
-    const rb=placeOnTrack(p,TRACK_HALF+14,-5).position;
+    const lb=placeOnTrack(p,-(TRACK_HALF+14),-2.0).position;
+    const rb=placeOnTrack(p,TRACK_HALF+14,-2.0).position;
     addBuilding(lb.x,lb.z,lb.y);addBuilding(rb.x,rb.z,rb.y);
    }
   }
@@ -1117,7 +1106,13 @@ function init3D(){
  loadRealRacingCars().then(loaded=>{if(loaded){$('raceStatus').textContent='Real 3D racing car models loaded.';}});
  opponentCar=makeCar(0x20c878,selectedCarId);setTrackPose(opponentCar,25,0);opponentCar.visible=false;scene.add(opponentCar);
  [car,opponentCar].forEach(vehicle=>vehicle.traverse(obj=>{if(obj.isMesh){obj.castShadow=true;obj.receiveShadow=true;}}));
- const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};new ResizeObserver(resize).observe(host);drawTrackMap();
+ const resize=()=>resizeRaceScene();new ResizeObserver(resize).observe(host);resizeRaceScene();drawTrackMap();
+}
+function resizeRaceScene(){
+ if(!renderer||!camera)return;
+ const host=$('scene');
+ const apply=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
+ requestAnimationFrame(()=>{apply();requestAnimationFrame(apply);});
 }
 function syncWorld(){
  const pose=placeOnTrack(distance,lane*2.3,0);

@@ -294,6 +294,7 @@ function stopRaceEngineSounds(){
 }
 function updateEngineSound(){
  if(!audioEnabled||speed<=2||finished){if(raceThrottleEngineAudio)raceThrottleEngineAudio.pause();return;}
+ if(raceStartEngineAudio&&!raceStartEngineAudio.ended&&!raceStartEngineAudio.paused)return;
  try{
   if(!raceThrottleEngineAudio){raceThrottleEngineAudio=new Audio(RACE_THROTTLE_ENGINE_SRC);raceThrottleEngineAudio.preload='auto';raceThrottleEngineAudio.loop=true;raceThrottleEngineAudio.volume=.52;}
   raceThrottleEngineAudio.playbackRate=Math.max(.85,Math.min(1.75,.85+speed/260));

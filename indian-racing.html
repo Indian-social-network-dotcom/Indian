@@ -634,6 +634,7 @@ window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key.toLowerCase()=
 window.addEventListener('blur',()=>{left=right=accelerating=braking=boosting=reversing=false;});
 
 let scene,camera,renderer,car,opponentCar,roadMarks=[],scenery=[],obstacles=[],hitObstacles=new Set(),clock=new THREE.Clock(),opponentRenderDistance=0,opponentRenderLane=0,sunLight=null,skyObject=null;
+let driveParticles=[],driveFxAccumulator=0;
 const TRACK_HALF=7,TRACK_LENGTH=FINISH_DISTANCE;
 let trackCurve=null;
 function buildTrackCurve(){
@@ -1043,7 +1044,8 @@ function syncWorld(){
  }else opponentCar.visible=false;
  // Close chase camera: keep the whole car visible and point just ahead of it.
  const lookPose=placeOnTrack(distance+8,0,1.25),curveAhead=trackFrame(distance+10).tangent.clone().sub(trackFrame(distance-10).tangent),sideSwing=Math.max(-1.4,Math.min(1.4,curveAhead.x*10))+(right?.75:0)-(left?.75:0);
- const desiredCamera=pose.position.clone().addScaledVector(pose.frame.tangent,-11.5).addScaledVector(pose.frame.up,5.2).addScaledVector(pose.frame.right,sideSwing);
+ const shake=speed>145?Math.min(.055,(speed-145)/1500):0;
+ const desiredCamera=pose.position.clone().addScaledVector(pose.frame.tangent,-11.5).addScaledVector(pose.frame.up,5.2).addScaledVector(pose.frame.right,sideSwing+Math.sin(worldAnimTime*31)*shake).add(new THREE.Vector3(0,Math.sin(worldAnimTime*39)*shake,0));
  camera.position.lerp(desiredCamera,.2);camera.up.lerp(pose.frame.up,.22).normalize();
  let lookTarget=lookPose.position.clone().addScaledVector(lookPose.frame.up,1.25);
  if(sunLight){sunLight.target.position.copy(pose.position);sunLight.position.copy(pose.position).add(new THREE.Vector3(-72,105,58));sunLight.target.updateMatrixWorld();sunLight.updateMatrixWorld();}
@@ -1094,6 +1096,39 @@ async function loseByDrums(){
   try{await callStarWorker('forfeitRacingRace',{roomId});refreshStarWallet();}catch(e){raceStatus('GAME OVER! 3 drum hits. Winner result sync nahi hua: '+e.message);}
  }
 }
+function spawnDriveEffects(dt){
+ if(!car||!scene)return;
+ const active=mode==='practice'||(mode==='online'&&room?.status==='playing');
+ if(!active)return;
+ driveFxAccumulator+=dt;
+ const interval=boosting&&speed>30?.035:braking&&speed>35?.055:.18;
+ if(driveFxAccumulator<interval)return;
+ driveFxAccumulator=0;
+ const count=boosting&&speed>30?3:braking&&speed>35?2:0;
+ for(let i=0;i<count;i++){
+  const isNitro=boosting&&!braking;
+  const material=new THREE.MeshBasicMaterial({color:isNitro?(Math.random()>.5?0x42d9ff:0xffa52e):0xb7c1c8,transparent:true,opacity:isNitro?.88:.42,depthWrite:false});
+  const particle=new THREE.Mesh(new THREE.SphereGeometry(isNitro?.12:.16,8,7),material);
+  const local=new THREE.Vector3((Math.random()-.5)*(isNitro?.7:1.8),isNitro?.42:.18,1.72+Math.random()*.5);
+  particle.position.copy(car.localToWorld(local));
+  const backward=car.localToWorld(new THREE.Vector3(0,0,2)).sub(car.position).normalize();
+  const velocity=backward.multiplyScalar(isNitro?7+speed*.025:2+speed*.012);
+  velocity.y+=isNitro?1.4:1.0;velocity.x+=(Math.random()-.5)*1.5;
+  scene.add(particle);
+  driveParticles.push({mesh:particle,velocity,life:isNitro?.42:.8,maxLife:isNitro?.42:.8,isNitro});
+ }
+}
+function updateDriveEffects(dt){
+ for(let i=driveParticles.length-1;i>=0;i--){
+  const p=driveParticles[i];p.life-=dt;
+  if(p.life<=0){scene.remove(p.mesh);p.mesh.geometry.dispose();p.mesh.material.dispose();driveParticles.splice(i,1);continue;}
+  p.mesh.position.addScaledVector(p.velocity,dt);p.velocity.y+=dt*(p.isNitro?-.7:-.25);
+  const fade=Math.max(0,p.life/p.maxLife);
+  p.mesh.material.opacity=(p.isNitro?.88:.42)*fade;
+  const grow=p.isNitro?1+(1-fade)*1.6:1+(1-fade)*2.4;
+  p.mesh.scale.setScalar(grow);
+ }
+}
 function animate(now){
  requestAnimationFrame(animate);const dt=Math.min(.05,(now-lastFrame)/1000||0);lastFrame=now;worldAnimTime+=dt;
  if((mode==='practice'||(mode==='online'&&room?.status==='playing'))&&Date.now()>=raceStartAtMs&&!finished){
@@ -1127,6 +1162,7 @@ function animate(now){
  }else if(mode==='idle')speed=Math.max(0,speed-30*dt);
  if(car&&speed>0){(car.userData.wheelParts||[]).forEach(w=>{w.rotation.x+=direction*speed*dt*.025;});}
  if(car){const targetBrake=braking?2.8:1.15;(car.userData.tailLights||[]).forEach(l=>{l.material.emissiveIntensity+=(targetBrake-l.material.emissiveIntensity)*Math.min(1,dt*10);});}
+ spawnDriveEffects(dt);updateDriveEffects(dt);
  syncWorld();renderer.render(scene,camera);
 }
 renderCarChoice();init3D();requestAnimationFrame(animate);

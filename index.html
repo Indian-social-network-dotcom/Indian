@@ -525,6 +525,22 @@ Search registered users, places, posts or help requests:
 <textarea id="storyCaption" rows="3" maxlength="300" style="width:100%;margin:8px 0;" placeholder="Write something about your story..."></textarea>
 <label for="storyMediaInput">Choose a photo or video:</label>
 <input id="storyMediaInput" type="file" accept="image/*,video/mp4,video/webm" aria-label="Choose photo or video for story" style="display:block;margin:8px 0;">
+<fieldset id="indianStoryEditor" class="indian-story-editor" style="display:block;width:100%;box-sizing:border-box;margin:14px 0;padding:14px;border:1px solid #68707b;border-radius:12px;background:#111820;color:#fff;">
+<legend>Story Editor</legend>
+<p>Video aur music maximum 30 seconds. Lamba media ho to apna pasandida hissa chunein. Photo par filters aur crop bhi laga sakte hain.</p>
+<div class="indian-story-editor-preview" id="indianStoryEditorPreview"></div>
+<p id="indianStoryVideoDuration">Video trim: photo select karein ya video ki duration dekhne ke liye video chunein.</p>
+<div class="indian-story-editor-control"><label for="indianStoryVideoStart">Video start time (seconds)</label><input type="range" id="indianStoryVideoStart" min="0" max="0" value="0" step="1" disabled><output id="indianStoryVideoStartValue">0</output></div>
+<p id="indianStoryMusicDuration">Music trim: song select karne par duration yahan dikhegi.</p>
+<div class="indian-story-editor-control"><label for="indianStoryMusicStart">Music start time (seconds)</label><input type="range" id="indianStoryMusicStart" min="0" max="0" value="0" step="1" disabled><output id="indianStoryMusicStartValue">0</output></div>
+<div class="indian-story-editor-control"><label for="indianStoryFilter">Filter</label><select id="indianStoryFilter"><option value="original">Original</option><option value="vivid">Vivid</option><option value="warm">Warm</option><option value="cool">Cool</option><option value="mono">Black and white</option><option value="sepia">Sepia</option></select></div>
+<div class="indian-story-editor-control"><label for="indianStoryCrop">Photo crop</label><select id="indianStoryCrop"><option value="original">Original size</option><option value="square">Square crop</option></select></div>
+<div class="indian-story-editor-control"><label for="indianStoryBrightness">Brightness</label><input type="range" id="indianStoryBrightness" min="50" max="150" value="100" step="5"><output id="indianStoryBrightnessValue">100</output></div>
+<div class="indian-story-editor-control"><label for="indianStoryContrast">Contrast</label><input type="range" id="indianStoryContrast" min="50" max="150" value="100" step="5"><output id="indianStoryContrastValue">100</output></div>
+<div class="indian-story-editor-control"><label for="indianStorySaturation">Saturation</label><input type="range" id="indianStorySaturation" min="0" max="200" value="100" step="5"><output id="indianStorySaturationValue">100</output></div>
+<div class="indian-story-editor-control"><label for="indianStorySoundVolume">Story sound volume</label><input type="range" id="indianStorySoundVolume" min="0" max="200" value="100" step="5"><output id="indianStorySoundVolumeValue">100%</output></div>
+<button type="button" id="indianStoryRotate" class="action">Rotate photo 90 degrees</button>
+</fieldset>
 <details id="storyAudioOptions" class="story-audio-options">
   <summary>Add music (optional)</summary>
   <label for="storyMusicChoice">Choose a website demo tune:</label>
@@ -9741,37 +9757,26 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   var byId=function(id){return document.getElementById(id);};
   var mediaInput=byId('storyMediaInput'),audioInput=byId('storyAudioInput'),form=byId('storyForm');
   if(!mediaInput||!audioInput||!form)return;
-  var editor=document.createElement('fieldset');editor.id='indianStoryEditor';editor.className='indian-story-editor';editor.hidden=false;editor.style.display='block';editor.setAttribute('aria-label','Story editing controls');
-  var legend=document.createElement('legend');legend.textContent='Story Editor';editor.appendChild(legend);
-  var help=document.createElement('p');help.textContent='Video aur music maximum 30 seconds. Lamba media ho to apna pasandida hissa chunein. Photo par filters aur crop bhi laga sakte hain.';editor.appendChild(help);
-  var preview=document.createElement('div');preview.className='indian-story-editor-preview';preview.id='indianStoryEditorPreview';editor.appendChild(preview);
+  var editor=byId('indianStoryEditor'),preview=byId('indianStoryEditorPreview');
+  if(!editor||!preview){if(form){var status=byId('storiesStatus');if(status)status.textContent='Story editor controls could not be loaded.';}return;}
+  editor.hidden=false;editor.style.display='block';editor.setAttribute('aria-label','Story editing controls');
   function makeRange(id,label,min,max,value,step){
-    var wrap=document.createElement('div');wrap.className='indian-story-editor-control';
-    var lab=document.createElement('label');lab.htmlFor=id;lab.textContent=label;wrap.appendChild(lab);
-    var input=document.createElement('input');input.type='range';input.id=id;input.min=min;input.max=max;input.value=value;input.step=step||1;wrap.appendChild(input);
-    var output=document.createElement('output');output.id=id+'Value';output.setAttribute('aria-live','polite');output.textContent=String(value);wrap.appendChild(output);
-    editor.appendChild(wrap);return input;
+    var input=byId(id);if(!input){var wrap=document.createElement('div');wrap.className='indian-story-editor-control';var lab=document.createElement('label');lab.htmlFor=id;lab.textContent=label;wrap.appendChild(lab);input=document.createElement('input');input.type='range';input.id=id;input.min=min;input.max=max;input.value=value;input.step=step||1;wrap.appendChild(input);var output=document.createElement('output');output.id=id+'Value';output.setAttribute('aria-live','polite');output.textContent=String(value);wrap.appendChild(output);editor.appendChild(wrap);}return input;
   }
   function makeSelect(id,label,options){
-    var wrap=document.createElement('div');wrap.className='indian-story-editor-control';
-    var lab=document.createElement('label');lab.htmlFor=id;lab.textContent=label;wrap.appendChild(lab);
-    var select=document.createElement('select');select.id=id;
-    options.forEach(function(item){var op=document.createElement('option');op.value=item[0];op.textContent=item[1];select.appendChild(op);});
-    wrap.appendChild(select);editor.appendChild(wrap);return select;
+    var select=byId(id);if(!select){var wrap=document.createElement('div');wrap.className='indian-story-editor-control';var lab=document.createElement('label');lab.htmlFor=id;lab.textContent=label;wrap.appendChild(lab);select=document.createElement('select');select.id=id;options.forEach(function(item){var op=document.createElement('option');op.value=item[0];op.textContent=item[1];select.appendChild(op);});wrap.appendChild(select);editor.appendChild(wrap);}return select;
   }
-  var videoNote=document.createElement('p');videoNote.id='indianStoryVideoDuration';videoNote.textContent='Video trim: choose a video to see its duration.';editor.appendChild(videoNote);
-  var videoStart=makeRange('indianStoryVideoStart','Video start time (seconds)',0,0,0,1);videoNote.hidden=true;videoStart.closest('.indian-story-editor-control').hidden=true;
-  var musicNote=document.createElement('p');musicNote.id='indianStoryMusicDuration';musicNote.textContent='Music trim: choose a song to see its duration.';editor.appendChild(musicNote);
-  var musicStart=makeRange('indianStoryMusicStart','Music start time (seconds)',0,0,0,1);musicNote.hidden=true;musicStart.closest('.indian-story-editor-control').hidden=true;
+  var videoNote=byId('indianStoryVideoDuration'),videoStart=makeRange('indianStoryVideoStart','Video start time (seconds)',0,0,0,1);
+  var musicNote=byId('indianStoryMusicDuration'),musicStart=makeRange('indianStoryMusicStart','Music start time (seconds)',0,0,0,1);
   var filter=makeSelect('indianStoryFilter','Filter',[['original','Original'],['vivid','Vivid'],['warm','Warm'],['cool','Cool'],['mono','Black and white'],['sepia','Sepia']]);
   var crop=makeSelect('indianStoryCrop','Photo crop',[['original','Original size'],['square','Square crop']]);
   var brightness=makeRange('indianStoryBrightness','Brightness',50,150,100,5);
   var contrast=makeRange('indianStoryContrast','Contrast',50,150,100,5);
   var saturation=makeRange('indianStorySaturation','Saturation',0,200,100,5);
   var soundVolume=makeRange('indianStorySoundVolume','Story sound volume',0,200,100,5);
-  var rotate=document.createElement('button');rotate.type='button';rotate.id='indianStoryRotate';rotate.textContent='Rotate photo 90 degrees';rotate.className='action';editor.appendChild(rotate);
+  var rotate=byId('indianStoryRotate');
   mediaInput.parentNode.insertBefore(editor,mediaInput.nextSibling);
-  function syncEditorVisibility(){var hasMedia=!!(mediaInput.files&&mediaInput.files.length);var hasAudio=!!(audioInput.files&&audioInput.files.length);editor.hidden=!(hasMedia||hasAudio);editor.style.display=editor.hidden?'none':'block';}
+  function syncEditorVisibility(){editor.hidden=false;editor.style.display='block';}
   syncEditorVisibility();
   var videoPreview=null,imagePreview=null,audioPreview=null,videoDuration=0,musicDuration=0,rotation=0;
   var mediaObjectUrl='',audioObjectUrl='';

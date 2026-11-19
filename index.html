@@ -9741,7 +9741,7 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   var byId=function(id){return document.getElementById(id);};
   var mediaInput=byId('storyMediaInput'),audioInput=byId('storyAudioInput'),form=byId('storyForm');
   if(!mediaInput||!audioInput||!form)return;
-  var editor=document.createElement('fieldset');editor.id='indianStoryEditor';editor.className='indian-story-editor';editor.hidden=false;
+  var editor=document.createElement('fieldset');editor.id='indianStoryEditor';editor.className='indian-story-editor';editor.hidden=false;editor.style.display='block';editor.setAttribute('aria-label','Story editing controls');
   var legend=document.createElement('legend');legend.textContent='Story Editor';editor.appendChild(legend);
   var help=document.createElement('p');help.textContent='Video aur music maximum 30 seconds. Lamba media ho to apna pasandida hissa chunein. Photo par filters aur crop bhi laga sakte hain.';editor.appendChild(help);
   var preview=document.createElement('div');preview.className='indian-story-editor-preview';preview.id='indianStoryEditorPreview';editor.appendChild(preview);
@@ -9771,6 +9771,8 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   var soundVolume=makeRange('indianStorySoundVolume','Story sound volume',0,200,100,5);
   var rotate=document.createElement('button');rotate.type='button';rotate.id='indianStoryRotate';rotate.textContent='Rotate photo 90 degrees';rotate.className='action';editor.appendChild(rotate);
   mediaInput.parentNode.insertBefore(editor,mediaInput.nextSibling);
+  function syncEditorVisibility(){var hasMedia=!!(mediaInput.files&&mediaInput.files.length);var hasAudio=!!(audioInput.files&&audioInput.files.length);editor.hidden=!(hasMedia||hasAudio);editor.style.display=editor.hidden?'none':'block';}
+  syncEditorVisibility();
   var videoPreview=null,imagePreview=null,audioPreview=null,videoDuration=0,musicDuration=0,rotation=0;
   var mediaObjectUrl='',audioObjectUrl='';
   window.indianStoryVideoStartSeconds=0;window.indianStoryMusicStartSeconds=0;window.indianStoryVideoEffects='';window.indianStorySoundVolume=100;
@@ -9817,11 +9819,11 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   musicStart.addEventListener('input',function(){window.indianStoryMusicStartSeconds=Number(musicStart.value)||0;if(audioPreview&&audioPreview.readyState>=1){try{audioPreview.currentTime=window.indianStoryMusicStartSeconds;}catch(e){}}});
   mediaInput.addEventListener('change',function(){
     preview.replaceChildren();videoPreview=null;imagePreview=null;videoDuration=0;rotation=0;
-    var file=mediaInput.files&&mediaInput.files[0];if(!file){editor.hidden=true;return;}editor.hidden=false;
+    var file=mediaInput.files&&mediaInput.files[0];if(!file){syncEditorVisibility();return;}editor.hidden=false;editor.style.display='block';
     if(mediaObjectUrl)URL.revokeObjectURL(mediaObjectUrl);mediaObjectUrl=URL.createObjectURL(file);
     if(file.type.indexOf('video/')===0){
       videoNote.hidden=false;videoStart.hidden=false;videoStart.closest('.indian-story-editor-control').hidden=false;
-      videoPreview=document.createElement('video');videoPreview.controls=true;videoPreview.playsInline=true;videoPreview.preload='metadata';videoPreview.src=mediaObjectUrl;videoPreview.setAttribute('aria-label','Story video editing preview');preview.appendChild(videoPreview);setupDuration(file,false);videoPreview.addEventListener('timeupdate',function(){var start=Number(videoStart.value)||0;if(videoPreview.currentTime>=start+30){videoPreview.pause();videoPreview.currentTime=start;}});videoPreview.addEventListener('play',function(){var start=Number(videoStart.value)||0;if(videoPreview.currentTime<start||videoPreview.currentTime>=start+30)videoPreview.currentTime=start;});
+      videoPreview=document.createElement('video');videoPreview.controls=true;videoPreview.playsInline=true;videoPreview.preload='metadata';videoPreview.volume=Math.min(1,(Number(soundVolume.value)||0)/100);videoPreview.src=mediaObjectUrl;videoPreview.setAttribute('aria-label','Story video editing preview');preview.appendChild(videoPreview);setupDuration(file,false);videoPreview.addEventListener('timeupdate',function(){var start=Number(videoStart.value)||0;if(videoPreview.currentTime>=start+30){videoPreview.pause();videoPreview.currentTime=start;}});videoPreview.addEventListener('play',function(){var start=Number(videoStart.value)||0;if(videoPreview.currentTime<start||videoPreview.currentTime>=start+30)videoPreview.currentTime=start;});
     }else if(file.type.indexOf('image/')===0){
       videoNote.hidden=true;videoStart.closest('.indian-story-editor-control').hidden=true;
       imagePreview=document.createElement('img');imagePreview.src=mediaObjectUrl;imagePreview.alt='Story photo editing preview';preview.appendChild(imagePreview);
@@ -9830,12 +9832,12 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
     updateFilter();
   });
   audioInput.addEventListener('change',function(){
-    var file=audioInput.files&&audioInput.files[0];if(!file){if(audioObjectUrl)URL.revokeObjectURL(audioObjectUrl);audioObjectUrl='';if(audioPreview&&audioPreview.parentNode)audioPreview.parentNode.removeChild(audioPreview);audioPreview=null;musicDuration=0;musicNote.hidden=true;musicStart.closest('.indian-story-editor-control').hidden=true;return;}
-    editor.hidden=false;musicNote.hidden=false;musicStart.closest('.indian-story-editor-control').hidden=false;
+    var file=audioInput.files&&audioInput.files[0];if(!file){if(audioObjectUrl)URL.revokeObjectURL(audioObjectUrl);audioObjectUrl='';if(audioPreview&&audioPreview.parentNode)audioPreview.parentNode.removeChild(audioPreview);audioPreview=null;musicDuration=0;musicNote.hidden=true;musicStart.closest('.indian-story-editor-control').hidden=true;syncEditorVisibility();return;}
+    editor.hidden=false;editor.style.display='block';musicNote.hidden=false;musicStart.closest('.indian-story-editor-control').hidden=false;
     if(audioObjectUrl)URL.revokeObjectURL(audioObjectUrl);audioObjectUrl=URL.createObjectURL(file);
     if(!audioPreview){audioPreview=document.createElement('audio');audioPreview.controls=true;audioPreview.preload='metadata';audioPreview.setAttribute('aria-label','Music trim preview');}
     if(audioPreview.parentNode!==preview)preview.appendChild(audioPreview);
-    audioPreview.src=audioObjectUrl;setupDuration(file,true);
+    audioPreview.src=audioObjectUrl;audioPreview.volume=Math.min(1,(Number(soundVolume.value)||0)/100);setupDuration(file,true);
     audioPreview.addEventListener('timeupdate',function(){var start=Number(musicStart.value)||0;if(audioPreview.currentTime>=start+30){audioPreview.pause();audioPreview.currentTime=start;}});
     audioPreview.addEventListener('play',function(){var start=Number(musicStart.value)||0;if(audioPreview.currentTime<start||audioPreview.currentTime>=start+30)audioPreview.currentTime=start;});
   });

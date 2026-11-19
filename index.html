@@ -9065,6 +9065,7 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
  var viewer=document.getElementById('indianShortsViewer'),stage=document.getElementById('isvStage'),social=document.getElementById('isvSocial'),comments=document.getElementById('isvComments'),status=document.getElementById('isvStatus');
  if(!viewer||!stage||!social||!comments)return;
  var cards=[],index=0,touchY=null,previousFocus=null,commentsOpen=false;
+ var activeFullscreenVideo=null;
  function collect(){
   var found=Array.from(document.querySelectorAll('#shortsFeed>article[data-uran-video-id],#indianMixedFeedItems article[data-uran-video-id]'));
   var seen=Object.create(null);
@@ -9115,18 +9116,21 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   if(index<0)index=cards.length-1;if(index>=cards.length)index=0;
   commentsOpen=false;comments.hidden=true;
   var card=cards[index],frame=card.querySelector('iframe'),video=card.querySelector('video');
+  if(activeFullscreenVideo){try{activeFullscreenVideo.pause();activeFullscreenVideo.removeAttribute('src');activeFullscreenVideo.load();}catch(stopError){}activeFullscreenVideo=null;}
   stage.replaceChildren();
   if(frame){
    var f=document.createElement('iframe');f.src=frame.getAttribute('src')||'';f.title='Uran video '+(index+1);f.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';f.allowFullscreen=true;f.referrerPolicy='strict-origin-when-cross-origin';stage.appendChild(f);
   }else if(video){
-   var v=document.createElement('video');var source=video.currentSrc||video.getAttribute('src')||video.getAttribute('data-home-lazy-src')||video.src;
-   v.src=source;v.controls=true;v.playsInline=true;v.muted=false;v.autoplay=true;v.setAttribute('aria-label','Uran video '+(index+1)+' of '+cards.length);v.setAttribute('aria-describedby','isvStatus');stage.appendChild(v);
+   var v=document.createElement('video');var source=video.currentSrc||video.getAttribute('src')||video.getAttribute('data-indian-lazy-src')||video.getAttribute('data-home-lazy-src')||video.src;
+   if(!source){status.textContent='Is Uran video ka media link abhi load nahi hua. Feed ko ek baar reload karke dobara kholein.';stage.textContent='Video source is not available.';return;}
+   activeFullscreenVideo=v;v.controls=true;v.playsInline=true;v.preload='auto';v.muted=false;v.autoplay=true;v.setAttribute('aria-label','Uran video '+(index+1)+' of '+cards.length);v.setAttribute('aria-describedby','isvStatus');v.src=source;stage.appendChild(v);v.load();
+   v.addEventListener('error',function(){var mediaError=v.error;status.textContent='Uran video load nahi hua. '+(mediaError&&mediaError.message?mediaError.message:'Media link ya video format check karein.');});
    var viewRecorded=false;
    async function recordFullscreenView(){if(viewRecorded||!window.firebaseCurrentUid||typeof window.indianUranRecordView!=='function')return;viewRecorded=true;try{var key='indian_uran_viewed_'+window.firebaseCurrentUid+'_'+card.dataset.uranVideoId;if(!sessionStorage.getItem(key)){await window.indianUranRecordView(card.dataset.uranVideoId);sessionStorage.setItem(key,'1');}var data=await window.indianUranGetSocialData(card.dataset.uranVideoId);var count=social.querySelector('[data-uran-fullscreen-views-for="'+card.dataset.uranVideoId+'"]');if(count){count.textContent=String(data.views);count.setAttribute('aria-label','Video views '+data.views);}}catch(viewError){viewRecorded=false;console.warn('Uran fullscreen view could not be recorded',viewError);status.textContent='Video view save nahi hua: '+String(viewError.message||viewError);}}
    v.addEventListener('play',recordFullscreenView);
    v.addEventListener('ended',function(){try{v.currentTime=0;var replay=v.play();if(replay&&replay.catch)replay.catch(function(){status.textContent='Video khatam hua. Dobara chalane ke liye Play dabayein.';});}catch(replayError){status.textContent='Video khatam hua. Dobara chalane ke liye Play dabayein.';}});
    v.addEventListener('click',function(e){if(e.defaultPrevented)return;var rect=v.getBoundingClientRect();if(e.clientY-rect.top>rect.height-56)return;if(v.paused){var start=v.play();if(start&&start.catch)start.catch(function(){});}else{v.pause();}});
-   v.play().then(recordFullscreenView).catch(function(){status.textContent='Automatic playback was blocked. Use the video Play control to start playback.';});
+   var playAttempt=v.play();if(playAttempt&&playAttempt.then)playAttempt.then(recordFullscreenView).catch(function(){status.textContent='Automatic playback browser ne roka. Video ke Play control ko dabakar chalayen.';});
   }else{stage.textContent='Video player is unavailable.';}
   renderSocial(card);
   stage.setAttribute('aria-label','Uran video '+(index+1)+' of '+cards.length);
@@ -9138,7 +9142,7 @@ window.dispatchEvent(new Event('indian-uran-cloud-ready'));
   index=found;open();
  }
  function open(){previousFocus=document.activeElement;if(window.indianPushOverlayHistory)window.indianPushOverlayHistory('uran');viewer.classList.add('open');document.body.classList.add('indian-fullscreen-open');document.body.style.overflow='hidden';show();document.getElementById('isvClose').focus();}
- function close(){viewer.classList.remove('open');document.body.classList.remove('indian-fullscreen-open');document.body.style.overflow='';stage.replaceChildren();social.replaceChildren();comments.replaceChildren();comments.hidden=true;if(window.indianCloseOverlayHistory)window.indianCloseOverlayHistory('uran');if(previousFocus&&previousFocus.focus)previousFocus.focus();}
+ function close(){if(activeFullscreenVideo){try{activeFullscreenVideo.pause();activeFullscreenVideo.removeAttribute('src');activeFullscreenVideo.load();}catch(stopError){}activeFullscreenVideo=null;}viewer.classList.remove('open');document.body.classList.remove('indian-fullscreen-open');document.body.style.overflow='';stage.replaceChildren();social.replaceChildren();comments.replaceChildren();comments.hidden=true;if(window.indianCloseOverlayHistory)window.indianCloseOverlayHistory('uran');if(previousFocus&&previousFocus.focus)previousFocus.focus();}
  function move(n){index+=n;show();}
  document.getElementById('isvClose').addEventListener('click',close);
  document.getElementById('isvPrev').addEventListener('click',function(){move(-1);});
